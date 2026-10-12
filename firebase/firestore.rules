@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Sách: mọi người đọc được, chỉ user đã đăng nhập mới ghi
+    match /books/{bookId} {
+      allow read: if true;
+      allow create, update, delete: if isSignedIn();
+    }
+
+    // Hồ sơ người dùng: chỉ chính chủ đọc/ghi
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+  }
+}

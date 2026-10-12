@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+
+# Build output
+dist/
+build/
+__pycache__/
+*.py[cod]
+
+# Env & secrets
+.env
+.env.local
+*.local
+serviceAccountKey.json
+*serviceAccount*.json
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
