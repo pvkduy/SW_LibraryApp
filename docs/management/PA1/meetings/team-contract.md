@@ -1,5 +1,6 @@
 # **Team Contract**
 
+Performed by: Nguyễn Anh Khôi | Reviewed by: Lê Văn Vĩ | Edited by: Nguyễn Anh Khôi
 
 ## **1. Team Roles and Responsibilities**
 

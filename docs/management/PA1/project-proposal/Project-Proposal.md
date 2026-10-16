@@ -1,5 +1,9 @@
 # **ShelfHelp: Smart Library Management System**
 
+Performed by: Lê Văn Vĩ | Reviewed by: Nguyễn Anh Khôi | Edited by: Lê Văn Vĩ, Nguyễn Anh Khôi
+
+---
+
 ## **1\. Introduction**
 
 Many university libraries still run lending on spreadsheets, paper cards, or outdated systems. Students cannot easily see which books are available, forget due dates, and struggle to find reading material when all they have is a research topic rather than a title. Librarians spend their time on manual record keeping, chasing overdue books, tracking who has paid what, and compiling reports for the university.

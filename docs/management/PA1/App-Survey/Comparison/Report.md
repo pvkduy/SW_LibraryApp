@@ -1,3 +1,7 @@
+Performed by: Lê Minh Thuận | Reviewed by: Nguyễn Minh Phú
+
+---
+
 # Introduction
 
 As part of the project proposal phase, this report surveys two existing

@@ -1,12 +1,14 @@
 # **App Survey 1 — CERN Library Catalogue**
 
-## **1\. Overview**
+Performed by: Nguyễn Minh Phú | Reviewed by: Nguyễn Anh Khôi | Edited by: Nguyễn Minh Phú
+
+## **1. Overview**
 
 CERN Library Catalogue is a web-based library catalogue that allows users to discover books, e-books, journals, and standards. The interface supports searching, filtering, viewing bibliographic information, checking item availability, and accessing borrowing services.
 
 This survey focuses on three main screens: Home, Search Results, and Item Details.
 
-## **2\. Screen Analysis**
+## **2. Screen Analysis**
 
 ### **Screen 1 — Home**
 
@@ -77,7 +79,7 @@ UI/UX observations:
 
 Key takeaway: An item details page should help users quickly answer three questions: What is this item? Can I access or borrow it? Where can I find it?
 
-## **3\. UI/UX Pattern Analysis**
+## **3. UI/UX Pattern Analysis**
 
 | UI/UX Pattern                   | Implementation in CERN Library Catalogue                                                    | Evaluation                                                         |
 | ------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
@@ -90,7 +92,7 @@ Key takeaway: An item details page should help users quickly answer three questi
 | Contextual Actions              | The item details page provides online access, loan requests, and shelf-location assistance. | Connects information discovery with the next user action.          |
 | Progressive Information Display | General information appears alongside detailed physical-copy records.                       | Provides useful context, although the detailed table may be dense. |
 
-## **4\. Overall Strengths and Weaknesses**
+## **4. Overall Strengths and Weaknesses**
 
 ### **Strengths**
 
@@ -110,9 +112,8 @@ Key takeaway: An item details page should help users quickly answer three questi
 5. Limited Personalization on the Homepage: The provided screenshot emphasizes general discovery rather than personalized recommendations or a user's current borrowing activity.
 6. Authentication Dependency: Users must sign in to request a loan or access restricted online resources, adding a step before completing those actions.
 
-These observations are based on the three provided screenshots. They describe the visible interface and do not necessarily represent every feature available elsewhere in the system.
 
-## **5\. Proposed Improvements for Our Application**
+## **5. Proposed Improvements for Our Application**
 
 1. **Improve Homepage Efficiency:** Keep the search bar prominent while reducing unnecessary vertical space. Display recently added items and frequently used categories closer to the top of the page.
 2. **Simplify Search Filters:** Group related filters into clear sections and make selected filters easy to identify and remove. On smaller screens, provide a collapsible filter panel.
@@ -122,6 +123,6 @@ These observations are based on the three provided screenshots. They describe th
 
 **Provide Better Borrowing Feedback:** Explain when sign-in is required and provide clear confirmation or error messages after a borrowing request. This helps users understand the system's response and what to do next.
 
-**6\. Conclusion**
+**6. Conclusion**
 
 The CERN Library Catalogue offers a highly functional, discovery-oriented platform that successfully integrates digital and physical library resources. Its greatest strengths lie in its search-first design, comprehensive filtering tools, and clear availability indicators, which effectively guide users from initial discovery to borrowing. However, there are opportunities to enhance the user experience by optimizing screen space—particularly the homepage hero section—and simplifying dense information layouts like the search filters and detailed copy tables. By applying these insights, our application can adopt CERN's strong foundation in search accessibility while delivering a more streamlined, scannable, and actionable interface for our users.

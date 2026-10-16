@@ -1,5 +1,7 @@
 # C. App Survey — Koha Staff Interface
 
+Performed by: Nguyễn Minh Phú | Reviewed by: Phạm Võ Khang Duy, Nguyễn Anh Khôi | Edited by: Nguyễn Minh Phú
+
 ## 1. Application Overview
 
 - **Application:** Koha Integrated Library System (ILS)

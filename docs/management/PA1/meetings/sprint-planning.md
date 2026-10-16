@@ -1,6 +1,8 @@
 # **SPRINT PLANNING MEETING MINUTES**
 
-*PA1: 5/10/2026 - 18/10/2026* 
+*PA1: 5/10/2026 - 18/10/2026*
+ 
+Performed by: Nguyễn Anh Khôi
 
 ---
 
@@ -60,8 +62,8 @@ No blockers were raised. The next meeting is the first weekly Scrum meeting, and
 | Meeting | Date |
 | ----- | ----- |
 | Sprint Planning | 6/10/2026 |
-| Scrum Meeting \#1 | 11/10/2026 |
-| Scrum Meeting \#2 | 16/10/2026 |
+| Scrum Meeting #1 | 11/10/2026 |
+| Scrum Meeting #2 | 16/10/2026 |
 | Sprint Review | 18/10/2026 |
 | Sprint 2 (PA2) Planning | 18/10/2026 |
 
