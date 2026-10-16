@@ -53,8 +53,6 @@ None
 
 All five members attended the Sprint 1 (PA1) planning meeting on 6/10/2026. The team set six sprint goals: register the group and project topic, agree on the team contract, set up GitHub, Google Drive and Jira, draft the project proposal for TA feedback, and survey existing apps to prepare a requirements draft for later sprints.
 
-No blockers were raised. The next meeting is the first weekly Scrum meeting, and the Sprint Review is expected on 16/10/2026.
-
 ---
 
 ### **Scheduled Meetings** 

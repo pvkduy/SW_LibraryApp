@@ -1,7 +1,9 @@
 # **SCRUM MEETING MINUTES**
 
 *PA1: 5/10/2026 – 18/10/2026*   
-Performed by: Nguyễn Anh Khôi  
+
+Performed by: Nguyễn Anh Khôi
+
 ---
 
 ### **Date held: 11/10/2026**
