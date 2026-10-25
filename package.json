@@ -1,0 +1,20 @@
+{
+  "name": "shelfhelp",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "ShelfHelp — university library management system",
+  "workspaces": [
+    "src/frontend",
+    "src/shared"
+  ],
+  "scripts": {
+    "lint": "npm run lint --workspace=@shelfhelp/shared --if-present && npm run lint --workspace=frontend",
+    "typecheck": "npm run typecheck --workspace=@shelfhelp/shared --if-present",
+    "build": "npm run build --workspace=frontend",
+    "spec-matrix": "node src/scripts/spec-matrix.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,8 @@
+# Supabase CLI local state — not shared.
+.branches/
+.temp/
+supabase/.temp/
+
+# Never commit real secrets used by Edge Functions.
+.env
+.env.local

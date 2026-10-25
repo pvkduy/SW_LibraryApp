@@ -59,6 +59,58 @@ completeness only; the file is retired and will not be fixed.
   obsolete and should be replaced with Supabase CLI setup.
 - The Supabase foundation is milestone **M0** in SRS §19.
 
+**Resolution (2025-10-25).** The retirement gate in `M0-PLAN.md` §D5 ("keep until M0b") is met,
+and the deletions have been carried out:
+
+| Path | Action | Note |
+|---|---|---|
+| `src/backend/` | **Deleted** (7 files) | Flask app, `firebase_admin` init, Firestore routes, `requirements.txt`, `.env.example` |
+| `src/firebase/` | **Deleted** | `firestore.rules` including the duplicate `service cloud.firestore` defect above — the defect is moot, the file is gone |
+| `supabase/` (repo root) | **Deleted** | Stray CLI state (`.branches/`, `.temp/`, empty `snippets/`) created by running the CLI at the repo root. `src/supabase/` is canonical per DEC-LOG-02; the CLI is invoked with `--workdir src` |
+| `.gitignore` | **Updated** | Dropped Python entries (`__pycache__/`, `*.py[cod]`, `.venv/`, `venv/`) and the Firebase service-account rules; added `src/supabase/.branches/` and `src/supabase/.temp/` |
+| `src/frontend/` | **Migrated** | Now uses `lib/supabase.js` + `lib/api.js`; `services/firebase.js` and `context/AuthContext.jsx` are gone. No `firebase` package remains in any `package.json` |
+
+A repository-wide scan for `firebase`/`firestore` across `*.js`, `*.jsx`, `*.ts`, `*.tsx`,
+`*.json`, `*.py`, `*.toml` returns **zero** matches. Remaining textual mentions are intentional:
+historical PA1 meeting notes under `docs/management/`, and SRS/constitution text explaining DEC-54
+(why Firestore was rejected, and that Firebase Auth survives only as a documented fallback).
+
+---
+
+## DEC-LOG-02 — Layout is /src-rooted; npm workspaces; no apps/web
+
+**Date**: 2025-10-25
+**Relates to**: SRS §11 (proposed project structure), M0-PLAN.md §2b
+
+**Context.** SRS §11 proposes a monorepo layout with `apps/web/`, `packages/shared/`,
+`supabase/` at the root. The project requirement is that everything app-related lives
+inside `/src`.
+
+**Decision.** `src/` in this repository corresponds to `shelfhelp/` in SRS §11. Two
+deviations from the literal §11 tree are adopted:
+
+| SRS §11 | This repo | Reason |
+|---|---|---|
+| `apps/web/src/` | `src/frontend/` | One deployable. `apps/` is monorepo ceremony with no benefit; the frontend is not moved. |
+| `packages/shared/src/` | `src/shared/src/` | Same intent, one level flatter, inside the required `/src` root. |
+
+- **Workspace root**: `package.json` and workspace globs live at the repository root
+  (`src/frontend`, `src/shared`), so CI and editors resolve naturally. `src/` is the
+  project root, not the workspace root.
+- **Package manager**: npm workspaces. pnpm is not installed on the dev machine and the
+  workspace needs are basic. Installing pnpm later is a non-breaking change.
+
+**Rationale.** `apps/` exists to separate multiple deployables from shared libraries.
+With a single deployable it holds exactly one child. The `/src` requirement is absolute
+and the flat layout satisfies both it and §11's intent.
+
+**Consequences.**
+- The Supabase dashboard's Next.js snippets (`utils/supabase/server.ts`, `middleware.ts`,
+  `page.tsx`, `NEXT_PUBLIC_*` env names) do not apply. Only the browser client is used;
+  privileged access goes through Edge Functions.
+- Server-side secrets must never enter the Vite bundle (NFR-06).
+
+
 ---
 
 # Awaiting sign-off

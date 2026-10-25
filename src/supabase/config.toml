@@ -1,0 +1,72 @@
+# Supabase local development configuration
+# https://supabase.com/docs/guides/local-development/cli/config
+#
+# Project region for hosted deployments: ap-southeast-1 (Singapore) — SRS §10.1.
+# Schedules and date logic use Asia/Ho_Chi_Minh (POL-01, DEC-55).
+
+project_id = "shelfhelp"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.pooler]
+enabled = false
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "5MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+
+# Storage buckets from SRS §10.5.
+[storage.buckets.covers]
+public = true
+file_size_limit = "1MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp"]
+
+[storage.buckets.avatars]
+public = false
+file_size_limit = "300KiB"
+allowed_mime_types = ["image/jpeg"]
+
+[storage.buckets.evidence]
+public = false
+file_size_limit = "2MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp"]
+
+[storage.buckets.imports]
+public = false
+file_size_limit = "2MiB"
+allowed_mime_types = ["text/csv"]
+
+[analytics]
+enabled = false
