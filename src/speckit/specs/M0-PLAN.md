@@ -32,7 +32,7 @@ and the two "blockers" it treated as central (no Docker, no Supabase CLI) no lon
 | A11 | Spec-matrix script | ✅ Done | 107 FRs → 107 claimed, 64 TS scenarios |
 | A12 | Frontend `.env.example` | ✅ Done | `src/frontend/.env.example` |
 | B1 | Docker | ✅ Installed (29.7.2) | see DEC-LOG-03 |
-| B2 | Supabase CLI | ✅ 2.122.0 via `npx` | no global install needed |
+| B2 | Supabase CLI | ✅ 2.122.0 root devDependency | `npm ci` installs it; no global install |
 | B3 | `supabase start` + `db reset` | ✅ Verified | migration and seed both apply |
 | B4 | pgTAP RLS test | ✅ **23/23 passing** | `src/supabase/tests/rls_test.sql` |
 | B5 | Playwright smoke | ✅ **2/2 passing** | `src/e2e/smoke.spec.ts` |
@@ -107,8 +107,15 @@ M0 is a single milestone again. Recorded in DEC-LOG-03.
 | Node | 24.11.0 | ≥ 20 required |
 | npm | 11.6.1 | workspaces (D2 confirmed) |
 | Docker | 29.7.2 | local stack |
-| Supabase CLI | 2.122.0 via `npx` | `--workdir src` is mandatory |
-| Playwright | 1.64.1 | Chromium only in M0 |
+| Supabase CLI | 2.122.0 — **root devDependency** | `npm ci` installs it; `--workdir src` is mandatory |
+| Playwright | 1.64.1 — **devDependency** | Chromium only in M0 |
+
+> The Supabase CLI is a declared root `devDependency`, so a clean `npm ci` provides the
+> exact pinned version on every machine and in CI. It is not a global install, and it is
+> not fetched ad hoc from an unpinned `npx` source.
+>
+> `src/speckit/` is **not** a dependency — it is plain files in the repository (specs,
+> templates, bash scripts), so no install step applies to it.
 
 ### Known good verification commands
 

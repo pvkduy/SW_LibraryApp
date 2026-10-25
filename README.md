@@ -47,6 +47,7 @@ SW_LibraryApp/
 | npm | >= 10 | `npm --version` |
 | **Docker Desktop** | mới nhất, **đang chạy** | `docker info` |
 | Git | bất kỳ | `git --version` |
+| **uv** | mới nhất | `uv --version` |
 
 **Docker phải đang chạy** (mở Docker Desktop, đợi icon chuyển sang trạng thái running) trước khi làm
 bước 2. Nếu `docker` không có trong PATH (Windows cài per-user), thêm thư mục sau vào PATH:
@@ -54,6 +55,34 @@ bước 2. Nếu `docker` không có trong PATH (Windows cài per-user), thêm t
 ```
 C:\Users\<tên-bạn>\AppData\Local\Programs\DockerDesktop\resources\bin
 ```
+
+### Cài Speckit (yêu cầu của đồ án)
+
+Spec Kit là công cụ spec-driven dùng trong môn học. Cài `uv` rồi cài CLI `specify`:
+
+```bash
+# 1. Cài uv (macOS/Linux)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows (PowerShell)
+# powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# 2. Cài Speckit CLI (một lần, dùng chung cho mọi project)
+uv tool install specify-cli
+
+# 3. Kiểm tra
+specify --version
+```
+
+> **`specify: command not found` sau khi cài?** `uv` cài binary vào `~/.local/bin`, thư mục này có
+> thể chưa có trong PATH. Mở terminal mới, hoặc thêm vào PATH:
+> ```bash
+> export PATH="$HOME/.local/bin:$PATH"        # macOS/Linux
+> ```
+> Trên Windows: `%USERPROFILE%\.local\bin`.
+
+> Spec Kit trong repo này được tạo bằng `1.2.4.dev0`; `uv tool install specify-cli` cài bản mới
+> nhất. Không cần khớp phiên bản để đọc spec hay chạy test — chỉ khi muốn tạo/cập nhật spec.
 
 ### Bước 1 — Cài dependencies
 
