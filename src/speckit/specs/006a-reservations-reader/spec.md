@@ -86,6 +86,7 @@ A student subscribes to a "notify me when available" notification.
 - Membership ended / Restricted / debt hold at promotion → cancelled with reason, no strike (DEC-26).
 - Member at item limit at promotion → skipped but keeps position (DEC-26).
 - Reservation for a book whose copy becomes available between load and click → server rejects `NOT_AVAILABLE` (EC-33).
+- Book becomes non-circulating (all copies retired/lost) → every `waiting` reservation cancelled with reason `book_not_circulating`, no strike, members notified (POL-07). A `ready_for_pickup` reservation expires normally instead.
 
 ## Requirements
 

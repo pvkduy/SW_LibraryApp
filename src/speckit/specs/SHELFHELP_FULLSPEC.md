@@ -25,6 +25,8 @@
 - `[CONFIRM]` a default was chosen because the proposal is silent or ambiguous. Build the default, keep it configurable, and surface it to the product owner.
 - Section 20 archives features that were cut from the current scope. Do not build them. Retired IDs (FR, TS, EC, screens) are never reused.
 
+**Owner sign-off for `[CONFIRM]` and `Confirm = Yes` items.** Each such item is owned by the product owner named in `docs/DECISIONS.md`. The default in this document is built so work is not blocked. Sign-off is recorded by appending a dated entry to `docs/DECISIONS.md` that names the item ID and the confirmed value; an item is considered confirmed only when that entry exists. Shipping a milestone whose scope contains an unconfirmed item is permitted, but the item is listed as an open risk in that milestone's exit review, and changing it later follows the amendment procedure in the constitution. Milestone M11 requires every `[CONFIRM]` and `Confirm = Yes` item to be confirmed or explicitly accepted by the owner.
+
 **Agent rules:**
 1. Every mutation of loans, copies, payments, receipts, charges, memberships, reservations, or account status SHALL run server-side (Edge Functions running one Postgres transaction each). The browser never writes those documents directly.
 2. Every configurable number lives in `settings` table, key `library` (Section 4.17). Never hardcode a limit, fee, or duration.
@@ -255,6 +257,7 @@ Renewal is allowed only if all hold: item is `borrowed` (not `overdue`), account
 - Strike 1: formal warning notification. Strike 2 within 180 days: `reservation_ban_until = now + 30 days`, strikes reset. A ban blocks only new reservations.
 - Member can cancel a waiting or ready reservation at any time with no strike.
 - Wishlist: one entry per student per Book, max 50. Wishlist notification fires only when no queue exists (DEC-27).
+- **Non-circulating books.** A Book is non-circulating when it has no copy in `available`, `held`, or `borrowed` and no copy that could return to `available` (every copy is `retired` or `lost`). When a Book becomes non-circulating, the system cancels every `waiting` reservation with reason `book_not_circulating`, no strike, and notifies each member. A `ready_for_pickup` reservation is not cancelled by this rule; it expires normally at its 48 h deadline or is fulfilled if the held copy still exists. Wishlist entries stay but no availability notification is sent while the book is non-circulating. If a copy later returns to `available` (found, or a return), the book circulates again and members may reserve normally.
 
 ### 4.8 Fines, lost, and damage (POL-08)
 - Overdue days = number of local calendar days after the due date up to and including today.
@@ -319,7 +322,7 @@ Every notification has a `dedupe_key` so retried jobs never send twice. In-app n
 - Copy statuses: `available`, `held`, `borrowed`, `damaged`, `under_repair`, `lost`, `retired`. Allowed transitions in 5.4.
 - Every change of copy count or copy status writes an Inventory Transaction (type, delta, reason, reference, operator or `system`).
 - Copies are never hard-deleted. Retiring is by Write-Off Slip.
-- A Write-Off Slip can include several copies, none of which may be `borrowed` or `held` (held copies must be released first). Reason `damaged_beyond_repair` requires at least one evidence photo. Completed slips are immutable.
+- A Write-Off Slip can include several copies, none of which may be `borrowed` or `held` (held copies must be released first). Reason `damaged_beyond_repair` requires at least one evidence photo. Completed slips are immutable. Completing a slip that would make the Book non-circulating is allowed; the completion runs the POL-07 non-circulating rule in the same transaction, so queues are cancelled rather than silently orphaned.
 - Books are never hard-deleted. There is no archive feature in the current scope; a title stays in the catalog (Section 20).
 
 ### 4.14 Reviews (POL-14)
@@ -427,11 +430,12 @@ User, Membership, MembershipPlan, Book, Copy, Review, LoanRequest, LoanItem, Res
 | `overdue` | Lost threshold | `lost` | system | Copy `lost`, student `restricted`, loss charge |
 | `borrowed`, `overdue` | Manual lost | `lost` | staff | Same as above |
 | `lost` | Return | `returned` | staff | Resolution path A |
+| `ready_for_pickup` | Copy found damaged before handover | `ready_for_pickup` | staff | No status change; copy set `damaged` or `under_repair` releases the hold; item remains and expires at its pickup deadline unless the student cancels. Swap or staff-cancel is out of scope (Section 20.6). |
 
 Terminal states: `expired`, `cancelled`, `returned`, and `lost` once `lost_resolved_at` is set. The system sets `lost_resolved_at` when the loss is settled: the book is returned (path A, and the item also moves to `returned`) or the replacement is paid in full (path B, and the item stays `lost`). Settling a loss does not restore the account; that is the separate admin action in FR-AUTH-08.
 
 ### 5.3 Reservation states
-`waiting` -> `ready_for_pickup` (promotion) -> `fulfilled` (handover) | `expired` (48 h) | `cancelled`. A `waiting` reservation can also go to `cancelled`.
+`waiting` -> `ready_for_pickup` (promotion) -> `fulfilled` (handover) | `expired` (48 h) | `cancelled`. A `waiting` reservation can also go to `cancelled` when the Book becomes non-circulating (reason `book_not_circulating`, no strike; POL-07).
 While `ready_for_pickup`, only the Reservation row exists; no Loan Item is created until handover. At handover the Loan Item is created directly in `borrowed` (`source = reservation`) and the reservation is set `fulfilled`.
 
 ### 5.4 Copy states
@@ -449,6 +453,9 @@ While `ready_for_pickup`, only the Reservation row exists; no Loan Item is creat
 | `lost` | `available`, `damaged` | found (inventory type `found`), or return after lost |
 
 `retired` is final.
+
+- `held` -> `lost` is **not** a direct transition. A copy found missing while `held` must first have its hold released by the POL-07/EC-12 path (staff sets the copy `damaged` or `under_repair`, which releases the hold), or the hold must expire normally. Only a copy in `available`, `damaged`, or `under_repair` can be set `lost`.
+- Write-Off Slip completion therefore cannot lose a copy that is `held` or `borrowed` (FR-COND-03 refuses these); on-loan losses go through the loan Lost flow (FR-CIRC-05).
 
 ### 5.5 Other state sets
 - **Account:** `pending_verification` -> `active` <-> `restricted`; `active` -> `inactive` -> `active` (admin only).
@@ -478,6 +485,16 @@ While `ready_for_pickup`, only the Reservation row exists; no Loan Item is creat
 | Return (staff) | Y | Y | Y | Y | Y |
 
 Inactive accounts cannot log in. The Non-member column is derived from entitlements (FR-MEM-05), for example `can_reserve = false`; the gating function reads entitlements and must not hard-code a separate non-member rule. The gating decision is made in one shared function on the server and mirrored in the UI for clarity (UI hides or disables, server enforces).
+
+**Blocked-action precedence.** The shared gating function evaluates blockers in this fixed order and returns the first that applies:
+
+1. Account not `active` (`pending_verification`, `inactive`, `restricted`) -> `ACCOUNT_NOT_ACTIVE` (for `inactive` the user cannot log in at all) or `ACCOUNT_RESTRICTED` (for `restricted`).
+2. Debt hold -> `DEBT_HOLD`.
+3. Reservation ban -> `RESERVATION_BAN`.
+4. Not a member where membership is required (reserve) -> `NOT_MEMBER`.
+5. Entitlement or item limit exceeded -> `LIMIT_REACHED`.
+
+Precedence applies only when the action is blocked for more than one reason. It does not change which actions are permitted, only the reported reason. The UI shows the message for the returned reason and must not compute its own precedence.
 
 ### 6.2 Global UI components
 - Status banner (restricted, debt hold, reservation ban, membership expiring).
@@ -642,7 +659,7 @@ Navigation and layout only. No feature requirements of its own.
 
 ### A-07 Copies `/admin/books/:id/copies`
 - **FR-INV-04** `[PA1 §3.7]` **Copy records and labels.** The system SHALL give every copy a unique barcode (Code 128) and show status, shelf location (copy override or book default), condition, acquisition source, and full history. Staff SHALL print a label sheet PDF for selected copies. Shelf location is shown to staff and students. *AC:* Given a new copy, then a barcode that is unique across all copies is assigned and scanning it finds the copy.
-- **FR-INV-07** `[PA1 §3.7]` **Copy status changes.** The system SHALL let staff change status among `available`, `damaged`, `under_repair` (and `found` for `lost` copies) with a mandatory reason, writing an inventory transaction each time. Staff cannot set `borrowed` or `held` manually. A change to `available` triggers promotion and wishlist logic. *AC:* Given a copy set to `damaged`, then available count decreases and a `status_change` transaction exists. Given a `lost` copy marked found, then a `found` transaction exists and the copy is `available`.
+- **FR-INV-07** `[PA1 §3.7]` **Copy status changes.** The system SHALL let staff change status among `available`, `damaged`, `under_repair` (and `found` for `lost` copies) with a mandatory reason, writing an inventory transaction each time. Staff cannot set `borrowed` or `held` manually, and cannot set a `held` copy to `lost` directly; the hold must be released first per POL-13 and EC-12. A change to `available` triggers promotion and wishlist logic. *AC:* Given a copy set to `damaged`, then available count decreases and a `status_change` transaction exists. Given a `lost` copy marked found, then a `found` transaction exists and the copy is `available`. Given a `held` copy, then attempting to set it `lost` is refused with the release-first message.
 
 ### A-08 Circulation `/admin/circulation`
 **Story:** As an admin at the counter, I want to hand over and take back books quickly and correctly.
@@ -1039,7 +1056,7 @@ Edge Functions return JSON `{ "error": { "reason", "message", "details" } }` wit
 | EC-08 | Membership ends while a free Premium request is ready for pickup | Fee collected at counter at handover (FR-MEM-08). |
 | EC-09 | Membership renewed while the current one is still active (inside the 30-day renewal window) | The new membership starts the day after the current end date and shows as `upcoming`; entitlements switch at its start with no gap and no overlap. |
 | EC-10 | Member at item limit reaches the front of a queue | Skipped, keeps position, notified once (DEC-26). |
-| EC-12 | Held copy found damaged or misplaced | Out of scope for now (no swap and no staff cancel, Section 20). The student's item expires at its pickup deadline or the student cancels it; the copy can be marked damaged once the hold ends. |
+| EC-12 | Held copy found damaged or misplaced | Copies held for a ready item or a ready reservation: staff mark the copy `damaged` or `under_repair`, which releases the hold. Swap and staff-cancel are out of scope (Section 20.6). The affected item or reservation then expires at its 48 h deadline or is cancelled by the student or member. The copy is not available while `damaged` or `under_repair`. |
 | EC-13 | Slip includes a held copy | Refused until the hold is released. |
 | EC-14 | Return scanned for a copy not on loan | Clear error with the copy's current status. |
 | EC-15 | Fine cap reached before day 60 | Fine stops growing; loan stays `overdue` until day 60 or return. |
@@ -1110,7 +1127,7 @@ Each FR carries its own acceptance criterion (Sections 7 to 9). The scenarios be
 | TS-34 | Snapshot immutability | FR-MEM-02, FR-MEM-09, FR-SET-01 | After a plan price and limit change, existing membership keeps old price and privileges; new purchase uses new values; settings history records the change. |
 | TS-35 | Expiry with loans on hand | FR-MEM-08, FR-MEM-04 | Reminder email at 7 days once. After expiry: existing due dates unchanged, new request blocked above the non-member limit, waiting reservations cancelled, ready Premium reservation needs fee at handover. |
 | TS-36 | Membership refund and termination | FR-MEM-07, FR-RCPT-05 | Admin reverses a membership receipt: membership `terminated`, student reverts to non-member entitlements at once, existing loans keep due dates, original receipt shows Reversed. No transfer option exists. |
-| TS-37 | Reserve and promotion | FR-RES-01, FR-RES-02 | Member reserves unavailable book (queue limit, one per book, 3 active enforced); on return first eligible member gets a held copy and notifications; ineligible members cancelled without strike; at-limit member skipped keeps position. |
+| TS-37 | Reserve and promotion | FR-RES-01, FR-RES-02 | Member reserves unavailable book (queue limit, one per book, 3 active enforced); on return first eligible member gets a held copy and notifications; ineligible members cancelled without strike; at-limit member skipped keeps position. Also: a book whose last copy is retired cancels waiting reservations with reason `book_not_circulating`, no strike, and notifies each member. |
 | TS-38 | Hold expiry, strikes, ban | FR-RES-03 | After 48 h: reservation `expired`, copy promoted; first expiry warns; second within 180 days sets a 30-day ban and resets strikes; ban blocks only new reservations. |
 | TS-39 | Cancel reservation | FR-RES-04 | Cancel waiting and ready reservations: no strike; next member promoted. |
 | TS-40 | Admin queue oversight | FR-RES-05 | Staff cancels a ready reservation with reason; student notified; copy promoted; queue cannot be reordered. |
@@ -1122,9 +1139,9 @@ Each FR carries its own acceptance criterion (Sections 7 to 9). The scenarios be
 | TS-46 | Batch lifecycle | FR-SUGG-05, FR-SUGG-06, FR-SUGG-07, FR-SUGG-08, FR-INV-05 | Build from backlog; export twice creates v1 and v2; mark ordered locks lines; partial receipt creates copies and transactions linked to the batch; new title forces Book creation; close with pending line returns suggestions to backlog; activity log complete. |
 | TS-47 | Add and edit books | FR-INV-01, FR-INV-03 | ISBN autofill, lookup failure fallback, duplicate ISBN offers "add copies", collection change affects only new checkouts, an edit to an embedded field queues re-embedding; a shelf-location-only edit does not. |
 | TS-48 | Bulk import | FR-INV-02 | 100-row file with 5 invalid imports 95 and reports 5; 1,001 rows rejected; interrupted run rerun with skip creates no duplicates; BOM and formula cells handled. |
-| TS-49 | Copies and labels | FR-INV-04, FR-INV-07 | Unique barcodes; label PDF scans back to the right copy; status changes need a reason and write transactions; `held` and `borrowed` cannot be set manually; found restores a lost copy. |
+| TS-49 | Copies and labels | FR-INV-04, FR-INV-07 | Unique barcodes; label PDF scans back to the right copy; status changes need a reason and write transactions; `held` and `borrowed` cannot be set manually; found restores a lost copy; attempting to mark a `held` copy `lost` is refused with the release-first message. |
 | TS-51 | Inventory history | FR-INV-05, FR-INV-06 | Every copy addition, status change, loss, and receipt appears once; quick filters; search by book; export; links open batch or slip. |
-| TS-52 | Write-off slip | FR-COND-02, FR-COND-03 | Multi-copy slip completes, copies get target status, no records deleted; borrowed or held copy blocks; photo required for damaged-beyond-repair; completed slip immutable. |
+| TS-52 | Write-off slip | FR-COND-02, FR-COND-03 | Multi-copy slip completes, copies get target status, no records deleted; borrowed or held copy blocks; photo required for damaged-beyond-repair; completed slip immutable. Completing a slip that empties the book cancels its waiting reservations in the same transaction (POL-07). |
 | TS-53 | Receipts | FR-RCPT-02, FR-RCPT-03, FR-RCPT-04, FR-RCPT-05, FR-RCPT-06 | Log filters; detail links to origin; manual receipt needs reason and shows flag; reversal creates negative receipt, effects per type, second reversal rejected; update or delete is rejected for the client, the service role, and direct SQL (immutability trigger). |
 | TS-54 | Dashboard | FR-ANLY-01, FR-ANLY-02, FR-ANLY-03 | KPIs equal direct recount from raw data; revenue net of reversals; least-borrowed includes zero-loan titles; demand ranking by distinct requesters. |
 | TS-55 | Reports export | FR-ANLY-04 | CSV, PDF, XLSX have identical row counts and correct Vietnamese text; over 20,000 rows refused. |
@@ -1133,7 +1150,7 @@ Each FR carries its own acceptance criterion (Sections 7 to 9). The scenarios be
 | TS-58 | Settings and audit rows | FR-SET-01, FR-SYS-03 | Invalid values rejected; changes recorded with old and new; audit rows exist (checked by database query) for money, status, role, restore, settings, and admin views of a student. |
 | TS-59 | Student directory | FR-SET-03 | Filters work; opening detail writes an audit entry. |
 | TS-60 | Offline and error boundary | FR-GLOB-02 | Offline banner disables mutations; thrown render error shows boundary and reports to Sentry. |
-| TS-61 | Restricted student gating | FR-AUTH-05, FR-LOAN-07, FR-GLOB-01 | Each row of the 6.1 matrix is exercised for Restricted and debt hold; UI and server agree. |
+| TS-61 | Restricted student gating | FR-AUTH-05, FR-LOAN-07, FR-GLOB-01 | Each row of the 6.1 matrix is exercised for Restricted and debt hold; UI and server agree. Blocker precedence: a Restricted student with debt receives `ACCOUNT_RESTRICTED` (not `DEBT_HOLD`); a member with debt and a reservation ban attempting a reserve receives `DEBT_HOLD` (not `RESERVATION_BAN`). |
 | TS-63 | Circulation list | FR-CIRC-01 | Tabs and search by student ID, name, copy barcode, pickup code. |
 | TS-64 | Payment history | FR-LOAN-10 | Receipts list with Reversed status for refunded items; printable view. |
 | TS-65 | Job idempotency | FR-SYS-01, FR-SYS-02 | Run every scheduled job twice for the same window: no duplicate notifications, charges, receipts, or status changes; `job_runs` records both. |
@@ -1388,6 +1405,8 @@ Generated by `scripts/spec-matrix` from this file. CI fails if an FR has no scen
 | RISK-12 | Supabase Auth user creation sits outside the database transaction. | Compensation in `register-student` and a nightly consistency check (EC-36). |
 
 ### 18.3 Open questions for the product owner
+Each question below is owned by the product owner. Status is tracked in `docs/DECISIONS.md`, one dated entry per question ID.
+
 1. Confirm the single admin role (DEC-01) and that admin accounts are created by hand (DEC-02).
 2. Confirm email domain allowlist and student ID format (DEC-50, POL-02).
 3. Confirm the membership price and duration (DEC-04).

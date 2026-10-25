@@ -47,6 +47,7 @@ An admin marks a copy lost, with consequences.
 - Return at 00:00:01 next day counts as 1 day overdue (EC-31).
 - Student Restricted while holding ready items → handover blocked, items expire normally (EC-18).
 - `lost` copy scanned → return-after-lost flow (POL-08).
+- Copy held for a ready item is found damaged before handover → staff set it `damaged`/`under_repair`, releasing the hold; the item stays `ready_for_pickup` and later expires unless cancelled. Swap/staff-cancel out of scope (SRS §20.6, EC-12).
 
 ## Requirements
 

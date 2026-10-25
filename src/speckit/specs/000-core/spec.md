@@ -256,11 +256,20 @@ Renewal is allowed only if: item is `borrowed` (not `overdue`), account `active`
 ### 4.7 Reservations and wishlist (POL-07)
 - Only members can reserve, and only when the Book has zero available copies and at least one non-retired, non-lost copy.
 - Queue is FIFO by creation time.
-- **Promotion trigger:** whenever a copy becomes available (return in good enough condition, batch receipt, manual addition, found, hold released by expiry or cancellation). First eligible member gets the copy: reservation becomes `ready_for_pickup`, copy becomes `held`, 48 h pickup deadline starts, member notified.
+- **Promotion trigger:** whenever a copy becomes available (return in good enough condition, batch receipt, manual addition, found, hold released by expiry or cancellation). The system walks the queue front-to-front and applies the fixed check order below. First eligible member gets the copy: reservation becomes `ready_for_pickup`, copy becomes `held`, 48 h pickup deadline starts, a pickup code is generated, member notified (in-app and email).
+  For each queue member, front first:
+  1. Account not `active` (restricted or inactive), or debt hold, or no active membership: cancel with a reason, no strike.
+  2. Member already has an active Loan Item or open request for this Book: cancel with a reason, no strike.
+  3. Counted items + 1 is more than the member's limit (DEC-22): skip, keep position, notify once.
+  4. Otherwise promote this member and stop.
+  A reservation ban affects only new reservations, not existing ones.
+- A member cannot reserve a Book for which they already hold an active Loan Item or open request (`DUPLICATE_ACTIVE_LOAN`).
+- While a reservation is `ready_for_pickup`, only the Reservation row exists (no Loan Item yet). The student cancels it with no strike (FR-RES-04); expiry after 48 h earns a strike (FR-RES-03). At handover the system creates the Loan Item directly in `borrowed` (`source = reservation`) and sets the reservation to `fulfilled`. Ready reservations carry their own pickup code.
 - Expiry after 48 h: reservation `expired`, copy released, strike recorded, next member promoted. If queue empty, copy becomes `available` and wishlisters are notified.
 - Strike 1: warning notification. Strike 2 within 180 days: `reservation_ban_until = now + 30 days`, strikes reset. A ban blocks only new reservations.
 - Member can cancel a waiting or ready reservation at any time with no strike.
 - Wishlist: one entry per student per Book, max 50. Wishlist notification fires only when no queue exists (DEC-27).
+- **Non-circulating books.** A Book is non-circulating when it has no copy in `available`, `held`, or `borrowed` and no copy that could return to `available` (every copy is `retired` or `lost`). When a Book becomes non-circulating, the system cancels every `waiting` reservation with reason `book_not_circulating`, no strike, and notifies each member. A `ready_for_pickup` reservation is not cancelled by this rule; it expires normally or is fulfilled if the held copy still exists. Wishlist entries stay but no availability notification is sent while non-circulating. If a copy returns to `available` (found, or a return), the book circulates again.
 
 ### 4.8 Fines, lost, and damage (POL-08)
 - Overdue days = number of local calendar days after the due date up to and including today.
@@ -392,7 +401,7 @@ AuditLog, ChatConversation, Settings, StatsDaily. (Attributes in Section 12 of t
 Terminal states: `expired`, `cancelled`, `returned`, and `lost` once `lost_resolved_at` is set. The system sets `lost_resolved_at` when the loss is settled: the book is returned (path A, and the item also moves to `returned`) or the replacement is paid in full (path B, and the item stays `lost`). Settling a loss does not restore the account; that is FR-AUTH-08.
 
 ### 5.3 Reservation states
-`waiting` → `ready_for_pickup` (promotion) → `fulfilled` (handover) | `expired` (48 h) | `cancelled`. A `waiting` reservation can also go to `cancelled`.
+`waiting` → `ready_for_pickup` (promotion) → `fulfilled` (handover) | `expired` (48 h) | `cancelled`. A `waiting` reservation can also go to `cancelled` when the Book becomes non-circulating (reason `book_not_circulating`, no strike; POL-07).
 While `ready_for_pickup`, only the Reservation row exists; no Loan Item is created until handover, when the Loan Item is created directly in `borrowed` (`source = reservation`) and the reservation is set `fulfilled`. Ready reservations carry their own pickup code.
 
 ### 5.4 Copy states
@@ -410,6 +419,9 @@ While `ready_for_pickup`, only the Reservation row exists; no Loan Item is creat
 | `lost` | `available`, `damaged` | found (inventory type `found`), or return after lost |
 
 `retired` is final.
+
+- `held` → `lost` is **not** a direct transition. A copy found missing while `held` must first have its hold released (staff sets the copy `damaged` or `under_repair`, which releases the hold), or the hold must expire normally. Only a copy in `available`, `damaged`, or `under_repair` can be set `lost`. Write-Off Slip completion therefore cannot lose a `held` or `borrowed` copy; on-loan losses go through the loan Lost flow (FR-CIRC-05).
+- A `ready_for_pickup` item whose copy is found damaged before handover stays `ready_for_pickup`: staff set the copy `damaged` or `under_repair`, which releases the hold; the item then expires at its pickup deadline unless the student cancels. Swap and staff-cancel are out of scope (SRS §20.6).
 
 ### 5.5 Other state sets
 - **Account:** `pending_verification` → `active` ⇄ `restricted`; `active` → `inactive` → `active` (admin only).
@@ -440,6 +452,16 @@ While `ready_for_pickup`, only the Reservation row exists; no Loan Item is creat
 
 Inactive accounts cannot log in. The Non-member column is derived from entitlements (FR-MEM-05), for example `can_reserve = false`; the gating function reads entitlements and must not hard-code a separate non-member rule. The gating decision is made in one shared server
 function and mirrored in the UI (UI hides/disables, server enforces).
+
+**Blocked-action precedence.** The shared gating function evaluates blockers in this fixed order and returns the first that applies:
+
+1. Account not `active` (`pending_verification`, `inactive`, `restricted`) → `ACCOUNT_NOT_ACTIVE` (`inactive` cannot log in at all) or `ACCOUNT_RESTRICTED` (`restricted`).
+2. Debt hold → `DEBT_HOLD`.
+3. Reservation ban → `RESERVATION_BAN`.
+4. Not a member where membership is required (reserve) → `NOT_MEMBER`.
+5. Entitlement or item limit exceeded → `LIMIT_REACHED`.
+
+Precedence applies only when an action is blocked for more than one reason; it changes only the reported reason, never which actions are permitted. The UI shows the message for the returned reason and must not compute its own precedence.
 
 ### 6.2 Global UI components
 - Status banner (restricted, debt hold, reservation ban, membership expiring).
