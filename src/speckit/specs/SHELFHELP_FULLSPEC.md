@@ -134,7 +134,7 @@ Each row is a place where PA1 is inconsistent, ambiguous, or silent. The **Adopt
 | DEC-14 | The 48 h pickup window start is unclear for paid requests and reservations. | Starts when the item enters `ready_for_pickup` (after payment for paid requests, at promotion for reservations). | Yes |
 | DEC-15 | Daily fine rate, grace, and cap are missing. | 2,000 VND per day per book, no grace, capped at the book's replacement price. | Yes |
 | DEC-16 | Fines accrue daily and can be paid before return, but the loan stays open until return. | A nightly job keeps one unpaid overdue-fine Charge per overdue item up to date. If the student pays it while the book is still overdue, the next night creates a new Charge for the additional days. Total fines for one loan never exceed the replacement price. The final amount is fixed at return. | No |
-| DEC-17 | Lost recovery says student must "return the book and settle replacement charges", which contradicts itself. | Two paths: (A) return the book: replacement charge is cancelled or refunded, accrued fine stays. (B) pay replacement in full without returning: accrued fine is waived. Admin verifies either path. | Yes |
+| DEC-17 | Lost recovery says student must "return the book and settle replacement charges", which contradicts itself. | Two paths: (A) return the book: replacement charge is cancelled or refunded, accrued fine stays. (B) pay replacement in full without returning: accrued fine is waived. The system sets `lost_resolved_at` when the loss is settled. Admin verifies by restoring the account (FR-AUTH-08). | Yes |
 | DEC-18 | "Inactive", "Restricted", "restricted from new loan requests", and "reservation penalty" are different blocks with similar names. | Account status: `pending_verification`, `active`, `restricted`, `inactive`. Separate derived flags: debt hold and reservation ban. Gating in 6.1. | No |
 | DEC-19 | What a Restricted student can still do is unclear ("preventing further use of library services"). | Can log in and see loans, charges, notifications, profile, and pay charges. Can browse and use chatbot read-only. Cannot add to cart, checkout, reserve, renew, wishlist, suggest, or buy membership. | Yes |
 | DEC-20 | Debt hold only blocks "new loan requests". | Also blocks reservations, renewals, and handover until debt is settled. Membership purchase, suggestions, and wishlist stay allowed. | Yes |
@@ -242,7 +242,15 @@ Renewal is allowed only if all hold: item is `borrowed` (not `overdue`), account
 ### 4.7 Reservations and wishlist (POL-07)
 - Only members can reserve, and only when the Book has zero available copies and at least one non-retired, non-lost copy.
 - Queue is FIFO by creation time.
-- **Promotion trigger:** whenever a copy becomes available (return in good enough condition, batch receipt, manual addition, found, hold released by expiry or cancellation). The system walks the queue and applies DEC-26 rules. The first eligible member gets the copy: reservation becomes `ready_for_pickup`, copy becomes `held`, 48 h pickup deadline starts, member is notified (in-app and email).
+- **Promotion trigger:** whenever a copy becomes available (return in good enough condition, batch receipt, manual addition, found, hold released by expiry or cancellation). The system walks the queue front-to-front and applies the fixed check order below. The first eligible member gets the copy: reservation becomes `ready_for_pickup`, copy becomes `held`, 48 h pickup deadline starts, a pickup code is generated, the member is notified (in-app and email).
+  For each queue member, front first:
+  1. Account not `active` (restricted or inactive), or debt hold, or no active membership: cancel the reservation with a reason, no strike.
+  2. Member already has an active Loan Item or open request for this Book (CHK026): cancel with a reason, no strike.
+  3. Counted items + 1 is more than the member's limit (DEC-22): skip, keep position, notify once.
+  4. Otherwise promote this member and stop.
+  A reservation ban affects only new reservations, not existing ones.
+- A member cannot reserve a Book for which they already hold an active Loan Item or open request. `reserve-book` returns `DUPLICATE_ACTIVE_LOAN` and the book page shows "You already have this book". `promoteForBook` re-checks this at promotion.
+- While a reservation is `ready_for_pickup`, only the Reservation row exists (no Loan Item yet). The student cancels it with `cancel-reservation` (FR-RES-04), no strike; expiry after 48 h earns a strike (FR-RES-03). At handover the system creates the Loan Item directly in `borrowed` (`source = reservation`) and sets the reservation to `fulfilled`. Ready reservations carry their own pickup code.
 - Expiry after 48 h: reservation `expired`, copy released, strike recorded, next member promoted. If the queue is empty, the copy becomes `available` and wishlisters are notified.
 - Strike 1: formal warning notification. Strike 2 within 180 days: `reservation_ban_until = now + 30 days`, strikes reset. A ban blocks only new reservations.
 - Member can cancel a waiting or ready reservation at any time with no strike.
@@ -251,7 +259,11 @@ Renewal is allowed only if all hold: item is `borrowed` (not `overdue`), account
 ### 4.8 Fines, lost, and damage (POL-08)
 - Overdue days = number of local calendar days after the due date up to and including today.
 - Fine = min(overdue days x fine per day, book replacement price). Default 2,000 VND per day, no grace.
-- Nightly job (00:05 local) keeps one unpaid `overdue_fine` Charge per overdue item up to date; if the previous one was already paid, it creates a new Charge for the additional days. The cap applies to the total of all fine Charges of the loan.
+- Nightly job (00:05 local) keeps one unpaid `overdue_fine` Charge per overdue item up to date; if the previous one was already paid, it creates a new Charge for the additional days. An item may therefore hold several fine Charges over its overdue life. The cap applies to the total of all fine Charges of the loan.
+- Each fine Charge stores the overdue days it covers (`days_from`, `days_to`) and the `rate` in force when those days accrued. When `fine_per_day` changes, the change starts a new Charge for subsequent days and never reprices days already accrued.
+- The final fine of a loan is the sum of `days x rate` over all its overdue days up to the return date, capped at the book's replacement price.
+- At return, the system compares the final fine with the sum of the loan's existing fine Charges (paid and unpaid). It creates a top-up Charge for any missing days (for example, a missed nightly run) at the current rate, so the sum equals the final fine. It never refunds an automatic payment, because accrual never exceeds the final fine.
+- A paid fine Charge is never changed. The loan's "fine at return" shown to staff is the final fine, with the amount already paid shown next to it.
 - **Lost conversion:** when overdue days reaches 60, the job sets Loan Item `lost`, copy `lost`, student `restricted`, freezes the fine, and creates a `loss_fee` Charge equal to the book's replacement price (or `default_replacement_price` if missing). A final-warning notice goes out 7 days earlier.
 - **Lost resolution:** Path A, student returns the book: staff confirms return, item `returned`, copy back to `available` (or per condition), unpaid replacement charge is waived, paid replacement is refunded by reversal receipt if within 90 days of loss (after that, an admin decides). Path B, student pays the replacement in full: accrued fine is waived. Both paths then wait for admin verification.
 - **Damage:** at return, if returned condition is worse than handover condition the admin must choose: no charge (with reason), tier fee, or custom amount (with reason, at most replacement price). Result is a `damage_fee` Charge.
@@ -259,7 +271,7 @@ Renewal is allowed only if all hold: item is `borrowed` (not `overdue`), account
 
 ### 4.9 Debt hold, restriction, and restoration (POL-09)
 - Debt hold = sum of outstanding amounts on the student's charges is above 0.
-- Restore checklist (all auto-evaluated, button disabled until all pass): no Loan Item `lost`; outstanding debt is 0; no unresolved write-off or dispute flag. Admin confirms and the status returns to `active`. Every restore is audit-logged.
+- Restore checklist (all auto-evaluated, button disabled until all pass): no Loan Item in `lost` with `lost_resolved_at` empty; outstanding debt is 0; no unresolved write-off or dispute flag. Admin confirms and the status returns to `active`. Every restore is audit-logged.
 
 ### 4.10 Receipts, refunds, ledger (POL-10)
 - Receipt number: `RC-<YYYY>-<6 digit sequence>`, allocated inside the payment transaction from the `counters` row `receipt_<YYYY>`, locked with `FOR UPDATE`.
@@ -362,6 +374,24 @@ Rating 1 to 5 required, text optional up to 1,000 characters. One review per stu
 | `search.fuzzy_threshold` | 0.3 (`pg_trgm` similarity) |
 | `notification_retention_days` | 90 |
 
+### 4.19 Settings timing (POL-18)
+A function reads settings once, at the start of its transaction (one `settings.version`). A scheduled job reads them once at the start of each run.
+
+A settings change applies to actions that start after it commits. Values already written onto a record never change.
+
+| Stored on the record at creation (never changed afterwards) | Read live by later actions |
+|---|---|
+| Premium fee and duration (loan item), `due_at` | Non-member limits, queue and wishlist limits, suggestion limits |
+| `payment_deadline`, `pickup_deadline`, reservation `hold_until` | Pickup and payment window lengths (for new items only) |
+| Membership snapshot (price, dates, privileges) | Fee for new checkouts; plan list |
+| Fine Charge `rate` and days (CHK017); damage and loss Charge amounts | `fine_per_day` (for days accrued after the change) |
+| `reservation_ban_until`; notifications already created | Strike window and threshold (for new strikes); chat rate limits |
+
+Two cases need care:
+- **`lost_threshold_days`** is read at each nightly run, so lowering it can convert many existing overdue loans to `lost` in one night. Before saving, the settings screen shows "N loans would convert at the next run".
+- **Renewals** use the current entitlements at the moment of renewal (DEC-53). Member privileges come from the membership snapshot.
+
+
 ### 4.18 Search matching and ranking (POL-17)
 - **Normalization** is applied identically to the query and to catalog text: Unicode NFC (so composed and decomposed input are equal), lowercase, whitespace trimmed and collapsed, and ISBN hyphens removed. Tone-mark placement is also normalized, so old and new spellings such as `hóa` and `hoá` count as the same word. The cluster list (`oa`, `oe`, `uy`) and the canonical placement are defined once in `packages/shared` and used by both the browser and the database.
 - **Two kinds of match.** *Accent-exact*: the word is identical after the normalization above. *Accent-insensitive*: the word is identical after all diacritics are removed, including `đ` to `d`. Every accent-exact match is also an accent-insensitive match.
@@ -398,10 +428,11 @@ User, Membership, MembershipPlan, Book, Copy, Review, LoanRequest, LoanItem, Res
 | `borrowed`, `overdue` | Manual lost | `lost` | staff | Same as above |
 | `lost` | Return | `returned` | staff | Resolution path A |
 
-Terminal states: `expired`, `cancelled`, `returned`. `lost` is terminal only after admin verification (`lost_resolved_at` set).
+Terminal states: `expired`, `cancelled`, `returned`, and `lost` once `lost_resolved_at` is set. The system sets `lost_resolved_at` when the loss is settled: the book is returned (path A, and the item also moves to `returned`) or the replacement is paid in full (path B, and the item stays `lost`). Settling a loss does not restore the account; that is the separate admin action in FR-AUTH-08.
 
 ### 5.3 Reservation states
 `waiting` -> `ready_for_pickup` (promotion) -> `fulfilled` (handover) | `expired` (48 h) | `cancelled`. A `waiting` reservation can also go to `cancelled`.
+While `ready_for_pickup`, only the Reservation row exists; no Loan Item is created until handover. At handover the Loan Item is created directly in `borrowed` (`source = reservation`) and the reservation is set `fulfilled`.
 
 ### 5.4 Copy states
 | From | To | By |
@@ -446,7 +477,7 @@ Terminal states: `expired`, `cancelled`, `returned`. `lost` is terminal only aft
 | Handover (staff) | N | N | N | Y | Y |
 | Return (staff) | Y | Y | Y | Y | Y |
 
-Inactive accounts cannot log in. The gating decision is made in one shared function on the server and mirrored in the UI for clarity (UI hides or disables, server enforces).
+Inactive accounts cannot log in. The Non-member column is derived from entitlements (FR-MEM-05), for example `can_reserve = false`; the gating function reads entitlements and must not hard-code a separate non-member rule. The gating decision is made in one shared function on the server and mirrored in the UI for clarity (UI hides or disables, server enforces).
 
 ### 6.2 Global UI components
 - Status banner (restricted, debt hold, reservation ban, membership expiring).
@@ -539,7 +570,7 @@ Result card: cover, title, authors, Premium badge, live availability chip, ratin
 - **FR-CART-08** `[+]` **Pickup code.** The system SHALL show a 6-digit pickup code, visible only to the owner. Staff find the request by typing the code or the student ID in the circulation search. *AC:* Given another student's request URL, then access is denied (403).
 
 ### R-14 Reservations and wishlist `/reservations`
-- **FR-RES-01** `[PA1 §3.4]` **Reserve an unavailable book.** The system SHALL let an eligible member join the queue of a Book with zero available copies, show their position, and enforce POL-07 limits (queue length 5, 3 active reservations, one per book, no ban, no debt hold, active membership). Non-members see why they cannot and a link to Membership. *AC:* Given a book with 5 waiting members, then the 6th member sees "Queue is full". Given a member under a reservation ban, then Reserve is disabled with the ban end date.
+- **FR-RES-01** `[PA1 §3.4]` **Reserve an unavailable book.** The system SHALL let an eligible member join the queue of a Book with zero available copies, show their position, and enforce POL-07 limits (queue length 5, 3 active reservations, one per book, no ban, no debt hold, active membership). A member cannot reserve a Book for which they already hold an active Loan Item or open request (POL-07). Non-members see why they cannot and a link to Membership. *AC:* Given a book with 5 waiting members, then the 6th member sees "Queue is full". Given a member under a reservation ban, then Reserve is disabled with the ban end date. Given a member who already has the book on loan or on request, then Reserve returns `DUPLICATE_ACTIVE_LOAN` and shows "You already have this book".
 - **FR-RES-04** `[PA1 §3.4]` **Cancel reservation.** The system SHALL let a member cancel a waiting or ready reservation at any time without a strike. Cancelling a ready reservation releases the copy to the next eligible member. *AC:* Given a ready reservation cancelled, then the next waiting member is promoted within one function execution and receives a notification.
 
 Tabs: Reservations (position, status, deadline countdown) and Wishlist (list, remove, availability chip, link; FR-SRCH-06). **Empty states:** each tab explains how to add items.
@@ -619,7 +650,7 @@ Navigation and layout only. No feature requirements of its own.
 - **FR-CIRC-01** `[PA1 §3.7]` **Circulation list.** The system SHALL list loans with borrower name, student ID, borrow date, due date, return date, and status, in tabs (Ready for pickup, Awaiting payment, On loan, Overdue, Lost, History), searchable by student ID, name, copy barcode, or pickup code. *AC:* Given a student ID search, then only that student's items show across tabs.
 - **FR-CIRC-02** `[PA1 §3.7]` **Handover.** The system SHALL let staff find a request, see the student's standing (status, debt, membership), check each item against the handed physical copy (scan copy barcode), record condition out (FR-COND-01), collect any counter fee (FR-CIRC-07), and confirm. Confirmation sets `borrowed`, due date per 4.4, and copy `borrowed` in one transaction. Staff may hand over a subset; the rest stay ready until their deadline. Handover is refused when the account is not `active`, debt is above 0, or the pickup deadline has passed (with the specific reason). *AC:* Given a student with debt, then Confirm is disabled with "Settle outstanding charges first". Given a 14-day member loan on 2026-11-01, then due date is 2026-11-15 23:59:59 local. Given a double click on Confirm, then one handover happens.
 - **FR-CIRC-03** `[PA1 §3.7]` **Return.** The system SHALL let staff scan a copy barcode or open an active loan, show borrower, due date, overdue days, fine, and condition out, require condition in, let staff choose the copy's next status, and confirm. Confirmation sets `returned`, writes the copy status, finalizes charges (FR-CIRC-04), runs promotion and wishlist logic, and invites the student to rate. Scanning a copy that is not on loan shows an error. Scanning a `lost` copy opens the return-after-lost flow (POL-08). *AC:* Given a copy returned late by 3 days, then a 6,000 VND fine Charge is finalized. Given a returned copy with a waiting reservation, then the copy becomes `held` for the first eligible member instead of `available`.
-- **FR-CIRC-04** `[PA1 §3.7]` **Charges at return.** The system SHALL compute the overdue fine per POL-08, require a damage decision when condition worsened, create `damage_fee` Charges, show the total, and let staff collect now (counter payment, FR-CIRC-07) or leave it unpaid (debt hold). Unpaid charges do not keep the loan open. *AC:* Given condition worsened from good to damaged and tier "major" with a 100,000 VND book, then a 30,000 VND Charge is created. Given charges left unpaid, then the loan is `returned` and the student has a debt hold.
+- **FR-CIRC-04** `[PA1 §3.7]` **Charges at return.** The system SHALL compute the overdue fine per POL-08, require a damage decision when condition worsened, create `damage_fee` Charges, show the total, and let staff collect now (counter payment, FR-CIRC-07) or leave it unpaid (debt hold). Unpaid charges do not keep the loan open. *AC:* Given condition worsened from good to damaged and tier "major" with a 100,000 VND book, then a 30,000 VND Charge is created. Given charges left unpaid, then the loan is `returned` and the student has a debt hold. Given a loan with a paid 4,000 VND fine Charge (2 days) returned after 3 days, then one new 2,000 VND Charge is created and the total is 6,000 VND.
 - **FR-CIRC-05** `[PA1 §3.7]` **Mark as lost manually.** The system SHALL let staff mark a copy lost. If the copy is on loan, the confirmation dialog states the consequences (loan `lost`, student Restricted, replacement charge) and requires a reason. *AC:* Given confirmation on a borrowed copy, then the loan is `lost`, the student is `restricted`, and a `loss_fee` Charge exists.
 - **FR-CIRC-07** `[PA1 §3.4]` **Record counter payment.** The system SHALL let staff record a counter payment for a Premium fee, membership (via student detail), or charges: the full amount owed, method `counter`, and optional note. It creates a Payment, the Receipt(s), and updates item or charge state in one transaction, and shows a printable receipt. *AC:* Given a 6,000 VND fine paid at the counter, then the charge is `paid`, a 6,000 VND receipt exists, and the debt hold clears if nothing else is owed. Given an amount different from the amount owed, then the payment is rejected.
 - **FR-COND-01** `[PA1 §3.8]` **Record condition.** The system SHALL require a condition (`good`, `fair`, `poor`, `damaged`) with optional note and up to 3 photos at handover and at return, stored on the Loan Item. An admin MAY correct a recorded condition with a reason; the correction is audit-logged and does not change charges automatically. *AC:* Given handover without a condition, then Confirm is disabled. Given a correction, then an audit entry with old and new values exists.
@@ -872,12 +903,12 @@ All tables use `uuid` primary keys unless noted, `timestamptz` timestamps, integ
 | `copy_events` | copy_id, from_status, to_status, reason, actor, ref, at | Edge Functions (insert only) |
 | `loan_requests` | uid, created_at, idempotency_key, pickup_code_hash, payment_id | Edge Functions |
 | `loan_items` | request_id, uid, book_id, copy_id, source (cart, reservation), status, is_premium, fee, duration_days, payment_deadline, pickup_deadline, handover_at, due_at, returned_at, renewals_used, condition_out, condition_in, lost_at, lost_resolved_at | Edge Functions |
-| `reservations` | uid, book_id, status, created_at, copy_id, hold_until, outcome | Edge Functions |
+| `reservations` | uid, book_id, status, created_at, copy_id, hold_until, pickup_code_hash, outcome | Edge Functions |
 | `wishlist` | uid, book_id (primary key together), created_at, last_notified_at | Edge Functions |
 | `cart_items` | uid, book_id (primary key together), duration_days, added_at | Client (own rows only) |
 | `payments` | uid, purpose, amount, method, status, provider, deadline, idempotency_key | Edge Functions |
 | `payment_lines` | payment_id, ref_type, ref_id, amount | Edge Functions |
-| `charges` | uid, type, loan_item_id, amount, status, paid_at, frozen, created_at | Edge Functions |
+| `charges` | uid, type, loan_item_id, amount, status, paid_at, frozen, days_from, days_to, rate, created_at | Edge Functions |
 | `receipts` | number (unique), uid, amount (signed), method, type, ref_type, ref_id, payment_id, reverses_receipt_id (unique when set), reason_code, manual, created_by_type, created_by_id, created_at | Edge Functions (insert only) |
 | `notifications` | uid, type, title, body, link, read, dedupe_key (unique with uid), created_at, expires_at | Edge Functions; the student may update `read` through a column-level grant |
 | `email_outbox` | to, template, payload, status, attempts, next_attempt_at, dedupe_key | Edge Functions |
@@ -1004,7 +1035,7 @@ Edge Functions return JSON `{ "error": { "reason", "message", "details" } }` wit
 | EC-04 | Student cancels while online payment is pending | Cancel waits for the Payment outcome; a completed payment then triggers the normal refund. |
 | EC-05 | Payment completion arrives after the window expired | Simulator rejects with `PAYMENT_EXPIRED`. A real provider adapter must auto-refund and notify. |
 | EC-06 | Book switched to Premium between cart and checkout | Fee computed at checkout from current data; the cart shows the updated fee before confirm. |
-| EC-07 | Settings change during a checkout | Settings are read inside the transaction; the transaction uses one consistent version. |
+| EC-07 | Settings change during a checkout | Settings are read inside the transaction; the transaction uses one consistent version. General timing rules: POL-18. |
 | EC-08 | Membership ends while a free Premium request is ready for pickup | Fee collected at counter at handover (FR-MEM-08). |
 | EC-09 | Membership renewed while the current one is still active (inside the 30-day renewal window) | The new membership starts the day after the current end date and shows as `upcoming`; entitlements switch at its start with no gap and no overlap. |
 | EC-10 | Member at item limit reaches the front of a queue | Skipped, keeps position, notified once (DEC-26). |

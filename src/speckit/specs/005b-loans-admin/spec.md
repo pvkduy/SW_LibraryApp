@@ -27,6 +27,7 @@ An admin records a return, finalizing fines and damage fees.
 3. **Given** condition worsened to `damaged` with 30% tier on a 100,000 VND book, **Then** a 30,000 VND Charge is created.
 4. **Given** charges left unpaid, **Then** the loan is `returned` and the student has a debt hold.
 5. **Given** handover without a condition, **Then** Confirm is disabled.
+6. **Given** a loan with a paid 4,000 VND fine Charge (2 days) returned after 3 days, **Then** one new 2,000 VND Charge is created and the total is 6,000 VND.
 
 ### User Story 2 - Mark as lost (Priority: P1)
 
@@ -52,14 +53,14 @@ An admin marks a copy lost, with consequences.
 ### Functional Requirements
 
 - **FR-CIRC-03** `[PA1 §3.7]` **Return.** Scan copy barcode or open active loan; show borrower/due/overdue/fine/condition out; require condition in; choose copy next status; confirm sets `returned`, writes copy status, finalizes charges, runs promotion/wishlist, invites rating. Not-on-loan copy → error. `lost` copy → return-after-lost flow.
-- **FR-CIRC-04** `[PA1 §3.7]` **Charges at return.** Compute overdue fine per POL-08, require damage decision when worsened, create `damage_fee` Charges, show total, collect now (counter) or leave unpaid (debt hold).
+- **FR-CIRC-04** `[PA1 §3.7]` **Charges at return.** Compute overdue fine per POL-08, require damage decision when worsened, create `damage_fee` Charges, show total, collect now (counter) or leave unpaid (debt hold). The final fine reconciles with paid/unpaid fine Charges (top-up for missing days at the current rate; never refund an automatic payment).
 - **FR-CIRC-05** `[PA1 §3.7]` **Mark as lost manually.** Mark a copy lost; if on loan, confirmation states consequences (loan `lost`, student Restricted, replacement charge) and requires reason.
 - **FR-COND-01** `[PA1 §3.8]` **Record condition.** Require condition (`good`/`fair`/`poor`/`damaged`) with optional note and up to 3 photos at handover and return. Admin MAY correct with reason (audit-logged, no auto charge change).
 
 ### Key Entities
 
 - **LoanItem**: condition in/out, status `returned`/`lost`.
-- **Charge**: `overdue_fine`, `damage_fee`, `loss_fee`.
+- **Charge**: `overdue_fine`, `damage_fee`, `loss_fee`; fine Charges carry `days_from`, `days_to`, and `rate`.
 - **Copy**: post-return status (`available`/`damaged`/`under_repair`).
 
 ## Success Criteria

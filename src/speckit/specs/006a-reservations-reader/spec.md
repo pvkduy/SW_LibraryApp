@@ -25,6 +25,7 @@ An eligible member joins a queue for a book with no available copies.
 1. **Given** a book with 5 waiting members, **Then** the 6th member sees "Queue is full".
 2. **Given** a member under a reservation ban, **Then** Reserve is disabled with the ban end date.
 3. **Given** a member at item limit, **Then** Reserve is disabled with a reason.
+4. **Given** a member who already has the book on loan or on request, **Then** Reserve returns `DUPLICATE_ACTIVE_LOAN` and shows "You already have this book".
 
 ### User Story 2 - Promotion engine (Priority: P1)
 
@@ -38,6 +39,8 @@ When a copy becomes available, it is held for the first eligible member.
 
 1. **Given** a returned copy with queue [A (membership expired), B (eligible)], **Then** A is cancelled with reason, B gets the copy, and no strike is recorded.
 2. **Given** a copy available with no eligible member, **Then** it stays `available` and wishlisters are notified.
+3. **Given** a promotion, **Then** checks run in fixed order: account status/debt/membership first, then duplicate active loan, then item limit (skip), then promote.
+4. **Given** a ready reservation, **Then** no Loan Item exists until handover, when it is created directly in `borrowed` and the reservation is set `fulfilled`.
 
 ### User Story 3 - Hold expiry and strikes (Priority: P2)
 
@@ -88,15 +91,15 @@ A student subscribes to a "notify me when available" notification.
 
 ### Functional Requirements
 
-- **FR-RES-01** `[PA1 §3.4]` **Reserve an unavailable book.** Eligible member joins the queue of a Book with zero available copies; show position; enforce POL-07 limits (queue 5, 3 active, one per book, no ban, no debt hold, active membership). Non-members see why and a link to Membership.
-- **FR-RES-02** `[PA1 §3.4]` **(System) Promotion engine.** Whenever a copy becomes available, run promotion per POL-07 and DEC-26 in one transaction, holding the copy for the first eligible member, or leaving it `available` and notifying wishlisters.
+- **FR-RES-01** `[PA1 §3.4]` **Reserve an unavailable book.** Eligible member joins the queue of a Book with zero available copies; show position; enforce POL-07 limits (queue 5, 3 active, one per book, no ban, no debt hold, active membership). A member cannot reserve a Book they already hold as an active Loan Item or open request (`DUPLICATE_ACTIVE_LOAN`). Non-members see why and a link to Membership.
+- **FR-RES-02** `[PA1 §3.4]` **(System) Promotion engine.** Whenever a copy becomes available, run promotion per POL-07 in one transaction, holding the copy for the first eligible member, or leaving it `available` and notifying wishlisters. Promotion applies a fixed check order (account/debt/membership → duplicate active loan → item limit → promote).
 - **FR-RES-03** `[PA1 §3.4]` **(System) Hold expiry and strikes.** A 15-minute job expires ready reservations past 48 h, applies strike rules, releases the copy, promotes.
-- **FR-RES-04** `[PA1 §3.4]` **Cancel reservation.** Member cancels waiting/ready reservation with no strike; ready cancellation releases the copy to the next eligible member.
+- **FR-RES-04** `[PA1 §3.4]` **Cancel reservation.** Member cancels waiting/ready reservation with no strike; ready cancellation releases the copy to the next eligible member. A ready reservation has no Loan Item yet; it is materialised only at handover.
 - **FR-SRCH-06** `[PA1 §3.3]` **Wishlist.** Toggle "Notify me" on unavailable book (max 50), list entries, notify per POL-07 when available with no queue.
 
 ### Key Entities
 
-- **Reservation**: uid, book, status, created at, copy, hold until, outcome.
+- **Reservation**: uid, book, status, created at, copy, hold until, `pickup_code_hash`, outcome.
 - **WishlistEntry**: uid, book, created at, last notified at.
 - **ReservationStrike**: uid, at (rolling 180-day window).
 

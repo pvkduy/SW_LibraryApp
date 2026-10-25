@@ -97,7 +97,7 @@ A student rates and reviews a returned book.
 - **FR-LOAN-02** `[PA1 §3.5]` **Pickup countdown.** Countdown to server deadline (client skew corrected), emphasis under 12 h, "Expired" only after server confirms.
 - **FR-LOAN-03** `[PA1 §3.5]` **Renew.** Enabled only when POL-06 allows; disabled shows reason (overdue, limit, queue, debt). New due date immediately. Fee-bearing renewal through payment first (DEC-52).
 - **FR-LOAN-04** `[PA1 §3.5]` **Rating and review.** After return, invite 1-5 stars + optional review (≤1,000 chars). One per student per book, editable. Skip allowed. Updates average/popularity.
-- **FR-LOAN-05** `[PA1 §3.5]` **Fine display.** Show days overdue, running fine, cap, lost-conversion date, total outstanding.
+- **FR-LOAN-05** `[PA1 §3.5]` **Fine display.** Show days overdue, the running fine, its replacement-price cap, the lost-conversion date, and total outstanding. Where a loan holds multiple fine Charges (paid then top-up), staff see the final fine with the amount already paid shown next to it.
 - **FR-LOAN-06** `[PA1 §3.5]` **Pay fines and fees.** Pay whole charges online (simulated) or "Pay at counter" (amounts + reference). Payment creates receipts and updates charges/debt hold immediately.
 - **FR-LOAN-07** `[PA1 §3.5]` **(System) Debt hold.** Keep `profiles.debt_outstanding` equal to sum of outstanding charges, updated in the same transaction, enforcing gating 6.1.
 - **FR-LOAN-08** `[PA1 §3.5]` **(System) Overdue and lost automation.** Nightly job marks overdue, keeps unpaid overdue-fine Charge current, sends final warning at day 53, converts to `lost` at day 60 (copy `lost`, student `restricted`, frozen fine, loss Charge).
@@ -107,7 +107,7 @@ A student rates and reviews a returned book.
 ### Key Entities
 
 - **LoanItem**: request, uid, book, copy, status, fee, duration, due, return, renewals, condition in/out, lost timestamps.
-- **Charge**: uid, type (`overdue_fine`/`damage_fee`/`loss_fee`), loan item id, amount, status, paid at, frozen.
+- **Charge**: uid, type (`overdue_fine`/`damage_fee`/`loss_fee`), loan item id, amount, status, paid at, frozen; fine Charges also carry `days_from`, `days_to`, and `rate`.
 
 ## Success Criteria
 

@@ -149,7 +149,7 @@ but the default is built so work is not blocked.
 | DEC-14 | The 48 h pickup window start is unclear for paid requests and reservations. | Starts when the item enters `ready_for_pickup` (after payment for paid requests, at promotion for reservations). | Yes |
 | DEC-15 | Daily fine rate, grace, and cap are missing. | 2,000 VND per day per book, no grace, capped at the book's replacement price. | Yes |
 | DEC-16 | Fines accrue daily and can be paid before return, but the loan stays open until return. | A nightly job keeps one unpaid overdue-fine Charge per overdue item up to date. Paying it while still overdue creates a new Charge next night for further days. Total fines per loan never exceed the replacement price. Final amount fixed at return. | No |
-| DEC-17 | Lost recovery says student must "return the book and settle replacement charges", which contradicts itself. | Two paths: (A) return the book: replacement charge is cancelled or refunded, accrued fine stays. (B) pay replacement in full without returning: accrued fine is waived. Admin verifies either path. | Yes |
+| DEC-17 | Lost recovery says student must "return the book and settle replacement charges", which contradicts itself. | Two paths: (A) return the book: replacement charge is cancelled or refunded, accrued fine stays. (B) pay replacement in full without returning: accrued fine is waived. The system sets `lost_resolved_at` when the loss is settled. Admin verifies by restoring the account (FR-AUTH-08). | Yes |
 | DEC-18 | "Inactive", "Restricted", "restricted from new loan requests", and "reservation penalty" are different blocks with similar names. | Account status: `pending_verification`, `active`, `restricted`, `inactive`. Separate derived flags: debt hold and reservation ban. | No |
 | DEC-19 | What a Restricted student can still do is unclear. | Can log in and see loans, charges, notifications, profile, and pay charges. Can browse and use chatbot read-only. Cannot add to cart, checkout, reserve, renew, wishlist, suggest, or buy membership. | Yes |
 | DEC-20 | Debt hold only blocks "new loan requests". | Also blocks reservations, renewals, and handover until debt is settled. Membership purchase, suggestions, and wishlist stay allowed. | Yes |
@@ -265,15 +265,18 @@ Renewal is allowed only if: item is `borrowed` (not `overdue`), account `active`
 ### 4.8 Fines, lost, and damage (POL-08)
 - Overdue days = number of local calendar days after the due date up to and including today.
 - Fine = min(overdue days × fine per day, book replacement price). Default 2,000 VND per day, no grace.
-- Nightly job (00:05 local) keeps one unpaid `overdue_fine` Charge per overdue item up to date; if the previous was paid it creates a new Charge for additional days. The cap applies to the total of all fine Charges of the loan.
+- Nightly job (00:05 local) keeps one unpaid `overdue_fine` Charge per overdue item up to date; if the previous was paid it creates a new Charge for additional days. An item may therefore hold several fine Charges over its overdue life. The cap applies to the total of all fine Charges of the loan.
+- Each fine Charge stores the overdue days it covers (`days_from`, `days_to`) and the `rate` in force when those days accrued. A `fine_per_day` change starts a new Charge for subsequent days and never reprices days already accrued.
+- The final fine of a loan is the sum of `days x rate` over all its overdue days up to the return date, capped at replacement price. At return the system creates a top-up Charge for any missing days (e.g. a missed nightly run) so the sum equals the final fine; it never refunds an automatic payment.
+- A paid fine Charge is never changed. The "fine at return" shown to staff is the final fine, with the amount already paid shown next to it.
 - **Lost conversion:** at 60 overdue days, job sets Loan Item `lost`, copy `lost`, student `restricted`, freezes the fine, and creates a `loss_fee` Charge equal to replacement price. Final-warning notice goes out 7 days earlier.
-- **Lost resolution:** Path A (return book): item `returned`, copy back to `available` (or per condition), unpaid replacement charge waived, paid replacement refunded by reversal receipt if within 90 days of loss. Path B (pay replacement in full): accrued fine is waived. Both paths then wait for admin verification.
+- **Lost resolution:** Path A (return book): item `returned`, copy back to `available` (or per condition), unpaid replacement charge waived, paid replacement refunded by reversal receipt if within 90 days of loss. Path B (pay replacement in full): accrued fine is waived. Both paths set `lost_resolved_at`; the account is restored separately by FR-AUTH-08.
 - **Damage:** at return, if returned condition is worse than handover condition, admin must choose: no charge (with reason), tier fee, or custom amount (at most replacement price). Result is a `damage_fee` Charge.
 - Unpaid damage or loss charges do not keep the loan open. They create debt hold.
 
 ### 4.9 Debt hold, restriction, and restoration (POL-09)
 - Debt hold = sum of outstanding amounts on the student's charges is above 0.
-- Restore checklist (all auto-evaluated, button disabled until all pass): no Loan Item `lost`; outstanding debt is 0; no unresolved write-off or dispute flag. Admin confirms and status returns to `active`. Every restore is audit-logged.
+- Restore checklist (all auto-evaluated, button disabled until all pass): no Loan Item in `lost` with `lost_resolved_at` empty; outstanding debt is 0; no unresolved write-off or dispute flag. Admin confirms and status returns to `active`. Every restore is audit-logged.
 
 ### 4.10 Receipts, refunds, ledger (POL-10)
 - Receipt number: `RC-<YYYY>-<6 digit sequence>`, allocated inside the payment transaction from the `counters` row `receipt_<YYYY>`, locked with `FOR UPDATE`.
@@ -340,7 +343,21 @@ See the AI Assistant feature spec (`specs/0NN-assistant/spec.md`).
 | `notification_retention_days` | 90 |
 
 ### 4.18 Search matching and ranking (POL-17)
-See the Catalog & Search feature spec (`specs/0NN-catalog-search/spec.md`).
+See the Catalog & Search feature spec (`specs/002-catalog-search/spec.md`) for the full matching and ranking rules.
+
+### 4.19 Settings timing (POL-18)
+A function reads settings once at the start of its transaction (one `settings.version`); a scheduled job reads them once at the start of each run. A change applies to actions that start after it commits; values already written onto a record never change.
+
+| Stored on the record at creation (never changed afterwards) | Read live by later actions |
+|---|---|
+| Premium fee and duration (loan item), `due_at` | Non-member limits, queue and wishlist limits, suggestion limits |
+| `payment_deadline`, `pickup_deadline`, reservation `hold_until` | Pickup and payment window lengths (new items only) |
+| Membership snapshot (price, dates, privileges) | Fee for new checkouts; plan list |
+| Fine Charge `rate` and days; damage and loss Charge amounts | `fine_per_day` (for days accrued after the change) |
+| `reservation_ban_until`; notifications already created | Strike window and threshold (new strikes); chat rate limits |
+
+`lost_threshold_days` is read at each nightly run; lowering it can convert many existing overdue loans in one night, so the settings screen shows a preview count. Renewals use current entitlements (DEC-53).
+
 
 ---
 
@@ -372,10 +389,11 @@ AuditLog, ChatConversation, Settings, StatsDaily. (Attributes in Section 12 of t
 | `borrowed`, `overdue` | Manual lost | `lost` | staff | Same as above |
 | `lost` | Return | `returned` | staff | Resolution path A |
 
-Terminal states: `expired`, `cancelled`, `returned`. `lost` is terminal only after admin verification (`lost_resolved_at` set).
+Terminal states: `expired`, `cancelled`, `returned`, and `lost` once `lost_resolved_at` is set. The system sets `lost_resolved_at` when the loss is settled: the book is returned (path A, and the item also moves to `returned`) or the replacement is paid in full (path B, and the item stays `lost`). Settling a loss does not restore the account; that is FR-AUTH-08.
 
 ### 5.3 Reservation states
 `waiting` → `ready_for_pickup` (promotion) → `fulfilled` (handover) | `expired` (48 h) | `cancelled`. A `waiting` reservation can also go to `cancelled`.
+While `ready_for_pickup`, only the Reservation row exists; no Loan Item is created until handover, when the Loan Item is created directly in `borrowed` (`source = reservation`) and the reservation is set `fulfilled`. Ready reservations carry their own pickup code.
 
 ### 5.4 Copy states
 | From | To | By |
@@ -420,7 +438,7 @@ Terminal states: `expired`, `cancelled`, `returned`. `lost` is terminal only aft
 | Handover (staff) | N | N | N | Y | Y |
 | Return (staff) | Y | Y | Y | Y | Y |
 
-Inactive accounts cannot log in. The gating decision is made in one shared server
+Inactive accounts cannot log in. The Non-member column is derived from entitlements (FR-MEM-05), for example `can_reserve = false`; the gating function reads entitlements and must not hard-code a separate non-member rule. The gating decision is made in one shared server
 function and mirrored in the UI (UI hides/disables, server enforces).
 
 ### 6.2 Global UI components
