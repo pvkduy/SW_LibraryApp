@@ -100,33 +100,18 @@ thường, không phải lỗi.
 Mỗi thành viên chạy **local stack riêng** trên máy mình (không dùng chung database cloud khi dev).
 
 ```bash
-# Từ thư mục gốc repo
-npx supabase start --workdir src
+npm run db:start
 ```
 
-Lần đầu sẽ tải Docker image (~2 GB), mất vài phút. Khi xong, CLI in ra `API_URL`, `PUBLISHABLE_KEY`...
-
-Áp migrations + seed (chỉ cần lần đầu, hoặc khi muốn reset sạch):
+Lần đầu sẽ tải Docker image (~2 GB), mất vài phút. Sau đó áp migrations + seed:
 
 ```bash
-npx supabase db reset --workdir src
+npm run db:reset
 ```
 
-> **`--workdir src` là bắt buộc** vì project Supabase nằm ở `src/supabase/`, không phải `./supabase/`
-> (DEC-LOG-02). Nếu quên, CLI không tìm thấy migration và database sẽ rỗng.
->
-> Muốn khỏi gõ cờ mỗi lần:
-> ```bash
-> export SUPABASE_WORKDIR=src      # macOS/Linux/Git Bash
-> set SUPABASE_WORKDIR=src         # Windows CMD
-> $env:SUPABASE_WORKDIR="src"      # Windows PowerShell
-> ```
-
-Kiểm tra stack đang chạy:
-
-```bash
-npx supabase status --workdir src
-```
+> `db:start` / `db:reset` là npm script gói sẵn cờ `--workdir src` (project Supabase nằm ở
+> `src/supabase/` theo DEC-LOG-02). Kiểm tra trạng thái: `npm run db:test` (hoặc
+> `npx supabase status --workdir src`).
 
 ### Bước 3 — Tạo file biến môi trường cho frontend
 
@@ -170,11 +155,9 @@ npm run dev
 
 Mở http://localhost:5173. Trang demo hiển thị danh sách sách lấy từ local database.
 
-> **Chưa thấy sách?** Nguyên nhân thường gặp:
-> 1. Chưa chạy `npx supabase db reset --workdir src` → database rỗng.
-> 2. Stack chưa chạy (`npx supabase status --workdir src`).
-> 3. Bảng `books` chỉ trả dữ liệu cho user **đã đăng nhập** (RLS). Chưa đăng nhập thì danh sách rỗng
->    là đúng — xem mục "Kiểm tra nhanh" bên dưới.
+> **Chưa thấy sách?** Bảng `books` chỉ trả dữ liệu cho user **đã đăng nhập** (RLS). Chưa đăng nhập
+> thì danh sách rỗng là đúng — xem mục "Đăng nhập test" bên dưới. Còn lại: kiểm tra đã chạy
+> `npm run db:reset` và stack đang chạy (`npx supabase status --workdir src`).
 
 ---
 
@@ -204,14 +187,13 @@ Nếu hai lệnh trên ra kết quả đúng, database đã sẵn sàng.
 | Lệnh | Mô tả |
 | --- | --- |
 | `npm run dev` | (trong `src/frontend`) chạy Vite dev server |
-| `npm run build` | build production |
+| `npm run verify` | typecheck (shared + Edge Functions + e2e) + spec-matrix — chạy trước khi push |
 | `npm run lint` | lint (oxlint) |
-| `npm run typecheck` | typecheck `src/shared` |
-| `npm run spec-matrix` | kiểm tra mọi FR đều có test scenario (CI gate) |
+| `npm run db:start` / `db:reset` / `db:test` | bật stack / reset DB + seed / chạy pgTAP |
+| `npm run e2e` | Playwright smoke test (chạy `e2e:install` lần đầu để tải Chromium) |
+| `npm run functions:serve` | chạy Edge Functions ở local |
 | `npx supabase status --workdir src` | xem trạng thái stack + key local |
-| `npx supabase db reset --workdir src` | reset DB + áp lại migrations + seed |
-| `npx supabase stop --workdir src` | tắt stack (giữ dữ liệu) |
-| `npx supabase stop --no-backup --workdir src` | tắt + xoá sạch dữ liệu |
+| `npx supabase stop --workdir src` | tắt stack (giữ dữ liệu; thêm `--no-backup` để xoá sạch) |
 
 ### Địa chỉ local stack
 
@@ -284,32 +266,30 @@ dùng chung cho cả nhóm), làm theo quy trình dưới đây.
 ### Liên kết lần đầu (mỗi thành viên, mỗi máy)
 
 ```bash
-cd C:/Users/khoin/OneDrive/Documents/SW_LibraryApp/src
-
 npx supabase login                      # mở trình duyệt để xác thực
-npx supabase link --project-ref <PROJECT_REF>
+npx supabase link --project-ref zmmbvjgeakxrlfbxsetj
 ```
 
-`<PROJECT_REF>` là mã project trên Supabase Dashboard (Settings → General → Reference ID).
-Với project của nhóm: **`zmmbvjgeakxrlfbxsetj`**.
+Project ref của nhóm là **`zmmbvjgeakxrlfbxsetj`** (Supabase Dashboard → Settings → Reference ID).
 
-> Lệnh `link` tạo thư mục `.supabase/` chứa project ref. Thư mục này **đã** nằm trong `.gitignore` —
-> không commit.
+> **Project ref KHÔNG phải secret** — nó là định danh công khai trong mọi URL
+> (`https://zmmbvjgeakxrlfbxsetj.supabase.co`). Secret thực sự là **access token** của
+> `supabase login` (lưu ở `~/.supabase/`, mỗi người dùng tài khoản riêng, không chia sẻ) và
+> **`service_role` / `sb_secret_...` key** (bypass RLS, không bao giờ để lộ).
 
 ### Vòng lặp thay đổi schema (bắt buộc)
 
 ```bash
-cd C:/Users/khoin/OneDrive/Documents/SW_LibraryApp/src
-
 # 1. Tạo file migration mới (KHÔNG tự đặt tên file)
 npx supabase migration new add_loan_items
 
 # 2. Viết SQL vào src/supabase/migrations/<timestamp>_add_loan_items.sql
 
 # 3. Chạy thử trên local — miễn phí, reset được
-npx supabase db reset
+npm run db:reset
 
 # 4. Kiểm tra bằng pgTAP / chạy app local cho chắc
+npm run db:test
 
 # 5. Đẩy lên hosted
 npx supabase db push
@@ -331,10 +311,7 @@ npx supabase db push
 
 ### Secrets cho Edge Functions
 
-Secret của Edge Function **không** đặt trong `.env.local` (file đó chỉ dành cho client). Dùng:
-
 ```bash
-cd C:/Users/khoin/OneDrive/Documents/SW_LibraryApp/src
 npx supabase secrets set LLM_API_KEY=... EMBEDDING_API_KEY=... --project-ref zmmbvjgeakxrlfbxsetj
 npx supabase secrets list --project-ref zmmbvjgeakxrlfbxsetj
 ```
@@ -364,25 +341,10 @@ Nếu app trỏ vào hosted (`.env.local` dùng URL cloud) mà chưa push, sẽ 
 | --- | --- | --- |
 | `docker: command not found` | Docker chưa vào PATH | Thêm `...\DockerDesktop\resources\bin` vào PATH, hoặc mở Docker Desktop |
 | `supabase start` báo port đã dùng | Stack cũ còn chạy | `npx supabase stop --workdir src` rồi start lại |
-| Database rỗng dù đã start | Thiếu `--workdir src` | `npx supabase db reset --workdir src` |
 | App báo "Missing Supabase configuration" | Thiếu `src/frontend/.env.local` | Làm bước 3 |
-| Danh sách sách trống | Chưa đăng nhập (RLS) | Xem mục "Đăng nhập test" |
-| `401` khi gọi API | Dán nhầm key cloud vào local URL | Dùng đúng key local ở bước 3 |
 | Sửa `.env.local` mà không thấy đổi | Vite chỉ đọc lúc khởi động | Tắt và chạy lại `npm run dev` |
 | `npm run build` lỗi thiếu `@vitejs/plugin-react` | `node_modules` bị lệch do workspaces | Xoá `node_modules` + lockfile, chạy lại `npm install` |
-| `db push` báo `Cannot find project ref` | Chưa `npx supabase link` | Chạy `npx supabase link --project-ref <ref>` |
+| `db push` báo `Cannot find project ref` | Chưa `npx supabase link` | Chạy `npx supabase link --project-ref zmmbvjgeakxrlfbxsetj` |
 | Hosted báo `Could not find the table` | Chưa push migration lên cloud | `npx supabase db push` |
 
----
 
-## Việc cần làm tiếp
-
-- [x] Xoá scaffold Flask + Firebase (DEC-LOG-01).
-- [x] Chuyển frontend sang `supabase-js`.
-- [x] Migration đầu tiên đã chạy và kiểm chứng trên local stack.
-- [x] pgTAP RLS test (`src/supabase/tests/rls_test.sql`, 23/23 pass).
-- [x] Playwright smoke test (`src/e2e/smoke.spec.ts`, 2/2 pass).
-- [x] Pipeline CI (`.github/workflows/ci.yml`, 4 job).
-- [ ] **Duyệt CI lần đầu trên GitHub** + bật branch protection cho `main`.
-- [ ] Push migration lên hosted project khi schema M0 ổn định (`npx supabase db push`).
-- [ ] Làm theo milestone M1–M11 trong đặc tả §19.
