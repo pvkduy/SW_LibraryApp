@@ -306,9 +306,30 @@ create policy copies_select_visible on public.copies
 
 -- NOTE: no INSERT/UPDATE/DELETE policies for client roles. All writes go through
 -- Edge Functions using the service role (SRS §10.1, Constitution Principle VI).
+--
+-- Postgres RLS FILTERS rows; it does not raise. A client UPDATE/DELETE against a
+-- table with no matching policy therefore affects 0 rows and reports success,
+-- which is the intended deny-by-default behaviour (a missing policy is not an
+-- error to the client). Only a missing table/column privilege raises 42501.
+-- tests/rls_test.sql asserts "0 rows affected" for these write attempts.
 
 -- -----------------------------------------------------------------------------
 -- Grants: the embedding column is never exposed to client roles (§12.3)
+--
+-- A column-level REVOKE does NOT work on its own: Supabase's default privileges
+-- grant table-level SELECT to `authenticated`, and a table-level grant covers
+-- every column regardless of any column REVOKE. Verified against the local
+-- stack — `revoke select (embedding) ...` left the column readable.
+-- The working pattern is: drop the table-level SELECT, then grant an explicit
+-- column list that omits `embedding`. pgTAP asserts both halves (see
+-- tests/rls_test.sql), so a future column added here without being listed will
+-- fail the "normal select" assertion rather than silently leaking.
 -- -----------------------------------------------------------------------------
-grant select on public.books to authenticated;
-revoke select (embedding) on public.books from authenticated;
+revoke select on public.books from anon, authenticated;
+grant select (
+  id, title, authors, isbn10, isbn13, publisher, year, language, category,
+  field, description, toc, keywords, collection, replacement_price,
+  shelf_location, cover_path, status, total_copies, available_copies,
+  queue_length, wishlist_count, borrow_count, rating_avg, rating_count,
+  popularity_score, search_vector, added_at, updated_at
+) on public.books to authenticated;

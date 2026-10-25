@@ -9,6 +9,15 @@ function App() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    // SRS §12.3: catalog reads are for signed-in users only, and §2.2 limits
+    // unauthenticated visitors to the auth routes. Querying while logged out
+    // therefore returns "permission denied" from RLS, so do not try.
+    //
+    // Nothing is reset here: `books`/`error` start empty and the effect no-ops
+    // until a session exists. Calling setState synchronously in an effect would
+    // trigger a cascading render (oxlint react/set-state-in-effect).
+    if (!user) return
+
     let active = true
 
     supabase
@@ -26,7 +35,7 @@ function App() {
     return () => {
       active = false
     }
-  }, [])
+  }, [user])
 
   if (loading) return <p>Đang tải...</p>
 

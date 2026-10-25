@@ -23,4 +23,10 @@ src/supabase/.supabase/
 .DS_Store
 Thumbs.db
 
+# Playwright test artifacts (regenerated each run; never commit)
+src/e2e/test-results/
+src/e2e/playwright-report/
+src/e2e/blob-report/
+src/e2e/.cache/
+
 .pi

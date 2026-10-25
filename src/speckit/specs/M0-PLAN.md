@@ -1,12 +1,52 @@
 # M0 Foundations — Implementation Plan
 
 **Source**: SRS §19 (milestone M0), SRS §11 (project structure), SRS §10 (architecture),
-NFR-16 (testability), SRS §12.5 (error contract), SRS §4.17 (settings).
+NFR-14 (testability), SRS §12.3 (RLS), SRS §12.5 (error contract), SRS §4.17 (settings).
 
-**Status**: Proposed — for review before any code is written.
+**Status**: **In progress — M0a complete and verified; M0b complete except CI's first run.**
+Last updated 2025-10-25.
 
 **Exit criteria (SRS §19)**: CI green with a hello-world Edge Function, a pgTAP RLS test,
 and a Playwright smoke test.
+
+---
+
+## 0. Progress at a glance
+
+The original version of this plan was written before any tooling existed and before any
+code. It is now substantially out of date: **every artifact it proposed has been built**,
+and the two "blockers" it treated as central (no Docker, no Supabase CLI) no longer exist.
+
+| # | Deliverable | Status | Evidence |
+|---|---|---|---|
+| A1 | Repo structure (`src/supabase`, `src/shared`, `src/e2e`, `src/scripts`) | ✅ Done | directories exist |
+| A2 | Workspace config (npm workspaces, strict `tsconfig.base.json`) | ✅ Done | root `package.json` (3 workspaces), `tsconfig.base.json` |
+| A3 | `src/shared` types / reason codes / settings defaults / domain stubs | ✅ Done | `src/shared/src/{types,reason-codes,settings-defaults,domain}` |
+| A4 | Settings loader over §4.17 defaults | ✅ Done | `src/shared/src/settings-defaults/loader.ts` |
+| A5 | Clock seam (`Clock` TS + `app_now()` SQL) | ✅ Done | `src/shared/src/domain/clock.ts`, migration |
+| A6 | Error contract (§12.5 `ApiError` + reason enum + status map) | ✅ Done | `src/shared/src/reason-codes/index.ts` |
+| A7 | `src/supabase/config.toml` (ports, buckets from §10.5) | ✅ Done | `src/supabase/config.toml` |
+| A8 | First migration `0001_init.sql` | ✅ Done + **executes** | applies clean via `db reset` |
+| A9 | Hello-world Edge Function | ✅ Done + **boots** | returns 200 / 400 envelope (verified by curl) |
+| A10 | Seed script | ✅ Done + **executes** | 4 books / 5 copies after `db reset` |
+| A11 | Spec-matrix script | ✅ Done | 107 FRs → 107 claimed, 64 TS scenarios |
+| A12 | Frontend `.env.example` | ✅ Done | `src/frontend/.env.example` |
+| B1 | Docker | ✅ Installed (29.7.2) | see DEC-LOG-03 |
+| B2 | Supabase CLI | ✅ 2.122.0 via `npx` | no global install needed |
+| B3 | `supabase start` + `db reset` | ✅ Verified | migration and seed both apply |
+| B4 | pgTAP RLS test | ✅ **23/23 passing** | `src/supabase/tests/rls_test.sql` |
+| B5 | Playwright smoke | ✅ **2/2 passing** | `src/e2e/smoke.spec.ts` |
+| B6 | GitHub Actions CI | ✅ Written, **not yet run** | `.github/workflows/ci.yml` |
+| B7 | Branch protection on `main` | ⬜ Manual | needs the repo owner; not automatable here |
+
+### What is left
+
+1. **B7 — branch protection.** Manual, in GitHub settings. Require the four CI jobs
+   (`static`, `db`, `functions`, `e2e`) on `main`.
+2. **B6 — first CI run.** The workflow has never executed on GitHub. Push it and fix
+   whatever the runner disagrees with. Known local-vs-CI risks are listed in §7.
+
+Nothing else in M0 is outstanding.
 
 ---
 
@@ -19,13 +59,14 @@ and the CI gate that enforces the traceability matrix.
 **Is not**: any user-visible feature. No FR from M1 onward is implemented here. M0
 delivers zero reader/admin screens.
 
-**Deliberate scope cut in this plan**: the frontend is *not* rewired to Supabase in M0.
-That happens in M1 (Accounts), which is where the first real `supabase-js` usage lands.
-M0 leaves the existing Flask/Firebase demo in place, untouched, per DEC-LOG-01.
+The frontend is *not* rewired to Supabase in M0 — that is M1 (Accounts). What exists in
+`src/frontend` today is the read-only demo shell migrated off Firebase on 2025-10-25
+(DEC-LOG-01); the Playwright smoke test uses it as a rendering target and as proof that
+the catalog read path works through RLS.
 
 ---
 
-## 2b. Repository layout (resolved)
+## 2. Repository layout (resolved)
 
 **Mapping rule**: `src/` in this repository corresponds to `shelfhelp/` in SRS §11.
 Everything app-related lives under `/src`, per the project requirement. There is **no**
@@ -33,162 +74,154 @@ Everything app-related lives under `/src`, per the project requirement. There is
 
 ```
 src/                        # == shelfhelp/ in SRS §11
-  frontend/                 # existing Vite app, unchanged and not moved
-  supabase/                 # NEW: config.toml, migrations/, tests/, functions/
-  shared/src/               # NEW: types, schemas, settings-defaults, reason-codes, domain
-  e2e/                      # NEW: Playwright specs
-  scripts/                  # NEW: spec-matrix
+  frontend/                 # existing Vite app; a workspace
+  supabase/                 # config.toml, migrations/, tests/, functions/, seed.sql
+  shared/                   # types, schemas, settings-defaults, reason-codes, domain
+  e2e/                      # Playwright specs + config; a workspace
+  scripts/                  # spec-matrix.mjs
   speckit/                  # specs, constitution (not part of SRS §11)
 ```
 
-> **Status**: `backend/` and `firebase/` were deleted on 2025-10-25 (DEC-LOG-01 resolution).
-> The tree above is the target state; those two nodes no longer exist.
+Workspaces (root `package.json`): `src/frontend`, `src/shared`, `src/e2e`.
+`src/` is the *project* root, not the *workspace* root; see DEC-LOG-02.
 
-Two deviations from the literal SRS §11 layout, both deliberate:
+Two deliberate deviations from the literal SRS §11 layout:
 
 | SRS §11 | This repo | Reason |
 |---|---|---|
-| `apps/web/src/` | `src/frontend/` | Single deployable; `apps/` is monorepo ceremony with no benefit here. Frontend not moved. |
-| `packages/shared/src/` | `src/shared/src/` | Same nesting intent, one level flatter, inside the required `/src` root. |
+| `apps/web/src/` | `src/frontend/` | Single deployable; `apps/` is monorepo ceremony with no benefit. |
+| `packages/shared/src/` | `src/shared/` | Same nesting intent, one level flatter, inside the required `/src` root. |
 
-**Workspace root**: `package.json` and workspace globs live at the **repository root**
-with `src/*` globs, so CI, editors, and `.github/` resolve naturally. The `src/` folder
-is the *project* root, not the *workspace* root.
-
-**Package manager**: npm workspaces (pnpm is not installed). To be recorded in
-`docs/DECISIONS.md` as D2.
+`src/backend/` and `src/firebase/` were deleted on 2025-10-25 (DEC-LOG-01).
 
 ---
 
-## 2. Blockers found in this repository
+## 3. Toolchain (was §2 "blockers" — all resolved)
 
-These are facts about the current machine, verified before planning:
+The original plan listed Docker, the Supabase CLI, and pnpm as blockers and split M0 into
+M0a/M0b accordingly. Docker and the CLI are now installed, so **the split is historical**:
+M0 is a single milestone again. Recorded in DEC-LOG-03.
 
-| Tool / item | State | Why it matters |
+| Tool | Version | Role |
 |---|---|---|
-| **Docker** | ❌ not installed | `supabase start` (local stack) cannot run. Blocks pgTAP + integration + Playwright-against-local. |
-| **Supabase CLI** | ❌ not installed | No `supabase init`, no `supabase start`, no `functions serve` |
-| **pnpm** | ❌ not installed | SRS §11 assumes a pnpm workspace (`pnpm-workspace.yaml`) |
-| Node | ✅ v24.22.1 | OK (README wants ≥ 20) |
-| npm | ✅ 11.19.1 | Usable fallback for pnpm |
-| Git | ✅ 2.48.1, remote `origin` → `pvkduy/SW_LibraryApp`, branch `main` | OK |
-| Python | ✅ 3.13.5 | Not needed — the Flask demo was deleted (DEC-LOG-01) |
-| `.github/workflows` | ❌ absent | CI has to be created from scratch |
-| `tsconfig*.json` | ❌ absent | No TypeScript configured anywhere yet |
-| `supabase/` | ❌ absent | The entire database/Edge Function layer does not exist |
+| Node | 24.11.0 | ≥ 20 required |
+| npm | 11.6.1 | workspaces (D2 confirmed) |
+| Docker | 29.7.2 | local stack |
+| Supabase CLI | 2.122.0 via `npx` | `--workdir src` is mandatory |
+| Playwright | 1.64.1 | Chromium only in M0 |
 
-### Consequence
+### Known good verification commands
 
-**Two of the three M0 exit criteria cannot be met without Docker**:
+```bash
+npm run verify        # typecheck (shared + deno + e2e) + spec-matrix   [no Docker]
+npm run lint
+npm run db:start      # supabase start --workdir src                    [Docker]
+npm run db:reset      # applies 0001_init.sql + seed.sql
+npm run db:test       # pgTAP  -> 23/23
+npm run e2e:install   # one-time: downloads the Chromium build
+npm run e2e           # Playwright smoke -> 2/2
+```
 
-- pgTAP RLS test → needs a running Postgres (local stack or hosted project)
-- Playwright smoke test → needs an app to test (M0 has no app) and a target
-
-So M0 must be split into two parts with different prerequisites. This is the central
-decision of this plan.
+> `npm run e2e` fails with "Executable doesn't exist" on a fresh clone until
+> `npm run e2e:install` has been run once. CI handles this in the `e2e` job.
 
 ---
 
-## 3. Proposed split: M0a (no Docker) and M0b (needs Docker)
+## 4. Decisions (resolved)
 
-### M0a — Foundation artifacts (doable now, no Docker)
-
-Everything that is *file creation* and *TypeScript/SQL authoring*:
-
-| # | Deliverable | Detail |
+| # | Question | Resolution |
 |---|---|---|
-| A1 | Repo structure | `src/supabase/`, `src/shared/`, `src/e2e/`, `src/scripts/`. `src/frontend` is **not** moved. |
-| A2 | Workspace config | root `package.json` with npm workspaces pointing at `src/*`; root `tsconfig.base.json` (strict) |
-| A3 | `src/shared` | `src/types/`, `src/schemas/` (Zod), `src/settings-defaults/` (§4.17 verbatim), `src/reason-codes/` (§12.5 verbatim), `src/domain/` stubs for entitlements, gating, fines. Pure TS, no Deno/Node APIs. |
-| A4 | Settings loader | Typed accessor over the §4.17 defaults, with `settings.version` semantics from POL-18 |
-| A5 | Clock | TS `Clock` interface + `app_now()` SQL function (test seam, NFR-16) |
-| A6 | Error contract | Shared `ApiError` type + reason enum from §12.5, plus the reason→message map skeleton |
-| A7 | `src/supabase/config.toml` | Local stack config (regions, ports, storage buckets from §10.5) |
-| A8 | First migration | `src/supabase/migrations/0001_init.sql`: extensions (`pg_trgm`, `unaccent`, `vector`), `app_now()`, `immutable_unaccent`, `normalize_vi_exact`, core tables (`profiles`, `books`, `copies`), RLS enabled + deny-by-default, immutability trigger scaffolding |
-| A9 | Hello-world Edge Function | `src/supabase/functions/hello/index.ts` — validates input with Zod, returns the §12.5 envelope |
-| A10 | Seed script | `src/supabase/seed.sql` skeleton (placeholder rows; full seed is later) |
-| A11 | Spec-matrix script | `src/scripts/spec-matrix.mjs` — parses `specs/**/spec.md` + SRS §17, asserts every FR has a TS scenario, exits non-zero on failure |
-| A12 | `.env.example` files | Supabase-shaped (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`) in `src/frontend/` (Vite only reads its own root) |
+| D1 | Docker availability | **Resolved** — installed and working (DEC-LOG-03). M0b no longer needs a separate phase. |
+| D2 | Package manager | **npm workspaces** — decided and in use. |
+| D3 | Move the Vite app to `apps/web` | **Dropped.** Layout is `/src`-rooted; `src/frontend` stays. |
+| D4 | Hosted Supabase project | **Still deferred** — local-only until M1. `config.toml` has no project ref. |
+| D5 | Retire the Flask/Firebase demo | **Done** — deleted 2025-10-25 (DEC-LOG-01). |
 
-**M0a exit criteria (revised, achievable without Docker)**: `tsc --noEmit` passes across
-the workspace, `spec-matrix` runs and reports 107 FRs → 0 unclaimed, and the SQL
-migration parses (syntax-checked, not executed).
+Further engineering decisions made while implementing M0:
 
-### M0b — Local stack + CI (requires Docker + Supabase CLI)
-
-| # | Deliverable | Detail |
-|---|---|---|
-| B1 | Install Docker Desktop | User action; cannot be automated |
-| B2 | Install Supabase CLI | `npm i -D supabase` (works without global install) |
-| B3 | `supabase start` + `db reset` | Applies A8 migration, proves it executes |
-| B4 | pgTAP RLS test | `src/supabase/tests/rls_test.sql` — a student cannot read another student's rows; asserts deny-by-default |
-| B5 | Playwright smoke | `src/e2e/smoke.spec.ts` — trivial routing smoke against a placeholder page |
-| B6 | GitHub Actions CI | `.github/workflows/ci.yml` — lint, `tsc --noEmit`, unit, pgTAP, Playwright, **spec-matrix as a required job** |
-| B7 | Branch protection | Require the CI job on `main` |
-
-**M0b exit criteria**: exactly SRS §19 — CI green with a hello-world Edge Function, a
-pgTAP RLS test, and a Playwright smoke test.
+- **DEC-LOG-04** — Edge Functions import shared code by relative path; the npm workspace
+  name does not resolve in the Edge Runtime container.
+- **DEC-LOG-05** — `books.embedding` is hidden with a column **GRANT** list; a column
+  `REVOKE` is a no-op against Supabase's default table-level grants.
+- **DEC-LOG-06** — RLS filters; it does not raise. Tests assert 0 rows affected for
+  client `UPDATE`/`DELETE`, and `42501` only for `INSERT` and missing privileges.
 
 ---
 
-## 4. Decisions this plan needs from you
+## 5. Defects found and fixed while completing M0
 
-| # | Question | Options | Recommendation |
+Recorded because each one would have shipped broken if M0 had stopped at "files exist".
+
+| # | Defect | Symptom | Fix |
 |---|---|---|---|
-| D1 | Docker availability | Install Docker Desktop / use a hosted Supabase dev project instead / defer M0b | **Defer M0b**; do M0a now |
-| D2 | Package manager | npm workspaces (pnpm absent) | **npm workspaces** — decided |
-| D3 | ~~Move the Vite app to `apps/web`~~ | **Dropped.** Layout is `/src`-rooted; `src/frontend` stays where it is. | Resolved by the project requirement |
-| D4 | Hosted Supabase project | Create dev project now (needs an account) / local-only until M0b | **Decide at M0b** — M0a needs neither |
-| D5 | Retire the Flask demo now? | Delete `src/backend/`, `src/firebase/` / keep until M0b | **Keep until M0b** — deleting before a replacement exists leaves no runnable app |
+| 1 | `_shared/http.ts` imported `@shelfhelp/shared` | Function returned `503 BOOT_ERROR`; log: *Relative import path not prefixed with / or ./ or ../* | Relative import + DEC-LOG-04 |
+| 2 | `revoke select (embedding)` was a no-op | A student could read `books.embedding` | Column GRANT list + DEC-LOG-05; asserted by pgTAP |
+| 3 | Edge Function tsconfig never typechecked (not in `typecheck` script) | 4 latent TS errors, incl. missing `Deno` global | `typecheck:deno` + `src/supabase/deno-globals.d.ts` |
+| 4 | `zod` needed as an npm devDependency only to typecheck a remote URL import | `npm ci` desynced; high-severity advisory pulled in | Hand-written Zod surface in `deno-globals.d.ts`; **zero** npm deps for the Deno check |
+| 5 | Playwright `webServer` probed `127.0.0.1` while Vite bound `localhost` (IPv6) | `Error: Timed out waiting 120000ms from config.webServer` | `--host 127.0.0.1` on the dev command |
+| 6 | `exactOptionalPropertyTypes` rejected `webServer: undefined` | e2e typecheck error TS2769 | Conditional spread |
+| 7 | pgTAP planned 21 tests, ran 22 (and later 21/23) | `Bad plan. You planned N tests but ran M` | Plan count corrected; seed rows isolated by scoping assertions to fixtures |
+| 8 | Column GRANT fix left `anon` with **no** `SELECT` on `books` | App queried the catalog while logged out → `permission denied for table books` on every page load | Decided per SRS §12.3 (catalog reads are for signed-in users) + §2.2 (unauthenticated users may only open auth routes): the RLS lockdown is *correct*, so `App.jsx` now skips the query when `user` is null |
+| 9 | Playwright `toHaveCount(0)` passed while an error was appearing | A smoke assertion that could never fail: `toHaveCount(0)` returns immediately when the count is already 0, so it cannot wait for a late error (measured: passed at T+284 ms, error present at T+284 ms — 4 ms later) | Wait for `networkidle` before asserting; verified the test **fails** with the regression re-injected and passes with the fix |
+| 10 | `npm run e2e` broken on a fresh clone | `Executable doesn't exist ... chrome-headless-shell` after a clean `npm ci` | Added `npm run e2e:install` (`playwright install --with-deps chromium`), documented in §3; CI already did this |
 
 ---
 
-## 5. Proposed execution order (M0a)
+## 6. Verification results (latest run)
 
-1. **A1 + A2** — structure and workspace config. Verify `tsc --noEmit` runs.
-2. **A6 + A5** — error contract and clock first, because A3/A9 depend on their types.
-3. **A3** — `packages/shared`: settings defaults and reason codes copied **verbatim** from
-   §4.17 and §12.5 so there is one source of truth. Domain stubs are interfaces only,
-   no logic (logic belongs to the milestone that owns each rule).
-4. **A4** — settings loader over the defaults.
-5. **A11** — spec-matrix script. Doing this early makes every later step self-checking.
-6. **A7 + A8** — `config.toml` and the first migration (syntax-only validation).
-7. **A9** — hello-world Edge Function.
-8. **A10 + A12** — seed skeleton and env examples.
-
-Each step ends with a verification command that must pass before the next begins.
-
----
-
-## 6. Explicitly out of scope for M0
-
-- Any FR from M1–M11 (no auth, no catalog, no cart, no loans)
-- shadcn/ui and the design system (M1, when first screens exist)
-- i18n string extraction (M1; M0 only ensures the dependency choice is recorded)
-- Sentry, monitoring (NFR-13, wired at M11 hardening; a project key is not needed yet)
-- Real Supabase projects for staging/prod (DEC: M0b at the earliest)
-
-> Frontend migration off the Firebase SDK and deleting the Flask/Firebase demo were both
-> completed on 2025-10-25 (DEC-LOG-01), so neither appears here any more.
+| Check | Result |
+|---|---|
+| `tsc --noEmit` — `@shelfhelp/shared` | ✅ clean |
+| `tsc --noEmit` — Edge Functions (Deno) | ✅ clean |
+| `tsc --noEmit` — `src/e2e` | ✅ clean |
+| `oxlint` (frontend) | ✅ clean |
+| `spec-matrix.mjs` | ✅ 107 FRs defined, 107 claimed, 64 TS scenarios, 0 unclaimed |
+| `npm ci` from clean tree | ✅ 85 packages, **0 vulnerabilities** |
+| `supabase db reset` | ✅ 0001_init.sql + seed.sql apply; 4 books, 5 copies |
+| Generated `search_vector` (POL-17) | ✅ `Hóa học đại cương` → `hoa hoc dai cuong` |
+| `app_now()` | ✅ returns timestamptz |
+| Edge Function `hello` | ✅ `200` success envelope; `400 VALIDATION_FAILED`; `OPTIONS` `200` |
+| pgTAP `tests/rls_test.sql` | ✅ **23/23 pass** |
+| Playwright `smoke.spec.ts` | ✅ **2/2 pass** (asserts the shell renders and a signed-out visitor settles with no permission error; verified to fail when the regression is re-injected) |
+| GitHub Actions CI | ⬜ not yet run on a runner |
 
 ---
 
 ## 7. Risks
+
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Docker never installed | M0b and the CI gate never run; M1 inherits an untested migration | Treat Docker as a hard prerequisite for leaving M0; do not start M1 until B4 passes |
-| Migration authored without ever executing | SQL errors discovered at M1, expensive to unwind | Syntax-check in M0a; execute first thing in M0b |
-| `packages/shared` accumulates logic early | Business rules drift from the spec's owner milestone | M0a ships interfaces + settings/reasons only; no gating or fine logic |
-| Two package managers (npm + future pnpm) | Confusing installs and lockfiles | Pick one (D2) and record it in `docs/DECISIONS.md` |
-| Spec-matrix false confidence | It checks FR→TS presence, not correctness | Document its limit in the script header |
+| CI never run on a real runner | The `webServer`/IPv6 fix (defect 5) was found locally; the runner may differ | First push is expected to need a small fixup; treat a red first run as normal, not a regression |
+| Docker Desktop flakiness on the dev machine | `db:test` / `e2e` unavailable; Docker-free checks still run | `npm run verify` covers static gates; database and browser proof is re-run when Docker is up |
+| Column-GRANT list on `books` grows stale | New columns silently invisible to clients | pgTAP asserts a normal select still returns rows, so a missing column fails CI loudly (DEC-LOG-05) |
+| RLS test asserts the wrong semantics | False "security hole" or false green | DEC-LOG-06 documents the filter-vs-raise rule; suite header repeats it |
+| Spec-matrix false confidence | It checks FR→TS presence, not correctness | Documented in the script header |
+| Branch protection not set (B7) | A failing spec-matrix job would not block a merge | Required job list is recorded above; needs repo owner action |
 
 ---
 
 ## 8. Definition of done for M0
 
-- [ ] Workspace builds: `tsc --noEmit` clean across `packages/shared` and `supabase/functions`
-- [ ] `scripts/spec-matrix.mjs` exits 0 and reports all 107 FRs claimed by a TS scenario
-- [ ] `supabase/config.toml` and `0001_init.sql` present; SQL syntax-validated
-- [ ] Hello-world Edge Function returns the §12.5 envelope for both success and a validation error
-- [ ] (M0b) `supabase start` + `db reset` succeed; pgTAP RLS test passes; Playwright smoke passes; CI green with spec-matrix as a required job
-- [ ] Decisions D1–D5 recorded in `docs/DECISIONS.md`
+- [x] Workspace builds: `tsc --noEmit` clean across `src/shared`, the Edge Functions, and `src/e2e`
+- [x] `spec-matrix.mjs` exits 0 and reports all 107 FRs claimed
+- [x] `config.toml` and `0001_init.sql` present and **executed** via `db reset`
+- [x] Hello-world Edge Function returns the §12.5 envelope for success **and** a validation error
+- [x] pgTAP RLS test passes (23/23)
+- [x] Playwright smoke test passes (2/2)
+- [x] Decisions D1–D5 and DEC-LOG-03…06 recorded in `docs/DECISIONS.md`
+- [ ] CI green on GitHub with spec-matrix as a required job
+- [ ] Branch protection on `main` requires the CI jobs
+
+Two boxes remain, both requiring a push and repo-owner settings — not further code.
+
+---
+
+## 9. Explicitly out of scope for M0
+
+- Any FR from M1–M11 (no auth screens, catalog, cart, loans)
+- shadcn/ui and the design system (M1, when first screens exist)
+- i18n string extraction (M1)
+- Sentry / monitoring (NFR-13, M11 hardening)
+- Hosted Supabase projects for staging/prod (D4, M1)
+- Multi-browser Playwright (NT-06, M11)
+- Unit-test runner (Vitest) — no `domain` logic exists yet to cover

@@ -6,13 +6,23 @@
   "description": "ShelfHelp — university library management system",
   "workspaces": [
     "src/frontend",
-    "src/shared"
+    "src/shared",
+    "src/e2e"
   ],
   "scripts": {
     "lint": "npm run lint --workspace=@shelfhelp/shared --if-present && npm run lint --workspace=frontend",
-    "typecheck": "npm run typecheck --workspace=@shelfhelp/shared --if-present",
+    "typecheck": "npm run typecheck --workspace=@shelfhelp/shared --if-present && npm run typecheck:deno && npm run typecheck:e2e",
+    "typecheck:deno": "tsc --noEmit -p src/supabase/tsconfig.json",
+    "typecheck:e2e": "tsc --noEmit -p src/e2e/tsconfig.json",
     "build": "npm run build --workspace=frontend",
-    "spec-matrix": "node src/scripts/spec-matrix.mjs"
+    "spec-matrix": "node src/scripts/spec-matrix.mjs",
+    "db:start": "supabase start --workdir src",
+    "db:reset": "supabase db reset --workdir src",
+    "db:test": "supabase test db --workdir src",
+    "functions:serve": "supabase functions serve --workdir src --no-verify-jwt",
+    "e2e": "playwright test --config src/e2e/playwright.config.ts",
+    "e2e:install": "playwright install --with-deps chromium",
+    "verify": "npm run typecheck && npm run spec-matrix"
   },
   "engines": {
     "node": ">=20"

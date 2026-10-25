@@ -110,6 +110,141 @@ and the flat layout satisfies both it and §11's intent.
   privileged access goes through Edge Functions.
 - Server-side secrets must never enter the Vite bundle (NFR-06).
 
+---
+
+## DEC-LOG-03 — M0 toolchain: Docker, Supabase CLI, Playwright are prerequisites
+
+**Date**: 2025-10-25
+**Relates to**: M0-PLAN.md §2 (blockers) and §4 (D1, D2, D4)
+
+**Context.** The M0 plan was written when Docker, the Supabase CLI, and Playwright were
+all absent. That blocked two of the three SRS §19 exit criteria (pgTAP, Playwright).
+
+**Decision.** All three are installed and in use:
+
+| Tool | Version | Notes |
+|---|---|---|
+| Docker | 29.7.2 (daemon running) | Required for `supabase start` |
+| Supabase CLI | 2.122.0 via `npx` | No global install; `--workdir src` is mandatory (DEC-LOG-02) |
+| Playwright | 1.64.1 (`@playwright/test`) | Chromium only in M0; NT-06 widens to 3 browsers at M11 |
+| npm workspaces | npm 11.6.1 | Confirms D2; pnpm still unused |
+
+`src/e2e` is now a third workspace alongside `src/frontend` and `src/shared`.
+
+**Hosted projects (D4).** Still deferred. Local-only until M1 needs real data, per
+M0-PLAN §6. `supabase/config.toml` carries no project ref.
+
+**Consequences.**
+- CI (`.github/workflows/ci.yml`) can run all three exit criteria on GitHub runners.
+- The dev machine must have Docker running for `npm run db:test` and `npm run e2e`.
+  The Docker-free subset is `npm run verify` (typecheck + spec-matrix).
+
+---
+
+## DEC-LOG-04 — Edge Functions import shared code by relative path, not package name
+
+**Date**: 2025-10-25
+**Relates to**: SRS §10.1, §11 ("`_shared/`"), NFR-14
+
+**Context.** `functions/_shared/http.ts` imported `@shelfhelp/shared`. The function
+failed to boot:
+
+```
+worker boot error: Relative import path "@shelfhelp/shared" not prefixed with / or ./ or ../
+```
+
+The Edge Runtime container mounts **only** `src/supabase/functions`. There is no
+`node_modules` and no import map inside it, so an npm workspace name can never resolve.
+
+**Decision.** Edge Functions reach shared code with an explicit relative path:
+
+```ts
+import { HttpStatus, type ReasonCode } from '../../../shared/src/reason-codes/index.ts'
+```
+
+Verified empirically: a relative path that escapes `functions/` resolves correctly,
+because the host directory is mirrored into the container. `supabase functions deploy`
+bundles the imports, so this also works when deployed.
+
+**Rejected alternatives.**
+
+| Option | Why not |
+|---|---|
+| Keep `@shelfhelp/shared` + Deno import map | The container has no mount for `src/shared`, so the map would point at a path that does not exist inside it |
+| Vendor copy of `shared/` into `functions/_shared` | Duplicates the source of truth; drifts silently |
+| Inline the two constants in `http.ts` | Contradicts SRS §12.5 single-source rule and §11's "shared logic goes to the shared package" |
+
+**Consequence.** Deep relative paths from `functions/` are expected and correct. Only
+import **inside** the shared package itself (`packages/shared/src/...`) uses clean
+relative paths.
+
+---
+
+## DEC-LOG-05 — Column REVOKE does not hide `books.embedding`; use a column GRANT list
+
+**Date**: 2025-10-25
+**Relates to**: SRS §12.3 ("the `books.embedding` column is revoked from client roles"), NFR-06
+
+**Context.** The initial migration wrote the obvious form:
+
+```sql
+grant select on public.books to authenticated;
+revoke select (embedding) on public.books from authenticated;   -- NO EFFECT
+```
+
+This **does not work**. Supabase's default privileges grant table-level `SELECT` to
+`authenticated` on every new table, and a table-level grant covers every column — a
+column-level `REVOKE` cannot subtract from it. Confirmed on the local stack: a student
+could read `embedding`.
+
+**Decision.** Drop the table-level `SELECT` first, then grant an explicit column list
+that omits `embedding`:
+
+```sql
+revoke select on public.books from anon, authenticated;
+grant select (id, title, authors, ..., search_vector, added_at, updated_at)
+  on public.books to authenticated;
+```
+
+**Trade-off and guard.** A column-list grant is opt-in: a future column added to
+`books` is invisible to clients until it is added to this list. That is the safe
+default, but it can surprise. `tests/rls_test.sql` asserts **both** halves — that a
+normal select still works (so a missing column breaks CI loudly rather than silently)
+and that `embedding` raises `42501`.
+
+**Consequence.** Every table whose client-readable columns are not the full set must
+use this pattern. Tables with no client access at all need no grant.
+
+---
+
+## DEC-LOG-06 — RLS filters rows; it does not raise. Tests assert row counts, not exceptions
+
+**Date**: 2025-10-25
+**Relates to**: SRS §12.3, TS-04
+
+**Context.** Writing the pgTAP suite revealed a semantic that is easy to test wrongly.
+With RLS enabled and **no** policy for a command:
+
+| Statement | Result |
+|---|---|
+| `SELECT` | Returns 0 rows |
+| `UPDATE` | **Succeeds**, affects 0 rows |
+| `DELETE` | **Succeeds**, affects 0 rows |
+| `INSERT` | Raises `42501` (implicit `WITH CHECK` evaluates the new row) |
+
+So `throws_ok(... '42501')` is the wrong assertion for client `UPDATE`/`DELETE` — it
+reports "no exception" for a correctly locked-down table. An early draft of the suite
+was misread as a security hole for exactly this reason.
+
+**Decision.** Assertions are chosen per command:
+
+- `INSERT` on a table the client may not write → `throws_ok(..., '42501')`
+- `UPDATE` / `DELETE` on such a table → `results_eq` asserting **0 rows affected**
+- Missing column/table privilege → `throws_ok(..., '42501')`
+
+**Consequence.** The suite documents this in its header so the next person does not
+re-introduce the wrong assertion. "Deny-by-default" means *no rows change*, not *an
+error is raised*.
 
 ---
 

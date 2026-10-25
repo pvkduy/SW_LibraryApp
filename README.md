@@ -28,7 +28,7 @@ SW_LibraryApp/
 │   ├── scripts/        # spec-matrix
 │   └── speckit/        # Đặc tả: specs/, .specify/, constitution
 ├── docs/               # Tài liệu đồ án + DECISIONS.md
-├── package.json        # npm workspaces (src/frontend, src/shared)
+├── package.json        # npm workspaces (src/frontend, src/shared, src/e2e)
 └── README.md
 ```
 
@@ -351,6 +351,9 @@ Nếu app trỏ vào hosted (`.env.local` dùng URL cloud) mà chưa push, sẽ 
 - [x] Xoá scaffold Flask + Firebase (DEC-LOG-01).
 - [x] Chuyển frontend sang `supabase-js`.
 - [x] Migration đầu tiên đã chạy và kiểm chứng trên local stack.
-- [ ] **M0 còn lại**: pgTAP RLS test, Playwright smoke test, pipeline CI.
+- [x] pgTAP RLS test (`src/supabase/tests/rls_test.sql`, 23/23 pass).
+- [x] Playwright smoke test (`src/e2e/smoke.spec.ts`, 2/2 pass).
+- [x] Pipeline CI (`.github/workflows/ci.yml`, 4 job).
+- [ ] **Duyệt CI lần đầu trên GitHub** + bật branch protection cho `main`.
 - [ ] Push migration lên hosted project khi schema M0 ổn định (`npx supabase db push`).
 - [ ] Làm theo milestone M1–M11 trong đặc tả §19.

@@ -4,8 +4,13 @@
  * Keep this thin: validation, authorization, and the error envelope only.
  * Business rules belong in @shelfhelp/shared.
  */
-
-import { HttpStatus, type ReasonCode } from '@shelfhelp/shared'
+// Deno resolves relative paths only: the Edge Runtime mounts src/supabase/functions
+// into the container and has no node_modules or import map, so the npm workspace
+// name `@shelfhelp/shared` cannot be used here (verified: bare specifier fails to
+// boot with "Relative import path not prefixed with / or ./ or ../").
+// The host path is mirrored into the container, so this relative path resolves
+// locally and after `supabase functions deploy` (which bundles the imports).
+import { HttpStatus, type ReasonCode } from '../../../shared/src/reason-codes/index.ts'
 
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',

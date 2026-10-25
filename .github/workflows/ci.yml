@@ -1,0 +1,206 @@
+name: CI
+
+# SRS §19 M0 exit criteria: CI green with a hello-world Edge Function, a pgTAP
+# RLS test, and a Playwright smoke test. Spec-matrix is a required job
+# (Constitution: the traceability matrix is enforced, not advisory).
+#
+# SRS §10.5 / NFR-14 pipeline: lint, typecheck, unit, pgTAP, integration,
+# Playwright. Migration deploy and preview deploy are out of scope until M0b's
+# hosted projects exist (M0-PLAN.md §6).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Fast, Docker-free checks: lint, types, traceability.
+  # ---------------------------------------------------------------------------
+  static:
+    name: Lint, typecheck, spec-matrix
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # Covers @shelfhelp/shared, the Deno Edge Functions, and the e2e config.
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Required gate: every FR must be claimed by a test scenario.
+      - name: Spec matrix
+        run: npm run spec-matrix
+
+  # ---------------------------------------------------------------------------
+  # Database: pgTAP over the local stack (full reset, so the migration and seed
+  # are proven to execute on every run).
+  # ---------------------------------------------------------------------------
+  db:
+    name: pgTAP (local stack)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Supabase CLI
+        run: npm install --no-save supabase
+
+      - name: Start local stack
+        run: npx supabase start --workdir src
+
+      # Applies 0001_init.sql + seed.sql from scratch. Fails on any SQL error,
+      # which is the "migration authored but never executed" risk in M0-PLAN §7.
+      - name: Reset database
+        run: npx supabase db reset --workdir src
+
+      - name: pgTAP (RLS, constraints, triggers)
+        run: npx supabase test db --workdir src
+
+      - name: Stop local stack
+        if: always()
+        run: npx supabase stop --workdir src --no-backup
+
+  # ---------------------------------------------------------------------------
+  # Edge Functions: prove the hello-world function boots and honours §12.5.
+  # ---------------------------------------------------------------------------
+  functions:
+    name: Edge Function smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Supabase CLI
+        run: npm install --no-save supabase
+
+      - name: Start local stack
+        run: npx supabase start --workdir src
+
+      - name: Serve functions
+        run: |
+          npx supabase functions serve --workdir src --no-verify-jwt \
+            > /tmp/functions.log 2>&1 &
+          # Wait until the Edge Runtime actually answers /functions/v1/hello.
+          # Probing the function itself (not just the REST API) is what makes this
+          # reliable: a cold worker boot takes ~30s, and the REST gateway is up
+          # long before the worker can serve a request.
+          for _ in $(seq 1 60); do
+            if curl -sf -o /dev/null -X POST \
+                 http://127.0.0.1:54321/functions/v1/hello \
+                 -H 'Content-Type: application/json' -d '{"name":"ping"}'; then
+              echo "functions ready"; break
+            fi
+            sleep 2
+          done
+
+      - name: hello returns 200 and the success envelope
+        run: |
+          body=$(curl -sS -f -X POST http://127.0.0.1:54321/functions/v1/hello \
+                   -H 'Content-Type: application/json' -d '{"name":"CI"}')
+          echo "$body"
+          echo "$body" | jq -e '.message == "Hello, CI" and .milestone == "M0"'
+
+      - name: hello returns 400 VALIDATION_FAILED for a bad body
+        run: |
+          code=$(curl -sS -o /tmp/err.json -w '%{http_code}' -X POST \
+                   http://127.0.0.1:54321/functions/v1/hello \
+                   -H 'Content-Type: application/json' -d '{"name":""}')
+          cat /tmp/err.json; echo
+          test "$code" = "400"
+          jq -e '.error.reason == "VALIDATION_FAILED"' /tmp/err.json
+
+      - name: Function logs on failure
+        if: failure()
+        run: cat /tmp/functions.log
+
+      - name: Stop local stack
+        if: always()
+        run: npx supabase stop --workdir src --no-backup
+
+  # ---------------------------------------------------------------------------
+  # Browser: Playwright smoke against the Vite app + local stack.
+  # ---------------------------------------------------------------------------
+  e2e:
+    name: Playwright smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Supabase CLI
+        run: npm install --no-save supabase
+
+      - name: Start local stack
+        run: npx supabase start --workdir src
+
+      # Seeded books are what the smoke test's "rows or empty state" assertion
+      # reads through RLS.
+      - name: Reset database and seed
+        run: npx supabase db reset --workdir src
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # The dev keys are identical on every machine and only work against
+      # 127.0.0.1:54321 (see src/frontend/.env.example). NFR-06: never a real key.
+      - name: Configure frontend env
+        run: cp src/frontend/.env.example src/frontend/.env.local
+
+      - name: Playwright
+        run: npm run e2e
+
+      - name: Upload report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: src/e2e/playwright-report/
+          retention-days: 7
+
+      - name: Stop local stack
+        if: always()
+        run: npx supabase stop --workdir src --no-backup

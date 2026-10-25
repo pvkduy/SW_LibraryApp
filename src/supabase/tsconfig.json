@@ -1,8 +1,19 @@
 {
+  // Typecheck config for the Edge Functions (Deno runtime).
+  //
+  // Differences from tsconfig.base.json, each required by the Deno target:
+  //   * allowImportingTsExtensions — Deno requires explicit .ts in relative
+  //     specifiers, and _shared/http.ts imports ../../../shared/src/...ts
+  //   * Deno globals              — declared in ./deno-globals.d.ts (no @types/deno)
+  //   * remote .ts imports        — https:// specifiers are typed by Deno, not tsc,
+  //     so they are declared as modules in ./deno-globals.d.ts
+  //
+  // Run: npm run typecheck:deno
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "lib": ["ES2022", "DOM"],
-    "types": []
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": [],
+    "allowImportingTsExtensions": true
   },
-  "include": ["functions/**/*.ts"]
+  "include": ["functions/**/*.ts", "deno-globals.d.ts"]
 }
