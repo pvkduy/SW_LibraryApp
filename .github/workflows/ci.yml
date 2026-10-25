@@ -11,8 +11,24 @@ name: CI
 on:
   push:
     branches: [main]
+    # Documentation-only pushes skip CI (NFR-14 exists to catch code regressions,
+    # not prose edits).
+    #
+    # IMPORTANT: src/speckit/specs/** is deliberately NOT ignored. spec-matrix
+    # parses those files (src/scripts/spec-matrix.mjs reads
+    # src/speckit/specs/SHELFHELP_FULLSPEC.md and every spec.md), so ignoring
+    # them would skip the job that validates an FR change. Hence the explicit
+    # README.md entry instead of a blanket '**.md'.
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - '.DS_Store'
   pull_request:
     branches: [main]
+    # PRs only skip on purely administrative noise. Anything else — including
+    # docs edits — still runs, so reviewers see a real gate before merge.
+    paths-ignore:
+      - '.DS_Store'
   workflow_dispatch:
 
 concurrency:

@@ -132,6 +132,26 @@ npm run e2e           # Playwright smoke -> 2/2
 > `npm run e2e` fails with "Executable doesn't exist" on a fresh clone until
 > `npm run e2e:install` has been run once. CI handles this in the `e2e` job.
 
+### CI trigger policy
+
+`.github/workflows/ci.yml` skips **doc-only pushes** to `main` (`README.md`, `docs/**`)
+to avoid spending 4 Docker-heavy VMs on a typo fix.
+
+**`src/speckit/specs/**` is deliberately NOT ignored.** `spec-matrix` parses those files
+(`src/scripts/spec-matrix.mjs` reads `specs/SHELFHELP_FULLSPEC.md` and every `spec.md`), so
+ignoring them would skip the job that validates an FR change. That is why the rule lists
+`README.md` explicitly instead of using a blanket `**.md` glob.
+
+| Changed path | CI runs? |
+|---|---|
+| `README.md`, `docs/**` | ❌ skipped (push to `main`) |
+| `src/speckit/specs/**` | ✅ runs — spec-matrix must validate |
+| `src/**` (code, SQL, tests) | ✅ runs |
+| any push on a **PR** | ✅ runs (only `.DS_Store` is skipped) |
+
+A one-off skip is also available without editing the workflow: put `[skip ci]` in the
+commit message. Use it sparingly — it bypasses the required spec-matrix gate too.
+
 ---
 
 ## 4. Decisions (resolved)
