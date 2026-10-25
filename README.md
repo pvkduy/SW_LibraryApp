@@ -1,64 +1,67 @@
-# SW Library App
+# SW Library App — ShelfHelp
 
-Ứng dụng quản lý thư viện (đồ án môn học). Kiến trúc gồm 3 phần:
+Ứng dụng quản lý thư viện (đồ án môn học). **Đặc tả kỹ thuật đầy đủ và có thẩm quyền nằm ở
+[`specs/SHELFHELP_FULLSPEC.md`](src/speckit/specs/SHELFHELP_FULLSPEC.md)**; các spec đã tách theo
+tính năng nằm trong [`src/speckit/specs/`](src/speckit/specs).
+
+> **Stack chính thức: Supabase.** Xem quyết định ghi nhận tại [`docs/DECISIONS.md`](docs/DECISIONS.md)
+> (DEC-LOG-01) và DEC-54 trong đặc tả.
+
+## Kiến trúc
 
 | Thành phần | Công nghệ | Thư mục |
 | --- | --- | --- |
-| Frontend | Vite + React (JSX) | [`src/frontend/`](src/frontend) |
-| Backend API | Flask (Python) | [`src/backend/`](src/backend) |
-| Auth + Database | Google Firebase (Authentication + Firestore) | [`src/firebase/`](src/firebase) |
+| Frontend | React 18+ + Vite + TypeScript | [`src/frontend/`](src/frontend) |
+| Backend (logic nghiệp vụ) | Supabase Edge Functions (Deno, TypeScript) | `supabase/functions/` *(chưa tạo — milestone M0)* |
+| Database | Supabase Postgres (RLS, triggers, `pg_cron`, `pgvector`, `pg_trgm`) | `supabase/migrations/` *(chưa tạo — M0)* |
+| Auth | Supabase Auth (role trong `app_metadata.role`) | — |
+| Files | Supabase Storage + bucket policies | — |
 
 ```
 SW_LibraryApp/
 ├── src/
-│   ├── frontend/    # Vite + React
-│   ├── backend/     # Flask API
-│   └── firebase/    # Firestore rules
-├── docs/            # Tài liệu đồ án (requirements, design, test...)
+│   ├── frontend/       # React + Vite (giữ lại và chuyển sang supabase-js)
+│   ├── backend/        # [ĐÃ NGỪNG DÙNG] Flask demo — xem DEC-LOG-01
+│   ├── firebase/       # [ĐÃ NGỪNG DÙNG] Firestore rules — xem DEC-LOG-01
+│   └── speckit/        # Đặc tả: specs/, .specify/, constitution
+├── docs/               # Tài liệu đồ án + DECISIONS.md
 └── README.md
 ```
 
+> ⚠️ **`src/backend/` (Flask) và `src/firebase/` là scaffold demo đã ngừng dùng.** Chúng chỉ
+> triển khai 2/107 yêu cầu chức năng và không chứa logic nghiệp vụ cần giữ. Không phát triển thêm;
+> sẽ xoá sau khi có nền tảng Supabase (M0). Chi tiết: [`docs/DECISIONS.md`](docs/DECISIONS.md).
+
 ## Yêu cầu môi trường
 
-- Node.js >= 20 (khuyến nghị >= 24.12 để dùng Firebase JS SDK mới nhất)
-- Python >= 3.10
-- Một project Firebase dùng chung cho cả nhóm
+- Node.js >= 20 (khuyến nghị >= 24.12)
+- **Supabase CLI** (`npm i -g supabase`) + **Docker** (cho local stack)
+- Không còn cần Python cho backend chính thức
 
-## 1. Thiết lập Firebase dùng chung
+## 1. Thiết lập Supabase dùng chung
 
-Cả nhóm dùng **chung một project Firebase** để có cùng dữ liệu và người dùng.
+Cả nhóm dùng **chung một project Supabase** để có cùng dữ liệu và người dùng.
 
-1. Vào [Firebase Console](https://console.firebase.google.com/) → **Add project** → đặt tên (ví dụ `sw-library-app`).
-2. **Authentication** → *Get started* → bật provider **Email/Password** và **Google**.
-3. **Firestore Database** → *Create database* (chọn chế độ production) → dán rules trong [`src/firebase/firestore.rules`](src/firebase/firestore.rules).
-4. Lấy cấu hình web: **Project settings** → *Your apps* → thêm **Web app** → copy các giá trị `apiKey`, `authDomain`, `projectId`... để điền vào `src/frontend/.env.local`.
-5. Lấy khóa server: **Project settings** → *Service accounts* → **Generate new private key** → tải file JSON về, đổi tên thành `serviceAccountKey.json` và đặt trong `src/backend/`.
+1. Tạo project trên [Supabase Dashboard](https://supabase.com/dashboard) — region khuyến nghị
+   `ap-southeast-1` (Singapore) theo đặc tả.
+2. **Authentication** → bật provider **Email/Password**; bật xác thực email.
+3. **SQL Editor** hoặc **CLI**: chạy migrations trong `supabase/migrations/` (sẽ có ở M0).
+   RLS bật trên **mọi bảng**; bảng không có policy thì không đọc được.
+4. Lấy **Project URL** và **anon key** ở *Project Settings → API* để điền vào
+   `src/frontend/.env.local`.
+5. `service_role` key và database URL **chỉ** đặt trong Edge Function secrets / CI — **không bao giờ**
+   đưa vào client bundle.
 
-> **Lưu ý:** file `serviceAccountKey.json` là bí mật, **KHÔNG commit lên Git**. Chia sẻ file này cho các thành viên trong nhóm qua kênh riêng (Drive nội bộ, chat...).
+> **Bảo mật:** không commit `.env`, `service_role` key, hay bất kỳ secret nào. Client chỉ giữ
+> project URL và anon key.
 
-## 2. Chạy Backend (Flask API)
+## 2. Chạy local stack (khuyến nghị cho dev)
 
 ```bash
-cd src/backend
-python --version                # cần >= 3.10 (có thể là python3 trên macOS/Linux)
-python -m venv .venv
-.venv\Scripts\activate          # macOS/Linux: source .venv/bin/activate
-
-pip install -r requirements.txt
-copy .env.example .env          # macOS/Linux: cp .env.example .env
-# Sửa các biến trong .env:
-#   FIREBASE_SERVICE_ACCOUNT=serviceAccountKey.json   (phải khớp tên file thật)
-#   FIREBASE_PROJECT_ID=<project-id-Firebase>
-#   CORS_ORIGINS=http://localhost:5173
-#   PORT=5000
-# Copy file serviceAccountKey.json vào thư mục src/backend/
-
-python run.py
+supabase start          # khởi động Postgres + Auth + Storage + Functions (cần Docker)
+supabase db reset       # áp migrations + seed
+supabase functions serve
 ```
-
-API chạy tại `http://localhost:5000`. Kiểm tra nhanh: `http://localhost:5000/api/health` → `{"status":"ok"}`.
-
-> **Lưu ý:** `/api/health` chạy được ngay cả khi chưa có `serviceAccountKey.json`. Nhưng các API dùng Firestore (`/api/books`...) **bắt buộc** phải có `serviceAccountKey.json` và đã bật Firestore trong Firebase. Nếu thiếu, các API này sẽ trả lỗi 500.
 
 ## 3. Chạy Frontend (Vite + React)
 
@@ -67,24 +70,18 @@ cd src/frontend
 node --version                  # cần >= 20 (khuyến nghị >= 24.12)
 npm install
 copy .env.example .env.local    # macOS/Linux: cp .env.example .env.local
-# Sửa các biến trong .env.local (lấy từ Firebase Console > Project settings > Web app):
-#   VITE_FIREBASE_API_KEY=...
-#   VITE_FIREBASE_AUTH_DOMAIN=<project-id>.firebaseapp.com
-#   VITE_FIREBASE_PROJECT_ID=<project-id>
-#   VITE_FIREBASE_STORAGE_BUCKET=<project-id>.appspot.com
-#   VITE_FIREBASE_MESSAGING_SENDER_ID=...
-#   VITE_FIREBASE_APP_ID=...
-#   VITE_API_BASE_URL=http://localhost:5000
+# Điền các biến (lấy từ Supabase Dashboard > Project Settings > API):
+#   VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+#   VITE_SUPABASE_ANON_KEY=<anon-key>
 npm run dev
 ```
 
 Web chạy tại `http://localhost:5173`.
 
 > **Lưu ý:**
-> - Backend phải đang chạy trước (bước 2) thì trang mới load được danh sách sách.
-> - Origin `http://localhost:5173` phải có trong `CORS_ORIGINS` của `src/backend/.env`, nếu không trình duyệt sẽ chặn request.
-> - Điền đúng các biến `VITE_FIREBASE_*` thì mới đăng nhập được; sai/thiếu sẽ báo lỗi khi gọi Firebase.
-> - Sau khi sửa `.env.local` cần **tắt và chạy lại** `npm run dev` để Vite nạp biến mới.
+> - Local stack (bước 2) phải đang chạy thì trang mới có dữ liệu.
+> - Điền đúng `VITE_SUPABASE_URL` và `VITE_SUPABASE_ANON_KEY` thì mới đăng nhập được.
+> - Sau khi sửa `.env.local` cần **tắt và chạy lại** `npm run dev`.
 
 Các lệnh khác:
 ```bash
@@ -93,40 +90,41 @@ npm run build     # build production vào thư mục dist/
 npm run preview   # xem thử bản build
 ```
 
-## API Endpoints
+> **Cần chuyển đổi:** `src/frontend/src/services/firebase.js` và `context/AuthContext.jsx` hiện dùng
+> Firebase JS SDK. Phải chuyển sang `supabase-js` (Supabase Auth session) — xem DEC-LOG-01.
 
-| Method | Endpoint | Auth | Mô tả |
-| --- | --- | --- | --- |
-| GET | `/api/health` | - | Kiểm tra server |
-| GET | `/api/books` | - | Danh sách sách |
-| GET | `/api/books/<id>` | - | Chi tiết một sách |
-| POST | `/api/books` | ✅ | Thêm sách |
-| PUT | `/api/books/<id>` | ✅ | Cập nhật sách |
-| DELETE | `/api/books/<id>` | ✅ | Xóa sách |
-| GET | `/api/auth/me` | ✅ | Thông tin user đang đăng nhập |
-| POST | `/api/auth/sync` | ✅ | Đồng bộ user vào Firestore |
+## Truy cập dữ liệu và API
 
-- Auth dùng Firebase ID token: gửi header `Authorization: Bearer <idToken>`. Frontend tự lấy token qua `src/services/api.js`.
+Không còn REST API tự viết. Truy cập dữ liệu theo mô hình của đặc tả:
+
+- **Đọc**: `supabase-js` qua PostgREST, bảo vệ bằng **Row Level Security**.
+- **Ghi**: chỉ qua **Edge Functions** (một transaction Postgres mỗi thao tác, có idempotency key).
+  Client **không** có quyền INSERT/UPDATE/DELETE trên bảng nghiệp vụ.
+- **RPC đọc**: `search_books`, `server_time`, `get_dashboard_kpis`, `get_rankings`,
+  `get_due_overdue_groups` (staff).
+- **Lỗi**: contract chuẩn `{ "error": { "reason", "message", "details" } }` — xem đặc tả §12.5.
 
 ## Cấu trúc code chính
 
-**Frontend** (`src/frontend/src/`)
-- `services/firebase.js` – khởi tạo Firebase (auth + firestore).
-- `services/api.js` – gọi Flask API kèm token.
-- `context/AuthContext.jsx` – trạng thái đăng nhập + các hàm auth.
-- `App.jsx` – trang demo (đăng nhập + danh sách sách).
+**Frontend** (`src/frontend/src/`) — giữ lại, cần chuyển sang Supabase
+- `services/firebase.js` – *(cần thay)* → `services/supabase.js`
+- `services/api.js` – *(cần thay)* → gọi `supabase-js` / Edge Functions
+- `context/AuthContext.jsx` – *(cần thay)* → Supabase Auth session
+- `App.jsx` – trang demo (đăng nhập + danh sách sách)
 
-**Backend** (`src/backend/`)
-- `run.py` – điểm khởi chạy.
-- `app/__init__.py` – app factory, CORS, đăng ký routes.
-- `app/config.py` – đọc biến môi trường.
-- `app/firebase.py` – khởi tạo Firebase Admin, Firestore client.
-- `app/auth.py` – decorator `require_auth` xác thực ID token.
-- `app/routes/` – các blueprint: `health`, `books`, `auth`.
+**Backend demo** (`src/backend/`) — **đã ngừng dùng**, không phát triển thêm
+
+**Đặc tả** (`src/speckit/`)
+- `specs/SHELFHELP_FULLSPEC.md` – SRS đầy đủ (nguồn có thẩm quyền)
+- `specs/000-core/spec.md` – bối cảnh dùng chung (decisions, policies, domain model, NFRs)
+- `specs/0NN*-.../spec.md` – spec theo tính năng (reader/admin đã tách)
+- `.specify/memory/constitution.md` – hiến chương dự án
 
 ## Việc cần làm tiếp
 
-- [ ] Tạo project Firebase và chia sẻ config cho nhóm.
-- [ ] Thiết kế đầy đủ collection trong Firestore (books, users, borrows...).
-- [ ] Thêm UI đăng nhập/đăng ký, quản lý sách, mượn/trả.
-- [ ] Viết test (pytest cho backend, Vitest cho frontend).
+- [ ] **M0**: tạo repo Supabase (dev/staging/prod) + local stack, migration pipeline, Edge Function
+      hello-world, pgTAP RLS test, Playwright smoke test.
+- [ ] Chuyển frontend từ Firebase SDK sang `supabase-js`.
+- [ ] Xoá `src/backend/` (Flask) và `src/firebase/` sau khi M0 hoàn tất.
+- [ ] Làm theo thứ tự milestone M1–M11 trong đặc tả §19.
+- [ ] Viết test: Vitest, React Testing Library, Playwright, pgTAP.
