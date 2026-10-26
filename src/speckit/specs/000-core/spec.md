@@ -58,7 +58,7 @@ mode, accounting export beyond CSV/PDF/Excel.
 | Member | Student with an active membership at the current time. |
 | Loan Request | Result of one checkout. Groups one or more Loan Items and carries the pickup deadline and payment. |
 | Loan Item | One copy lent (or about to be lent) to one student. The unit that has the status shown in My Loans. |
-| Reservation | A member's place in the queue for a Book with no available copy. |
+| Reservation | A member's place in the demand-side queue for a circulating Book. No specific physical copy is claimed until promotion. |
 | Wishlist | A "notify me when available" subscription. No hold is made. |
 | Charge | An amount a student owes (overdue fine, damage fee, loss fee). Unpaid until a Payment settles it. |
 | Payment | One attempt or act of paying (online simulated or counter). |
@@ -66,7 +66,7 @@ mode, accounting export beyond CSV/PDF/Excel.
 | Pickup window | Time a held copy waits for the student at the counter (48 h default). |
 | Debt hold | Derived block: student has outstanding charges, so new loan requests are blocked. |
 | Restricted | Account status set after a loss. Library services are blocked until an admin restores access. |
-| Strike | An expired reservation counted against a member. |
+| Strike | A penalty counted against a member when a `ready_for_pickup` reservation expires (offered a copy but stalled the 48 h pickup window). |
 
 ---
 
@@ -156,9 +156,9 @@ but the default is built so work is not blocked.
 | DEC-21 | Admins can mark a copy Lost during audits, but a copy on loan being marked lost is not described. | Marking a copy on loan as Lost triggers the same effects as automatic loss (loan `lost`, student Restricted, replacement charge), after a confirmation dialog. | Yes |
 | DEC-22 | "Max books at once" does not say what counts. | Counts Loan Items in `awaiting_payment`, `payment_failed`, `ready_for_pickup`, `borrowed`, `overdue`, plus reservations in `ready_for_pickup`. Waiting reservations and `lost` items do not count. | Yes |
 | DEC-23 | After membership expiry the student "cannot borrow beyond the lower non-member limit". | New request allowed only if (current counted items + new items) is at most the non-member limit. | No |
-| DEC-24 | Reservation queue is "limited" with no numbers. | Queue length max 5 per book. Max 3 active reservations per member. One active reservation per book per member. | Yes |
+| DEC-24 | Reservation queue is "limited" with no numbers, and the meaning of "active" for the per-member cap is unspecified. | Queue length max 5 per book. Max 3 active reservations per member, where active = `waiting` or `ready_for_pickup`. One active reservation per book per member. | Yes |
 | DEC-25 | Strike counting period is not defined. | Rolling 180 days. Strike 1 = warning. Strike 2 within the window = 30-day reservation ban, then strikes reset. | Yes |
-| DEC-26 | Promotion rules for ineligible queue members are missing. | Member without active membership, or Restricted or Inactive or in debt hold at promotion time: reservation cancelled with reason, no strike. Member at item limit: skipped but keeps position. | Yes |
+| DEC-26 | Promotion rules for ineligible queue members are missing. | Member without active membership, or Restricted or Inactive or in debt hold at promotion time: reservation cancelled with reason, no strike. Member at item limit or over the active-reservation cap: skipped but keeps position; the walk continues past them to the next eligible member. | Yes |
 | DEC-27 | Wishlist notification rules are missing. | Notify all wishlisters once when a book goes from 0 available copies to at least 1 and no reservation queue exists. Entry stays until removed. Max 50 entries. | Yes |
 | DEC-28 | Overdue emails "weekly for up to two weeks", then silence until the 2-month Lost conversion. | Emails at overdue day 7 and 14. Added: final warning email and in-app alert 7 days before the lost threshold. `[+]` | Yes |
 | DEC-29 | Email "when the pickup window is close to expiring" has no threshold. | 12 hours before the deadline. | Yes |
@@ -254,22 +254,24 @@ All values below are defaults stored in the `settings` table, key `library`.
 Renewal is allowed only if: item is `borrowed` (not `overdue`), account `active`, no debt hold, renewals used is below renewals allowed by **current** entitlements, and no waiting reservation exists for that Book. New due date = old due date + loan days of the current entitlement. Premium loans for non-members need a new fee payment first (DEC-06, DEC-52).
 
 ### 4.7 Reservations and wishlist (POL-07)
-- Only members can reserve, and only when the Book has zero available copies and at least one non-retired, non-lost copy.
+- Only members can reserve. A reservation is a demand-side queue, not a claim on a specific physical copy: a member may reserve whenever the Book is circulating, that is, it has at least one copy that is not `retired` or `lost`. The member does not need a copy to be `available` right now — they are queueing to be offered a copy the moment one becomes available. A non-circulating Book (all copies `retired` or `lost`) cannot be reserved.
 - Queue is FIFO by creation time.
 - **Promotion trigger:** whenever a copy becomes available (return in good enough condition, batch receipt, manual addition, found, hold released by expiry or cancellation). The system walks the queue front-to-front and applies the fixed check order below. First eligible member gets the copy: reservation becomes `ready_for_pickup`, copy becomes `held`, 48 h pickup deadline starts, a pickup code is generated, member notified (in-app and email).
   For each queue member, front first:
   1. Account not `active` (restricted or inactive), or debt hold, or no active membership: cancel with a reason, no strike.
   2. Member already has an active Loan Item or open request for this Book: cancel with a reason, no strike.
-  3. Counted items + 1 is more than the member's limit (DEC-22): skip, keep position, notify once.
-  4. Otherwise promote this member and stop.
-  A reservation ban affects only new reservations, not existing ones.
+  3. Member already has `max_active_per_member` active reservations (`waiting` or `ready_for_pickup`): skip, keep position, notify once.
+  4. Counted items + 1 is more than the member's limit (DEC-22): skip, keep position, notify once.
+  5. Otherwise promote this member and stop.
+  A skipped member (step 3 or 4) keeps their position; the walk continues past them to the next eligible member. If the walk reaches the end without promoting anyone, the copy stays `available` and wishlisters are notified. A reservation ban affects only new reservations, not existing ones.
 - A member cannot reserve a Book for which they already hold an active Loan Item or open request (`DUPLICATE_ACTIVE_LOAN`).
 - While a reservation is `ready_for_pickup`, only the Reservation row exists (no Loan Item yet). The student cancels it with no strike (FR-RES-04); expiry after 48 h earns a strike (FR-RES-03). At handover the system creates the Loan Item directly in `borrowed` (`source = reservation`) and sets the reservation to `fulfilled`. Ready reservations carry their own pickup code.
 - Expiry after 48 h: reservation `expired`, copy released, strike recorded, next member promoted. If queue empty, copy becomes `available` and wishlisters are notified.
+- **A strike is recorded only when a `ready_for_pickup` reservation expires (the member was offered the book and stalled the 48 h pickup window, wasting others' time).** A `waiting` reservation never expires and therefore never strikes; it is only ever `cancelled` (by the member, by staff, by a duplicate-loan or eligibility check, or by the non-circulating rule), and cancellation never strikes. This targets trolls who reach the head of the queue, let the copy arrive, then deliberately no-show past 48 h and re-queue.
 - Strike 1: warning notification. Strike 2 within 180 days: `reservation_ban_until = now + 30 days`, strikes reset. A ban blocks only new reservations.
 - Member can cancel a waiting or ready reservation at any time with no strike.
 - Wishlist: one entry per student per Book, max 50. Wishlist notification fires only when no queue exists (DEC-27).
-- **Non-circulating books.** A Book is non-circulating when it has no copy in `available`, `held`, or `borrowed` and no copy that could return to `available` (every copy is `retired` or `lost`). When a Book becomes non-circulating, the system cancels every `waiting` reservation with reason `book_not_circulating`, no strike, and notifies each member. A `ready_for_pickup` reservation is not cancelled by this rule; it expires normally or is fulfilled if the held copy still exists. Wishlist entries stay but no availability notification is sent while non-circulating. If a copy returns to `available` (found, or a return), the book circulates again.
+- **Non-circulating books.** A Book is non-circulating (not reservable) when every copy is `retired` or `lost`. All other states (`available`, `held`, `borrowed`, `damaged`, `under_repair`) count as circulating, because any of them can in principle lead back to a copy the member can borrow. When a Book becomes non-circulating, the system cancels every `waiting` reservation with reason `book_not_circulating`, no strike, and notifies each member. A `ready_for_pickup` reservation is not cancelled by this rule; it expires normally or is fulfilled if the held copy still exists. Wishlist entries stay but no availability notification is sent while non-circulating. If a copy returns to `available` (found, or a return), the book circulates again.
 
 ### 4.8 Fines, lost, and damage (POL-08)
 - Overdue days = number of local calendar days after the due date up to and including today.
@@ -401,7 +403,7 @@ AuditLog, ChatConversation, Settings, StatsDaily. (Attributes in Section 12 of t
 Terminal states: `expired`, `cancelled`, `returned`, and `lost` once `lost_resolved_at` is set. The system sets `lost_resolved_at` when the loss is settled: the book is returned (path A, and the item also moves to `returned`) or the replacement is paid in full (path B, and the item stays `lost`). Settling a loss does not restore the account; that is FR-AUTH-08.
 
 ### 5.3 Reservation states
-`waiting` → `ready_for_pickup` (promotion) → `fulfilled` (handover) | `expired` (48 h) | `cancelled`. A `waiting` reservation can also go to `cancelled` when the Book becomes non-circulating (reason `book_not_circulating`, no strike; POL-07).
+`waiting` → `ready_for_pickup` (promotion) → `fulfilled` (handover) | `expired` (48 h) | `cancelled`. A `waiting` reservation never expires and never earns a strike; it only ever transitions to `ready_for_pickup` (promotion) or `cancelled` (by the member, by staff, by a duplicate-loan or eligibility check, or when the Book becomes non-circulating with reason `book_not_circulating`, no strike; POL-07).
 While `ready_for_pickup`, only the Reservation row exists; no Loan Item is created until handover, when the Loan Item is created directly in `borrowed` (`source = reservation`) and the reservation is set `fulfilled`. Ready reservations carry their own pickup code.
 
 ### 5.4 Copy states
