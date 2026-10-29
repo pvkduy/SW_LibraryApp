@@ -354,11 +354,10 @@ flowchart TD
 
 ## 6.1 Applicable Standards
 
-* **RESTful API Standards:** All web service endpoints and Supabase Edge Functions SHALL adhere to HTTP/1.1 and HTTP/2 transport specifications (RFC 9110, RFC 9112), returning standard JSON structures and semantic status codes (e.g., 200 OK, 201 Created, 400 Bad Request, 403 Forbidden, 409 Conflict).  
-* **Bibliographic Metadata Standards:** Catalog records SHALL support international bibliographic identifier formats conforming to ISO 2108 (ISBN-10, ISBN-13) and Dublin Core metadata naming conventions.  
-* **Data Exchange Formats:** Exported data across batch procurements, receipts, and inventory audit logs SHALL conform to standardized MIME types: RFC 4180 for CSV, ISO/IEC 29500-1 for Microsoft Excel (XLSX), and ISO 32000-1 for PDF documents.  
-* **Temporal & Currency Standards:** All server-persisted and exchanged timestamps SHALL comply with the ISO 8601 UTC extended standard (YYYY-MM-DDTHH:mm:ss.sssZ). Monetary figures SHALL be stored as integer values in Vietnamese Đồng (VND), completely eliminating binary floating-point rounding errors.  
-* **Accessibility Standards:** The web user interface SHALL comply with the Web Content Accessibility Guidelines (**WCAG 2.1 Level AA**), maintaining a visual contrast ratio of at least 4.5:1 for standard text, full keyboard navigability for modal forms, and ARIA labels on all interactive controls.
+* **RESTful API Standards:** All web service endpoints and Supabase Edge Functions returns standard JSON structures and semantic status codes (e.g., 200 OK, 201 Created, 400 Bad Request, 403 Forbidden, 409 Conflict).  
+* **Bibliographic Metadata Standards:** Catalog records support international bibliographic identifier formats conforming to ISO 2108 (ISBN-10, ISBN-13).
+* **Temporal & Currency Standards:** All server-persisted and exchanged timestamps comply with the ISO 8601 UTC extended standard (YYYY-MM-DDTHH:mm:ss.sssZ). Monetary figures be stored as integer values in Vietnamese Đồng (VND), completely eliminating binary floating-point rounding errors.  
+* **Accessibility Standards:** The web user interface comply with the Web Content Accessibility Guidelines (**WCAG 2.1 Level AA**), maintaining a visual contrast ratio of at least 4.5:1 for standard text, full keyboard navigability for modal forms, and ARIA labels on all interactive controls.
 
 ## 6.2 Performance Requirements
 
@@ -367,24 +366,23 @@ flowchart TD
 * **Concurrent User Capacity:** The system should support at least 50 concurrent active users browsing and interacting with the application, while maintaining an average API response time of no more than 800 ms for common operations during load testing.  
 * **Checkout Concurrency Safety:** The checkout process should correctly handle concurrent requests for the same high-demand book, ensuring that no physical copy is allocated to more than one active loan and that inventory quantities never become negative. This requirement should be verified through concurrent transaction tests.  
 * **AI Recommendation Latency:** The AI research assistant should begin streaming its response within 3.0 seconds and complete a typical recommendation list within 8.0 seconds under normal network and AI provider conditions.  
-* **Optical Barcode Decoding Time:** Client-side camera scanning should identify and decode standard 1D Code-128 and EAN-13 barcodes within 500 ms after a barcode is clearly visible and aligned, under adequate indoor lighting conditions (approximately 300 lux or higher) on supported devices.
 
 ## 6.3 Security Requirements
 
-* **Authentication & Session Management:** User authentication SHALL use a secure authentication provider with appropriate password hashing, token expiration, and session refresh mechanisms.  
-* **Row-Level Security (RLS):** RLS SHALL protect database tables containing sensitive user and operational data. Access SHALL be restricted according to user roles, with administrative privileges verified server-side.  
-* **Server-Side Transaction Protection:** Modifications to loans, copies, charges, payments, and receipts SHALL be validated by trusted server-side logic. Unauthorized direct client modifications SHALL be prohibited.  
-* **Vulnerability Mitigation:** The application SHALL use parameterized database queries, validate user input, apply appropriate XSS protections, and restrict cross-origin requests to approved origins.
+* **Authentication & Session Management:** User authentication use a secure authentication provider with appropriate password hashing, token expiration, and session refresh mechanisms.  
+* **Row-Level Security (RLS):** RLS protect database tables containing sensitive user and operational data. Access be restricted according to user roles, with administrative privileges verified server-side.  
+* **Server-Side Transaction Protection:** Modifications to loans, copies, charges, payments, and receipts be validated by trusted server-side logic. Unauthorized direct client modifications be prohibited.  
+* **Vulnerability Mitigation:** The application use parameterized database queries, validate user input, apply appropriate XSS protections, and restrict cross-origin requests to approved origins.
 
 ## 6.4 Platform and Environmental Requirements
 
-* **Browser Compatibility:** The application SHALL support recent stable versions of Google Chrome, Apple Safari, Mozilla Firefox, and Microsoft Edge.  
-* **Responsive Viewport Support:** The interface SHALL remain usable across viewport widths from 360 px to 1920 px, covering mobile, tablet, and desktop devices.  
-* **Backend Infrastructure:** The backend SHALL use PostgreSQL 15 or later and a supported Deno runtime for Supabase Edge Functions. Database extensions, including `unaccent`, `pg_trgm`, and `pgvector`, SHALL be enabled only when required by implemented features.
+* **Browser Compatibility:** The application should support the latest two stable major versions of Google Chrome, Apple Safari, Mozilla Firefox, and Microsoft Edge.  
+* **Responsive Viewport Support:** The interface remain usable across viewport widths from 360 px to 1920 px, covering mobile, tablet, and desktop devices.  
+* **Backend Infrastructure:** The backend use PostgreSQL 15 or later and a supported Deno runtime for Supabase Edge Functions. Database extensions, including `unaccent`, `pg_trgm`, and `pgvector`, be enabled only when required by implemented features.
 
 ## 6.5 Quality Attributes: Reliability, Usability, and Auditability
 
-* **Backup and Recovery:** The system SHALL use available database backup and recovery mechanisms appropriate to the deployment environment.  
-* **Financial Record Integrity:** Receipt records SHALL be protected against unauthorized modification or deletion. Corrections and refunds SHALL preserve the original transaction history and include a reason.  
-* **Inventory Traceability:** Changes to a physical copy's status SHALL be logged with the timestamp, acting user or system process, previous status, and new status.  
-* **Error Handling & Idempotency:** Critical operations, including checkout, fee payment, and handover confirmation, SHALL prevent duplicate transactions caused by repeated requests. Error messages SHALL provide clear guidance without exposing internal errors or sensitive information.
+* **Backup and Recovery:** The system use available database backup and recovery mechanisms appropriate to the deployment environment.  
+* **Financial Record Integrity:** Receipt records be protected against unauthorized modification or deletion. Corrections and refunds preserve the original transaction history and must include a reason.  
+* **Inventory Traceability:** Changes to a physical copy's status must be logged with the timestamp, acting user or system process, previous status, and new status.  
+* **Error Handling & Idempotency:** The system should prevent duplicate transactions in critical operations, including checkout, fee payment, and handover confirmation, when requests are repeated. Error messages should provide clear guidance without exposing sensitive server-side information.
