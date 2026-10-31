@@ -1,0 +1,615 @@
+* commit 35a58cee89bd448dbadc84672adb0623ad4ee7ba
+| Author: xxavierr31 <anhkhoi25606@gmail.com>
+| Date:   Sat Oct 31 02:10:22 2026 +0700
+| 
+|     submission setup
+| 
+|  docs/management/PA2/jira backlog.png              | Bin 0 -> 263129 bytes
+|  docs/management/PA2/meetings/scrum1.md            | 136 +++++++++++
+|  docs/management/PA2/meetings/scrum1.pdf           | Bin 0 -> 82101 bytes
+|  docs/management/PA2/meetings/scrum2.md            | 129 +++++++++++
+|  docs/management/PA2/meetings/scrum2.pdf           | Bin 0 -> 80404 bytes
+|  docs/management/PA2/meetings/sprint-planning.md   |  67 ++++++
+|  docs/management/PA2/meetings/sprint-planning.pdf  | Bin 0 -> 83496 bytes
+|  docs/management/PA2/meetings/sprint-review.md     |  65 ++++++
+|  docs/management/PA2/meetings/sprint-review.pdf    | Bin 0 -> 67820 bytes
+|  docs/management/PA2/speckit-setup/constitution.md | 235 ++++++++++++++++++++
+|  docs/management/PA2/speckit-setup/outputs.zip     | Bin 0 -> 79808 bytes
+|  .../specs/Project Proposal - PA1_extended.md      |  95 ++++++++
+|  12 files changed, 727 insertions(+)
+|   
+*   commit 87f7172e697b502c67140a0cfcbc2e4d620a606e
+|\  Merge: b02b8cd 4ce01c4
+| | Author: Minh Thuan <minhthuan524568@gmail.com>
+| | Date:   Fri Oct 30 21:20:44 2026 +0700
+| | 
+| |     Merge branch 'main' of https://github.com/pvkduy/SW_LibraryApp
+| | 
+| * commit 4ce01c4fc79a89ce1f8373c1d0f6e1fa1bcc04f4
+| | Author: nmphu1307 <iamray13072006@gmail.com>
+| | Date:   Fri Oct 30 21:13:20 2026 +0700
+| | 
+| |     Github Speckit training envidence
+| | 
+| |  docs/management/PA2/speckit-training/24125103.png | Bin 0 -> 344931 bytes
+| |  1 file changed, 0 insertions(+), 0 deletions(-)
+| | 
+* | commit b02b8cd74e975753a3d8573cc503db42d09cd281
+|/  Author: Minh Thuan <minhthuan524568@gmail.com>
+|   Date:   Fri Oct 30 21:20:26 2026 +0700
+|   
+|       speckit training
+|   
+|    docs/management/PA2/speckit-training/24125105.png | Bin 0 -> 414492 bytes
+|    1 file changed, 0 insertions(+), 0 deletions(-)
+| 
+* commit 01d3a9a57df4b8430254dec5d4f131cb2b749cdf
+| Author: Minh Thuan <minhthuan524568@gmail.com>
+| Date:   Fri Oct 30 21:09:12 2026 +0700
+| 
+|     write ai usage report
+| 
+|  docs/management/PA2/ai-usage-reports/24125105.md | 89 ++++++++++++++++++++++
+|  1 file changed, 89 insertions(+)
+| 
+* commit aeb92cc50b8e06f1ab9a9fa8d07a282e7dd4e0a9
+| Author: Le Van Vi <1782006vile@gmail.com>
+| Date:   Fri Oct 30 17:11:10 2026 +0700
+| 
+|     upload pdf version for vision document + AI usage report
+| 
+|  docs/management/PA2/ai-usage-reports/24125050.md  |  67 ++++++++++++++++++++
+|  .../PA2/vision-document/Vision-Document.pdf       | Bin 95455 -> 216786 bytes
+|  2 files changed, 67 insertions(+)
+| 
+* commit 227188303c17ca0de101fbfd355ab8a035410404
+| Author: Le Van Vi <1782006vile@gmail.com>
+| Date:   Fri Oct 30 00:23:37 2026 +0700
+| 
+|     refine vision document
+| 
+|  .../PA2/vision-document/Vision-Document.md        | 32 ++++++++++-----------
+|  1 file changed, 15 insertions(+), 17 deletions(-)
+| 
+* commit fc6970166161f6ea95ab885a6740dc8342a08f0d
+| Author: Le Van Vi <1782006vile@gmail.com>
+| Date:   Thu Oct 29 23:56:56 2026 +0700
+| 
+|     GIthub Speckit training evidence
+| 
+|  docs/management/PA2/speckit-training/24125050.png | Bin 0 -> 128227 bytes
+|  1 file changed, 0 insertions(+), 0 deletions(-)
+| 
+* commit f60a19974f5fd79511053aa2b7ef8f850b7d533f
+| Author: Le Van Vi <1782006vile@gmail.com>
+| Date:   Thu Oct 29 23:43:10 2026 +0700
+| 
+|     Update section 4,5,6 for vision document
+| 
+|  .../PA2/vision-document/Vision-Document.md        | 315 +++++++++++++++++++-
+|  1 file changed, 314 insertions(+), 1 deletion(-)
+| 
+* commit 757967565e4a26c9fe4b4f4dbb657913c89d7b61
+| Author: xxavierr31 <anhkhoi25606@gmail.com>
+| Date:   Thu Oct 29 23:37:40 2026 +0700
+| 
+|     speckit training evidence
+| 
+|  docs/management/PA2/speckit-training/24125060.png | Bin 0 -> 843806 bytes
+|  1 file changed, 0 insertions(+), 0 deletions(-)
+| 
+* commit 2848efa28d1a534271288aae71e29780f4910545
+| Author: Nguyễn Anh Khôi <anhkhoi25606@gmail.com>
+| Date:   Thu Oct 29 21:40:35 2026 +0700
+| 
+|     ai usage report
+| 
+|  docs/management/PA2/ai-usage-reports/24125060.md | 145 +++++++++++++++++++++
+|  1 file changed, 145 insertions(+)
+| 
+* commit fe26ebb3690aea417d836cdeb45b389fff700c72
+| Author: khangduy2209 <phamvokhangduy@gmail.com>
+| Date:   Thu Oct 29 14:12:57 2026 +0700
+| 
+|     add project plan
+| 
+|  docs/management/PA2/project-plan/Project-Plan.md  | 378 ++++++++++++++++++++
+|  docs/management/PA2/project-plan/Project-Plan.pdf | Bin 0 -> 425819 bytes
+|  .../Vision-Document.md}                           |   0
+|  .../PA2/vision-document/Vision-Document.pdf       | Bin 0 -> 95455 bytes
+|  4 files changed, 378 insertions(+)
+| 
+* commit b241f35f05a89e5bc976cf800e670153e3455013
+| Author: Minh Thuan <minhthuan524568@gmail.com>
+| Date:   Wed Oct 28 14:44:06 2026 +0700
+| 
+|     add vision_document
+| 
+|  docs/management/PA2/vision_document.md | 77 ++++++++++++++++++++++++++++++++
+|  1 file changed, 77 insertions(+)
+| 
+* commit 0fd4d5a1dacdcaffbeb8e7c2a3402f64438fe145
+| Author: xxavierr31 <anhkhoi25606@gmail.com>
+| Date:   Mon Oct 26 20:57:49 2026 +0700
+| 
+|     business policies update
+| 
+|  src/speckit/specs/000-core/spec.md                | 22 +++++++++++----------
+|  .../specs/006a-reservations-reader/spec.md        | 20 ++++++++++---------
+|  2 files changed, 23 insertions(+), 19 deletions(-)
+| 
+* commit c078caff950077fe9740702e4c91a3b5401f01d3
+| Author: xxavierr31 <anhkhoi25606@gmail.com>
+| Date:   Mon Oct 26 20:55:34 2026 +0700
+| 
+|     business policies update
+| 
+|  src/speckit/specs/SHELFHELP_FULLSPEC.md | 30 ++++++++++++++++--------------
+|  1 file changed, 16 insertions(+), 14 deletions(-)
+| 
+* commit 8ab020fd6b5a6896c7819ac7533c421123ed8c44
+| Author: xxavierr31 <anhkhoi25606@gmail.com>
+| Date:   Sun Oct 25 20:24:54 2026 +0700
+| 
+|     fix CI
+| 
+|  .github/workflows/ci.yml     | 16 ++++++++++++++++
+|  src/speckit/specs/M0-PLAN.md | 20 ++++++++++++++++++++
+|  2 files changed, 36 insertions(+)
+| 
+* commit f507dda251728cb2b4b1463bd08bb764a0321274
+| Author: xxavierr31 <anhkhoi25606@gmail.com>
+| Date:   Sun Oct 25 20:21:41 2026 +0700
+| 
+|     fix readme instructions
+| 
+|  README.md | 84 +++++++++++++++++--------------------------------------------
+|  1 file changed, 23 insertions(+), 61 deletions(-)
+| 
+* commit 8834b653ebc65788c513af32a807c3b503ab7d6d
+| Author: xxavierr31 <anhkhoi25606@gmail.com>
+| Date:   Sun Oct 25 18:50:18 2026 +0700
+| 
+|     set up
+| 
+|  .github/workflows/ci.yml     |   9 --
+|  README.md                    |  29 ++++++
+|  package-lock.json            | 225 +++++++++++++++++++++++++++++++++++++++++
+|  package.json                 |   3 +
+|  src/speckit/specs/M0-PLAN.md |  13 ++-
+|  5 files changed, 267 insertions(+), 12 deletions(-)
+| 
+* commit 242e1a13e66d494d823ac9f7dcd86b233a92907f
+| Author: xxavierr31 <anhkhoi25606@gmail.com>
+| Date:   Sun Oct 25 18:25:35 2026 +0700
+| 
+|     set up
+| 
+|  .github/workflows/ci.yml                          | 206 ++++++++++++++
+|  .gitignore                                        |   6 +
+|  README.md                                         |   7 +-
+|  docs/DECISIONS.md                                 | 135 +++++++++
+|  .../{meetings => team-contract}/team-contract.md  |   0
+|  .../{meetings => team-contract}/team-contract.pdf | Bin
+|  package-lock.json                                 | 136 +++++----
+|  package.json                                      |  16 +-
+|  src/e2e/package.json                              |  17 ++
+|  src/e2e/playwright.config.ts                      |  52 ++++
+|  src/e2e/smoke.spec.ts                             |  52 ++++
+|  src/e2e/tsconfig.json                             |  10 +
+|  src/frontend/src/app/App.jsx                      |  11 +-
+|  src/speckit/specs/M0-PLAN.md                      | 281 ++++++++++---------
+|  src/supabase/deno-globals.d.ts                    |  89 ++++++
+|  src/supabase/functions/_shared/http.ts            |   9 +-
+|  src/supabase/migrations/0001_init.sql             |  25 +-
+|  src/supabase/tests/rls_test.sql                   | 290 ++++++++++++++++++++
+|  src/supabase/tsconfig.json                        |  17 +-
+|  19 files changed, 1167 insertions(+), 192 deletions(-)
+| 
+* commit bd572666d4b894f46b0fbb8053173fd0276bb76c
+| Author: Nguyễn Anh Khôi <anhkhoi25606@gmail.com>
+| Date:   Sun Oct 25 16:53:19 2026 +0700
+| 
+|     supabase setup
+| 
+|  .gitignore                                     |   12 +-
+|  README.md                                      |  372 +++-
+|  docs/DECISIONS.md                              |   52 +
+|  package-lock.json                              | 1463 ++++++++++++++
+|  package.json                                   |   20 +
+|  src/backend/.env.example                       |   15 -
+|  src/backend/.gitignore                         |   13 -
+|  src/backend/app/__init__.py                    |   28 -
+|  src/backend/app/auth.py                        |   25 -
+|  src/backend/app/config.py                      |   20 -
+|  src/backend/app/firebase.py                    |   39 -
+|  src/backend/app/routes/__init__.py             |    0
+|  src/backend/app/routes/auth.py                 |   41 -
+|  src/backend/app/routes/books.py                |   67 -
+|  src/backend/app/routes/health.py               |    8 -
+|  src/backend/requirements.txt                   |    5 -
+|  src/backend/run.py                             |    7 -
+|  src/firebase/firestore.rules                   |   29 -
+|  src/frontend/.env.example                      |   32 +-
+|  src/frontend/index.html                        |    2 +-
+|  src/frontend/package-lock.json                 | 2344 ----------------------
+|  src/frontend/package.json                      |    2 +-
+|  src/frontend/src/App.jsx                       |   50 -
+|  src/frontend/src/app/App.jsx                   |   64 +
+|  src/frontend/src/{ => app}/main.jsx            |    4 +-
+|  src/frontend/src/context/AuthContext.jsx       |   47 -
+|  src/frontend/src/features/auth/AuthContext.jsx |   89 +
+|  src/frontend/src/lib/api.js                    |   33 +
+|  src/frontend/src/lib/supabase.js               |   27 +
+|  src/frontend/src/services/api.js               |   28 -
+|  src/frontend/src/services/firebase.js          |   25 -
+|  src/scripts/spec-matrix.mjs                    |  111 +
+|  src/shared/package.json                        |   18 +
+|  src/shared/src/domain/clock.ts                 |   21 +
+|  src/shared/src/index.ts                        |   17 +
+|  src/shared/src/reason-codes/index.ts           |   56 +
+|  src/shared/src/settings-defaults/index.ts      |  143 ++
+|  src/shared/src/settings-defaults/loader.ts     |   44 +
+|  src/shared/src/types/index.ts                  |   99 +
+|  src/shared/tsconfig.json                       |    7 +
+|  src/speckit/specs/M0-PLAN.md                   |  194 ++
+|  src/supabase/.gitignore                        |    8 +
+|  src/supabase/config.toml                       |   72 +
+|  src/supabase/functions/_shared/http.ts         |   34 +
+|  src/supabase/functions/hello/index.ts          |   41 +
+|  src/supabase/migrations/0001_init.sql          |  314 +++
+|  src/supabase/seed.sql                          |   53 +
+|  src/supabase/tsconfig.json                     |    8 +
+|  tsconfig.base.json                             |   22 +
+|  49 files changed, 3340 insertions(+), 2885 deletions(-)
+| 
+* commit ebd6faeafabdc5fddc08afdba4d38223c14f0a6e
+| Author: Nguyễn Anh Khôi <anhkhoi25606@gmail.com>
+| Date:   Sun Oct 25 13:24:03 2026 +0700
+| 
+|     specs revision
+| 
+|  docs/DECISIONS.md                                 |  45 ++++++
+|  .../specs/000-core/checklists/core-quality.md     | 136 ++++++++--------
+|  src/speckit/specs/000-core/spec.md                |  26 ++-
+|  src/speckit/specs/001a-accounts-reader/spec.md    |   2 +-
+|  src/speckit/specs/005b-loans-admin/spec.md        |   1 +
+|  .../specs/006a-reservations-reader/spec.md        |   1 +
+|  src/speckit/specs/008-inventory/spec.md           |   2 +-
+|  src/speckit/specs/SHELFHELP_FULLSPEC.md           |  35 +++-
+|  .../specs/SPEC_REVISIONS_ver2_2026-10-25.md       | 167 ++++++++++++++++++++
+|  9 files changed, 335 insertions(+), 80 deletions(-)
+| 
+* commit 5346d56cd4f4c8d66fc7af29be2b5dfabf9d1e0b
+| Author: Nguyễn Anh Khôi <anhkhoi25606@gmail.com>
+| Date:   Sun Oct 25 11:42:33 2026 +0700
+| 
+|     specs revision
+| 
+|  .../specs/000-core/checklists/core-quality.md     | 131 ++++++++++++++++++++
+|  src/speckit/specs/000-core/spec.md                |  32 +++--
+|  src/speckit/specs/005a-loans-reader/spec.md       |   4 +-
+|  src/speckit/specs/005b-loans-admin/spec.md        |   5 +-
+|  .../specs/006a-reservations-reader/spec.md        |  11 +-
+|  src/speckit/specs/SHELFHELP_FULLSPEC.md           |  53 ++++++--
+|  src/speckit/specs/SPEC_REVISIONS_2026-10-25.md    | 127 +++++++++++++++++++
+|  7 files changed, 337 insertions(+), 26 deletions(-)
+| 
+* commit cec8cac04a890b6db39eaadf674363edd90b45ca
+| Author: Nguyễn Anh Khôi <anhkhoi25606@gmail.com>
+| Date:   Sun Oct 25 10:42:26 2026 +0700
+| 
+|     update contitution.md + tech stack
+| 
+|  README.md                                   | 158 +++++++++---------
+|  docs/DECISIONS.md                           |  60 +++++++
+|  src/speckit/.specify/memory/constitution.md | 232 ++++++++++++++++++++++++++
+|  3 files changed, 370 insertions(+), 80 deletions(-)
+| 
+* commit f5adbe7e1574130a5da84c7fe43382103e0e1a3f
+| Author: Nguyễn Anh Khôi <anhkhoi25606@gmail.com>
+| Date:   Sun Oct 25 10:41:15 2026 +0700
+| 
+|     SpecKit setup
+| 
+|  .gitignore                                        |    2 +
+|  src/speckit/.specify/.gitignore                   |   14 +
+|  src/speckit/.specify/init-options.json            |    9 +
+|  src/speckit/.specify/integration.json             |   15 +
+|  .../.specify/integrations/pi.manifest.json        |   17 +
+|  .../.specify/integrations/speckit.manifest.json   |   19 +
+|  .../.specify/memory/.constitution-template.json   |    4 +
+|  .../.specify/scripts/bash/check-prerequisites.sh  |  249 ++++
+|  src/speckit/.specify/scripts/bash/common.sh       |  942 ++++++++++++
+|  .../.specify/scripts/bash/create-new-feature.sh   |  504 +++++++
+|  .../.specify/scripts/bash/resolve-template.sh     |   57 +
+|  src/speckit/.specify/scripts/bash/setup-plan.sh   |   89 ++
+|  src/speckit/.specify/scripts/bash/setup-tasks.sh  |   94 ++
+|  .../.specify/templates/checklist-template.md      |   45 +
+|  .../.specify/templates/constitution-template.md   |   50 +
+|  src/speckit/.specify/templates/plan-template.md   |  113 ++
+|  src/speckit/.specify/templates/spec-template.md   |  131 ++
+|  src/speckit/.specify/templates/tasks-template.md  |  252 ++++
+|  .../.specify/workflows/speckit/workflow.yml       |   74 +
+|  .../.specify/workflows/workflow-registry.json     |   13 +
+|  src/speckit/specs/000-core/spec.md                |  530 +++++++
+|  src/speckit/specs/001a-accounts-reader/spec.md    |  121 ++
+|  src/speckit/specs/001b-accounts-admin/spec.md     |   57 +
+|  src/speckit/specs/002-catalog-search/spec.md      |  128 ++
+|  src/speckit/specs/003a-membership-reader/spec.md  |  107 ++
+|  src/speckit/specs/003b-membership-admin/spec.md   |   69 +
+|  src/speckit/specs/004-cart-checkout/spec.md       |  151 ++
+|  src/speckit/specs/005a-loans-reader/spec.md       |  126 ++
+|  src/speckit/specs/005b-loans-admin/spec.md        |   78 +
+|  .../specs/006a-reservations-reader/spec.md        |  118 ++
+|  src/speckit/specs/006b-reservations-admin/spec.md |   53 +
+|  src/speckit/specs/007-circulation/spec.md         |   90 ++
+|  src/speckit/specs/008-inventory/spec.md           |  131 ++
+|  src/speckit/specs/009-receipts/spec.md            |  116 ++
+|  src/speckit/specs/010a-suggestions-reader/spec.md |   69 +
+|  src/speckit/specs/010b-suggestions-admin/spec.md  |   82 ++
+|  src/speckit/specs/011-analytics/spec.md           |  113 ++
+|  src/speckit/specs/012-assistant/spec.md           |  131 ++
+|  .../specs/013a-notifications-reader/spec.md       |   87 ++
+|  .../specs/013b-notifications-admin/spec.md        |   55 +
+|  src/speckit/specs/014-platform/spec.md            |  121 ++
+|  src/speckit/specs/README.md                       |   85 ++
+|  src/speckit/specs/SHELFHELP_FULLSPEC.md           | 1458 +++++++++++++++++++
+|  43 files changed, 6769 insertions(+)
+| 
+* commit a2f9c677fc9b3d9de278bbff0b2b02fceecd97dd
+| Author: Nguyễn Anh Khôi <anhkhoi25606@gmail.com>
+| Date:   Sat Oct 17 10:13:32 2026 +0700
+| 
+|     pa1 git log
+| 
+|  docs/management/PA1/git-log.txt | Bin 0 -> 3440 bytes
+|  1 file changed, 0 insertions(+), 0 deletions(-)
+| 
+* commit c27c25908e1367a5f1732feff620adefa97b5f5e
+| Author: Nguyễn Anh Khôi <anhkhoi25606@gmail.com>
+| Date:   Sat Oct 17 10:10:11 2026 +0700
+| 
+|     pa1 ai coding accounts
+| 
+|  .../PA1/evidence/AI coding accounts/24125050.png     | Bin 0 -> 266954 bytes
+|  .../PA1/evidence/AI coding accounts/24125060.png     | Bin 0 -> 326626 bytes
+|  .../PA1/evidence/AI coding accounts/24125098.png     | Bin 0 -> 114381 bytes
+|  .../PA1/evidence/AI coding accounts/24125103.png     | Bin 0 -> 226421 bytes
+|  .../PA1/evidence/AI coding accounts/24125105.png     | Bin 0 -> 628406 bytes
+|  5 files changed, 0 insertions(+), 0 deletions(-)
+| 
+* commit cc4a4b72e426b931c228c2876e102ece52e70feb
+| Author: xxavierr31 <anhkhoi25606@gmail.com>
+| Date:   Fri Oct 16 20:36:07 2026 +0700
+| 
+|     pa1 sprint review
+| 
+|  docs/management/PA1/meetings/scrum1.md           |   4 +-
+|  docs/management/PA1/meetings/scrum2.md           |   6 +-
+|  docs/management/PA1/meetings/sprint-planning.md  |   2 -
+|  docs/management/PA1/meetings/sprint-planning.pdf | Bin 0 -> 72451 bytes
+|  docs/management/PA1/meetings/sprint-review.md    |  61 +++++++++++++++++++++
+|  docs/management/PA1/meetings/sprint-review.pdf   | Bin 0 -> 64635 bytes
+|  6 files changed, 68 insertions(+), 5 deletions(-)
+| 
+* commit 859fea1b4da0aa9343489a214a31fd52fa39eee6
+| Author: xxavierr31 <anhkhoi25606@gmail.com>
+| Date:   Fri Oct 16 20:11:52 2026 +0700
+| 
+|     weekly reports + pa1 deliverables
+| 
+|  docs/management/PA1/App-Survey/Cern/Cern.md       |  15 ++-
+|  .../{Comparision => Comparison}/Report.md         |   4 +
+|  .../{Comparision => Comparison}/Report.pdf        | Bin
+|  .../PA1/App-Survey/Koha/Staff Screen - Koha.md    |   2 +
+|  .../App-Survey/VNU-HCM-Library/VNU-HCM-Library.md |  38 +++---
+|  docs/management/PA1/evidence/git-repo.png         | Bin 0 -> 840855 bytes
+|  docs/management/PA1/evidence/jira.png             | Bin 0 -> 219198 bytes
+|  docs/management/PA1/meetings/scrum1.md            | 142 ++++++++++++++++++++
+|  docs/management/PA1/meetings/scrum1.pdf           | Bin 0 -> 84612 bytes
+|  docs/management/PA1/meetings/scrum2.md            | 118 ++++++++++++++++
+|  docs/management/PA1/meetings/scrum2.pdf           | Bin 0 -> 80776 bytes
+|  .../PA1/{ => meetings}/sprint-planning.md         |   8 +-
+|  .../PA1/{ => meetings}/team-contract.md           |   1 +
+|  docs/management/PA1/meetings/team-contract.pdf    | Bin 0 -> 82978 bytes
+|  .../PA1/project-proposal/Project-Proposal.md      |   4 +
+|  15 files changed, 305 insertions(+), 27 deletions(-)
+| 
+* commit db6344736c9e157477596654064241282174fe56
+| Author: nmphu1307 <iamray13072006@gmail.com>
+| Date:   Fri Oct 16 19:42:16 2026 +0700
+| 
+|     add Staff Screen - Koha app report
+| 
+|  .../management/PA1/App-Survey/Koha/Cataloging.png | Bin 0 -> 173518 bytes
+|  docs/management/PA1/App-Survey/Koha/CheckIn.png   | Bin 0 -> 106233 bytes
+|  docs/management/PA1/App-Survey/Koha/CheckOut.png  | Bin 0 -> 95005 bytes
+|  docs/management/PA1/App-Survey/Koha/Home.png      | Bin 0 -> 297454 bytes
+|  docs/management/PA1/App-Survey/Koha/Patron.png    | Bin 0 -> 108689 bytes
+|  docs/management/PA1/App-Survey/Koha/Report.png    | Bin 0 -> 163315 bytes
+|  .../PA1/App-Survey/Koha/Staff Screen - Koha.md    | 223 ++++++++++++++++++++
+|  .../PA1/App-Survey/Koha/Staff Screen - Koha.pdf   | Bin 0 -> 1258799 bytes
+|  8 files changed, 223 insertions(+)
+| 
+* commit bc595c6e8a34d4fc4d36a11ef625846699c10c8c
+| Author: Le Van Vi <1782006vile@gmail.com>
+| Date:   Fri Oct 16 19:21:18 2026 +0700
+| 
+|     Project proposal (both pdf and md)
+| 
+|  .../PA1/project-proposal/Project-Proposal.md      |  92 ++++++++++++++++++++
+|  .../PA1/project-proposal/Project-Proposal.pdf     | Bin 0 -> 117369 bytes
+|  2 files changed, 92 insertions(+)
+| 
+* commit 8980f7228242afb961c4460da5230881eea5985c
+| Author: Minh Thuan <minhthuan524568@gmail.com>
+| Date:   Fri Oct 16 17:45:27 2026 +0700
+| 
+|     add user's app-survey report
+| 
+|  docs/management/PA1/App-Survey/Cern/Cern.md       | 127 ++++++++++++++++++++
+|  docs/management/PA1/App-Survey/Cern/Cern.pdf      | Bin 0 -> 3649447 bytes
+|  docs/management/PA1/App-Survey/Cern/image1.png    | Bin 0 -> 2603189 bytes
+|  docs/management/PA1/App-Survey/Cern/image2.png    | Bin 0 -> 254585 bytes
+|  docs/management/PA1/App-Survey/Cern/image3.png    | Bin 0 -> 663615 bytes
+|  .../PA1/App-Survey/Comparision/Report.md          |  77 ++++++++++++
+|  .../PA1/App-Survey/Comparision/Report.pdf         | Bin 0 -> 99585 bytes
+|  .../App-Survey/VNU-HCM-Library/VNU-HCM-Library.md | 107 +++++++++++++++++
+|  .../VNU-HCM-Library/VNU-HCM-Library.pdf           | Bin 0 -> 949544 bytes
+|  .../PA1/App-Survey/VNU-HCM-Library/image1.jpg     | Bin 0 -> 138185 bytes
+|  .../PA1/App-Survey/VNU-HCM-Library/image2.jpg     | Bin 0 -> 130814 bytes
+|  .../PA1/App-Survey/VNU-HCM-Library/image3.jpg     | Bin 0 -> 156315 bytes
+|  .../PA1/App-Survey/VNU-HCM-Library/image4.jpg     | Bin 0 -> 94430 bytes
+|  .../PA1/App-Survey/VNU-HCM-Library/image5.jpg     | Bin 0 -> 94167 bytes
+|  .../PA1/App-Survey/VNU-HCM-Library/image6.jpg     | Bin 0 -> 108409 bytes
+|  .../PA1/App-Survey/VNU-HCM-Library/image7.jpg     | Bin 0 -> 58836 bytes
+|  .../PA1/App-Survey/VNU-HCM-Library/image8.jpg     | Bin 0 -> 56201 bytes
+|  17 files changed, 311 insertions(+)
+| 
+* commit 659792c093b03ff8a4c7bd6b4f84261d194fe28f
+| Author: xxavierr31 <anhkhoi25606@gmail.com>
+| Date:   Fri Oct 16 08:43:42 2026 +0700
+| 
+|     sprint planning + team contract
+| 
+|  docs/management/PA1/sprint-planning.md |  67 ++++++++++++++++++++
+|  docs/management/PA1/team-contract.md   | 104 +++++++++++++++++++++++++++++++
+|  2 files changed, 171 insertions(+)
+| 
+* commit 2d038a5e977e60d74a1ac5da770dcdaabcc683eb
+| Author: xxavierr31 <anhkhoi25606@gmail.com>
+| Date:   Fri Oct 16 08:24:27 2026 +0700
+| 
+|     refactor project root into /src and /docs
+| 
+|  README.md                                         | 31 +++++++++++----------
+|  {backend => src/backend}/.env.example             |  0
+|  {backend => src/backend}/.gitignore               |  0
+|  {backend => src/backend}/app/__init__.py          |  0
+|  {backend => src/backend}/app/auth.py              |  0
+|  {backend => src/backend}/app/config.py            |  0
+|  {backend => src/backend}/app/firebase.py          |  0
+|  {backend => src/backend}/app/routes/__init__.py   |  0
+|  {backend => src/backend}/app/routes/auth.py       |  0
+|  {backend => src/backend}/app/routes/books.py      |  0
+|  {backend => src/backend}/app/routes/health.py     |  0
+|  {backend => src/backend}/requirements.txt         |  0
+|  {backend => src/backend}/run.py                   |  0
+|  {firebase => src/firebase}/firestore.rules        |  0
+|  {frontend => src/frontend}/.env.example           |  0
+|  {frontend => src/frontend}/.gitignore             |  0
+|  {frontend => src/frontend}/.oxlintrc.json         |  0
+|  {frontend => src/frontend}/index.html             |  0
+|  {frontend => src/frontend}/package-lock.json      |  0
+|  {frontend => src/frontend}/package.json           |  0
+|  {frontend => src/frontend}/public/favicon.svg     |  0
+|  {frontend => src/frontend}/src/App.css            |  0
+|  {frontend => src/frontend}/src/App.jsx            |  0
+|  .../frontend}/src/context/AuthContext.jsx         |  0
+|  {frontend => src/frontend}/src/index.css          |  0
+|  {frontend => src/frontend}/src/main.jsx           |  0
+|  {frontend => src/frontend}/src/services/api.js    |  0
+|  .../frontend}/src/services/firebase.js            |  0
+|  {frontend => src/frontend}/vite.config.js         |  0
+|  29 files changed, 16 insertions(+), 15 deletions(-)
+| 
+* commit 2ee7ff54b26947ba0a646a66fba14caa551769cd
+| Author: khangduy2209 <phamvokhangduy@gmail.com>
+| Date:   Mon Oct 12 16:05:04 2026 +0700
+| 
+|     project setup
+| 
+|  .gitignore                           |   24 +
+|  README.md                            |  132 +-
+|  backend/.env.example                 |   15 +
+|  backend/.gitignore                   |   13 +
+|  backend/app/__init__.py              |   28 +
+|  backend/app/auth.py                  |   25 +
+|  backend/app/config.py                |   20 +
+|  backend/app/firebase.py              |   39 +
+|  backend/app/routes/__init__.py       |    0
+|  backend/app/routes/auth.py           |   41 +
+|  backend/app/routes/books.py          |   67 +
+|  backend/app/routes/health.py         |    8 +
+|  backend/requirements.txt             |    5 +
+|  backend/run.py                       |    7 +
+|  firebase/firestore.rules             |   29 +
+|  frontend/.env.example                |   12 +
+|  frontend/.gitignore                  |   24 +
+|  frontend/.oxlintrc.json              |    8 +
+|  frontend/index.html                  |   13 +
+|  frontend/package-lock.json           | 2344 ++++++++++++++++++++++++++++++++
+|  frontend/package.json                |   24 +
+|  frontend/public/favicon.svg          |    1 +
+|  frontend/src/App.css                 |   48 +
+|  frontend/src/App.jsx                 |   50 +
+|  frontend/src/context/AuthContext.jsx |   47 +
+|  frontend/src/index.css               |    9 +
+|  frontend/src/main.jsx                |   13 +
+|  frontend/src/services/api.js         |   28 +
+|  frontend/src/services/firebase.js    |   25 +
+|  frontend/vite.config.js              |    7 +
+|  30 files changed, 3105 insertions(+), 1 deletion(-)
+| 
+* commit e9be04cdca825bd85d22cc1a505063b1b9e42936
+  Author: Duy Pham <phamvokhangduy@gmail.com>
+  Date:   Mon Oct 12 14:28:26 2026 +0700
+  
+      Initial commit
+  
+   README.md | 1 +
+   1 file changed, 1 insertion(+)
+  
+* commit 7d625ac78791270d1bd5862bb4072f8a34fea916
+| Author: xxavierr31 <anhkhoi25606@gmail.com>
+| Date:   Fri Oct 16 08:23:27 2026 +0700
+| 
+|     Agent host session 04b34adc-ffeb-4785-b58a-da0c60e648dc - turn 1
+| 
+|  README.md | 27 ++++++++++++++-------------
+|  1 file changed, 14 insertions(+), 13 deletions(-)
+| 
+* commit cbd5e9cb38a93fc9cc55682415725a0ce9665b52
+| Author: xxavierr31 <anhkhoi25606@gmail.com>
+| Date:   Fri Oct 16 08:23:27 2026 +0700
+| 
+|     Agent host session 04b34adc-ffeb-4785-b58a-da0c60e648dc - turn 1 start
+| 
+* commit 09d99a29c0bc156a92dd01145b3eff58c8bd2b38
+  Author: xxavierr31 <anhkhoi25606@gmail.com>
+  Date:   Fri Oct 16 08:09:02 2026 +0700
+  
+      Agent host session 04b34adc-ffeb-4785-b58a-da0c60e648dc - baseline checkpoint
+  
+   .gitignore                               |   24 +
+   README.md                                |  131 ++
+   src/backend/.env.example                 |   15 +
+   src/backend/.gitignore                   |   13 +
+   src/backend/app/__init__.py              |   28 +
+   src/backend/app/auth.py                  |   25 +
+   src/backend/app/config.py                |   20 +
+   src/backend/app/firebase.py              |   39 +
+   src/backend/app/routes/__init__.py       |    0
+   src/backend/app/routes/auth.py           |   41 +
+   src/backend/app/routes/books.py          |   67 +
+   src/backend/app/routes/health.py         |    8 +
+   src/backend/requirements.txt             |    5 +
+   src/backend/run.py                       |    7 +
+   src/firebase/firestore.rules             |   29 +
+   src/frontend/.env.example                |   12 +
+   src/frontend/.gitignore                  |   24 +
+   src/frontend/.oxlintrc.json              |    8 +
+   src/frontend/index.html                  |   13 +
+   src/frontend/package-lock.json           | 2344 ++++++++++++++++++++++++++++
+   src/frontend/package.json                |   24 +
+   src/frontend/public/favicon.svg          |    1 +
+   src/frontend/src/App.css                 |   48 +
+   src/frontend/src/App.jsx                 |   50 +
+   src/frontend/src/context/AuthContext.jsx |   47 +
+   src/frontend/src/index.css               |    9 +
+   src/frontend/src/main.jsx                |   13 +
+   src/frontend/src/services/api.js         |   28 +
+   src/frontend/src/services/firebase.js    |   25 +
+   src/frontend/vite.config.js              |    7 +
+   30 files changed, 3105 insertions(+)
