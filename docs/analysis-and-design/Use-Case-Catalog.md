@@ -32,7 +32,7 @@ The university board, procurement department, and auditors are stakeholders or r
 | UC-01 | Register for library access | Student | Create an account with institutional identity details and verify the account. | FEAT-01 |
 | UC-02 | Sign in and sign out | Student; Librarian (Admin) | Start or end an authenticated session with access appropriate to the user's role. | FEAT-01 |
 | UC-03 | Recover account credentials | Student | Request and complete password recovery using the registered email. | FEAT-01 |
-| UC-04 | Manage personal profile | Student | Update contact details, password, and profile avatar. | FEAT-02 |
+| UC-04 | Manage personal profile | Student; Librarian (Admin) | Update contact details, password, and profile avatar. | FEAT-02 |
 | UC-05 | Manage membership | Student | Browse plans, purchase or renew a membership, and see the resulting borrowing privileges. | FEAT-03 |
 | UC-06 | Discover and inspect books | Student | Search, filter, sort, and view book details, availability, reviews, and shelf location. | FEAT-04, FEAT-05 |
 | UC-07 | Find a book by barcode | Student | Scan a book's ISBN barcode and open its catalog record. This is an alternate entry point to book discovery. | FEAT-06 |
@@ -47,7 +47,7 @@ The university board, procurement department, and auditors are stakeholders or r
 | UC-16 | Manage book suggestions | Student | Submit suggestions, review their status and decision history, and withdraw eligible requests. | FEAT-18; FR-SUGG-01, FR-SUGG-02 |
 | UC-17 | Get research recommendations | Student | Describe a research topic and receive relevant catalog recommendations with availability and borrowing actions. | FEAT-26 |
 | UC-18 | Resolve a lost-book case | Student; Librarian (Admin) | Resolve a lost loan by returning the book or settling the replacement charge, with staff verification where required. | FEAT-14, FEAT-21, FEAT-24 |
-| UC-28 | View notifications | Student | Review notifications, follow relevant links, and manage read status. | FR-NOTIF-01 |
+| UC-28 | View notifications | Student; Librarian (Admin) | Review notifications, follow relevant links, and manage read status. | FR-NOTIF-01 |
 
 ## Librarian use cases
 
