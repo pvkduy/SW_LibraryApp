@@ -55,7 +55,7 @@ The university board, procurement department, and auditors are stakeholders or r
 |---|---|---|---|---|
 | UC-19 | Maintain catalog and copies | Librarian (Admin) | Add or update book records and physical copies, and manage inventory status and location. | FEAT-05, FEAT-22 |
 | UC-20 | Hand over requested books | Librarian (Admin) | Locate a pickup request, verify the borrower and copy, record outgoing condition, and confirm the loan. | FEAT-09, FEAT-21, FEAT-22 |
-| UC-21 | Process a book return | Librarian (Admin) | Identify the copy, record its returned condition, settle return outcomes, update availability, and complete the return. | FEAT-12, FEAT-13, FEAT-21, FEAT-22, FEAT-23, FEAT-24 |
+| UC-21 | Process a book return | Librarian (Admin) | Identify the copy, record its returned condition, settle return outcomes, update availability, and complete the return. | FEAT-12, FEAT-13, FEAT-16, FEAT-21, FEAT-22, FEAT-23, FEAT-24 |
 | UC-22 | Assess damage and write off copies | Librarian (Admin) | Record damage and applicable fees, or document and retire copies through a formal write-off. | FEAT-22, FEAT-23, FEAT-24 |
 | UC-23 | Manage receipts and reversals | Librarian (Admin) | Review financial receipts and process permitted manual receipts, refunds, or corrections through reversal records. | FEAT-09, FEAT-24 |
 | UC-24 | Plan book acquisitions | Librarian (Admin) | Review and approve suggestions, organize titles into acquisition batches, and export purchase orders. | FEAT-18, FEAT-19 |
@@ -104,7 +104,7 @@ Use these as initial diagram annotations; confirm the relationship semantics whi
 | FEAT-21 | UC-13, UC-18, UC-20, UC-21 |
 | FEAT-22 | UC-19, UC-20, UC-21, UC-22, UC-25, UC-26 |
 | FEAT-23 | UC-21, UC-22 |
-| FEAT-24 | UC-05, UC-13, UC-18, UC-22, UC-23 |
+| FEAT-24 | UC-05, UC-13, UC-18, UC-21, UC-22, UC-23 |
 | FEAT-25 | UC-27 |
 | FEAT-26 | UC-17 |
 
