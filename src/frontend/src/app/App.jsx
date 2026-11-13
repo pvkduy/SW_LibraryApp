@@ -7,7 +7,7 @@ import { RegisterPage } from '../features/auth/RegisterPage.jsx'
 import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage.jsx'
 import { VerifyOtpPage } from '../features/auth/VerifyOtpPage.jsx'
 import { ResetPasswordPage } from '../features/auth/ResetPasswordPage.jsx'
-import { AuthSuccessModal, AuthErrorModal } from '../features/auth/components/AuthModals.jsx'
+import { AuthSuccessModal, AuthErrorModal, AuthConfirmModal } from '../features/auth/components/AuthModals.jsx'
 import { supabase } from '../lib/supabase'
 
 function getInitialRoute() {
@@ -25,6 +25,7 @@ function App() {
   const [registeredEmail, setRegisteredEmail] = useState('')
   const [books, setBooks] = useState([])
   const [error, setError] = useState(null)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
   const navigate = (route, params = {}) => {
     if (params.email) setRegisteredEmail(params.email)
@@ -102,12 +103,26 @@ function App() {
                 type="button"
                 className="auth-btn-primary"
                 style={{ width: 'auto', height: '36px', padding: '0 16px', marginTop: 0, fontSize: '13px' }}
-                onClick={logout}
+                onClick={() => setShowLogoutConfirm(true)}
               >
                 Đăng xuất
               </button>
             </div>
           </header>
+
+          {showLogoutConfirm && (
+            <AuthConfirmModal
+              title="Xác nhận đăng xuất"
+              subtitle="Bạn có chắc chắn muốn đăng xuất khỏi tài khoản không?"
+              confirmText="Đăng xuất"
+              cancelText="Không, ở lại"
+              onConfirm={() => {
+                setShowLogoutConfirm(false)
+                logout()
+              }}
+              onCancel={() => setShowLogoutConfirm(false)}
+            />
+          )}
 
           <section style={{ marginTop: '24px' }}>
             <h2 style={{ fontSize: '18px', color: '#221c18', marginBottom: '16px' }}>Danh sách sách mới trong thư viện</h2>

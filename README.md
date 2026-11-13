@@ -149,6 +149,10 @@ khớp với local URL → app sẽ lỗi `401` hoặc báo thiếu cấu hình.
 ### Bước 4 — Chạy frontend
 
 ```bash
+# Cách 1: Chạy trực tiếp từ thư mục gốc của repo
+npm run dev
+
+# Cách 2: Hoặc chuyển vào thư mục src/frontend
 cd src/frontend
 npm run dev
 ```
@@ -186,7 +190,7 @@ Nếu hai lệnh trên ra kết quả đúng, database đã sẵn sàng.
 
 | Lệnh | Mô tả |
 | --- | --- |
-| `npm run dev` | (trong `src/frontend`) chạy Vite dev server |
+| `npm run dev` | Chạy Vite dev server (chạy từ thư mục gốc hoặc trong `src/frontend`) |
 | `npm run verify` | typecheck (shared + Edge Functions + e2e) + spec-matrix — chạy trước khi push |
 | `npm run lint` | lint (oxlint) |
 | `npm run db:start` / `db:reset` / `db:test` | bật stack / reset DB + seed / chạy pgTAP |
@@ -204,12 +208,12 @@ Nếu hai lệnh trên ra kết quả đúng, database đã sẵn sàng.
 | Studio (xem bảng, sửa dữ liệu) | http://localhost:54323 |
 | Mailpit (xem email test) | http://localhost:54324 |
 
-> **Đăng nhập test:** provider Email/Password bật xác thực email, nên user mới đăng ký chưa đăng nhập
-> được ngay. Mở **Mailpit** (http://localhost:54324) để lấy link xác thực, hoặc xác nhận thủ công:
-> ```bash
-> docker exec supabase_db_shelfhelp psql -U postgres -d postgres -c \
->   "update auth.users set email_confirmed_at = now() where email = 'ban@student.edu.vn';"
-> ```
+> **Tài khoản dùng thử có sẵn (sau khi chạy `npm run db:reset`):**
+> - 🎓 **Sinh viên:** `student@shelfhelp.edu.vn` (hoặc MSSV: `24125000`) | Mật khẩu: `Password123!`
+> - 📘 **Thủ thư (Admin):** `admin@shelfhelp.edu.vn` | Mật khẩu: `Password123!`
+> *(Trên giao diện Đăng nhập có khung gợi ý tài khoản nhóm, bấm vào email để tự điền nhanh).*
+>
+> **Nếu tự đăng ký tài khoản mới:** Mở **Inbucket** (http://localhost:54324) để lấy link kích hoạt hoặc mã OTP.
 
 ---
 
