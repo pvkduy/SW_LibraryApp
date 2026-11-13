@@ -1,0 +1,38 @@
+---
+config:
+  theme: neutral
+  look: classic
+  layout: elk
+  themeVariables:
+    noteBkgColor: "#fffdf5"
+    noteBorderColor: "#5a5a5a"
+    noteTextColor: "#111111"
+---
+usecase-beta
+direction LR
+actor Student
+actor AI("AI provider") <<system>>
+
+systemBoundary "ShelfHelp: Smart Library Management System"
+  UC06("`UC-06 Discover and inspect books
+extension points: barcode scan`")
+  UC07("UC-07 Find a book by barcode")
+  UC08("UC-08 Manage a book wishlist")
+  UC09("UC-09 Manage borrowing cart")
+  UC14("UC-14 Reserve an unavailable book")
+  UC16("UC-16 Manage book suggestions")
+  UC17("UC-17 Get research recommendations")
+end
+
+Student -- UC06
+Student -- UC07
+Student -- UC08
+Student -- UC09
+Student -- UC14
+Student -- UC16
+Student -- UC17
+UC17 -- AI
+UC07 ..> : extend UC06
+
+note for UC07 "`Condition: the student scans an ISBN barcode instead of searching the catalogue.
+Extension point: barcode scan (UC-06).`"
