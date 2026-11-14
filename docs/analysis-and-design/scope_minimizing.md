@@ -1,0 +1,21 @@
+notification do not feature deep links, simply announcing feature with mark read and read/unread filters
+
+the dashboard now only show 8 key mtrics: on loan vs total stock, overdue count, damaged copies, premium loan revenue, fines collected, lost copies, membership revenue, active reservations, top 10 titles, along with a chart for monthly loans trend per category, nothing else. 
+
+Reports&analytics/data export center now only present 3 report preset/modules for user to select and export. no more table previewing or fancy filters. the only customizable option is date range.
+
+the following admin screens now design as main table and detailed side-by-side panel structure: circulation, books, acquisitions, queues, people, money. the tables will have filters, and a batch export button that exports the current configuration table. 
+
+book batch csv import now only preview erroneous rows. the batch ingestion is underlying logic and is not directly exposed in UI. 
+
+patron management history only shows record of tier changes, account status (active, restricted), strike and their corresponding timestamps, nothing else. no dedicated auditing process/trai, no unique dedicated tab to see receipts in student. all receipts are deferred to the Money screen. no summary figures, tabs. staff can upgrade or refund (downgrade membership) as a counter transaction. they can also change status with reason provided
+
+suggestion and batch procurement is in severe need of simplification. removed pricing estimation and third party/provider lookup completely. a batch is now an entry created by hand (editable name), where each title inside the batch is added directly from entries in student suggestion. admin can set date for expected fulfillment, and set quantity of each title, or remove a title entirely. batches can be stored as drafts until they are marked as ordered. An ordered batch can be viewed in Batch Detail screen, where we follow the same table-detail panel design. In the table, each row lists a title and their expected quantity. We no longer track 3rd party operations, provider, estimated price, only quantity. no partial shipments allowed, so we only realistically track which title had been delievered. The only atcivity here is similar to a glorified checklist where the admin can mark titles as received, completely detached from the real life flow (so the app only acts as a useful tracking tool). when confirming a line as received, they can add target shelf staging location and an optional discrepancy/condition note. We still retain the acitivty history where it stores who marked which title received in a batch. a batch is closed when all of the rows are marked as received. batch receiving backlog screen completely removed.
+
+When viewing a book suggestion, the only information are patron justifications, a box for rejection justification and a button to reject. grouped titles only add to patron justifications, and there is a box to select target purchase batch as a stepper to increase copies and a button to add to the batch. 
+
+counter payment flow is also vastly simplified. the counter payment tab in circulation simply lists all charges entries that any patron may hae. admin can look up by anything, filter etc. when clicking on one row, the admin can add an optional note, input amount collected and the screen automatically shows cahnge, and there is a button to confirm settlement, which closes the charge and automatically produces a corresponding receipt. no further auditing or grouping feature or a complicated flow. feel free to ask me to clarify anything
+
+remove top universal serach bar, search bar now only shows a bell to access notification page and a profile block that shows profile picture and admin ID. admin features are organized under teh screens Dashboard, Circulation, Books, Acquisitions, Queues, People, Money, Reports.
+
+there are no dedicated staff-oriented resolve lost book flow. all copies and their statuses are available in the Books screen under teh copies tab. when clickign on a row, in the detailed pane, admin can change a different status and provide a reason for status change and save. simple as that. write off slips are still a thing to bulk change status and the only way to render a book retired from circulation. slips can be drafted and stage books to include
