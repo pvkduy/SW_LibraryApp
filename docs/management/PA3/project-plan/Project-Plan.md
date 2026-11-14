@@ -183,7 +183,7 @@ The project lifecycle spans five 2-week iterations corresponding to the course P
 | :--- | :--- | :--- |
 | **PA1 Submission** | 17/10/2026 | Proposal accepted, Git repository and Jira workspace initialized. |
 | **PA2 Submission** | 31/10/2026 | Project Plan v1.0, Vision Document v1.0, Spec Kit constitution generated. |
-| **PA3 Submission (Build 1)** | 14/11/2026 | Unified format plan/vision, 32 use-case specs, Mermaid diagrams, UI prototypes, implemented auth FR with narrated demo video. |
+| **PA3 Submission (Build 1)** | 14/11/2026 | Unified format plan/vision, 31 use-case specs, Mermaid diagrams, UI prototypes, implemented auth FR with narrated demo video. |
 | **PA4 Submission (Build 2)** | 28/11/2026 | Architecture document submitted, working circulation and catalog modules. |
 | **PA5 Final Release & Demo** | 12/12/2026 | All functional groups operational, RAG assistant integrated, final live presentation delivered. |
 
@@ -218,16 +218,16 @@ Total planned effort was 85 hours. Work items were organized to address PA2 TA f
 | Jira Key | Task Description | Assignee | Reviewer | Est. (h) | Actual (h) | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | SCRUM-62 | **(A) Revised Project Plan v2.0** with TA format unification + `Changes.md` | Nguyễn Minh Phú | Phạm Võ Khang Duy | 4.0 | 4.0 | Done |
-| SCRUM-63 | **(B) Detailed Vision Document v2.0** + `Changes.md` | Lê Văn Vĩ | Lê Minh Thuận | 3.0 | 3.0 | Done |
+| SCRUM-63 | **(B) Detailed Vision Document v2.0** + `Changes.md` | Lê Văn Vĩ, Lê Minh Thuận | Nguyễn Anh Khôi | 3.0 | 3.0 | Done |
 | SCRUM-71 | **(C) Define master Use-Case catalog** & scope boundaries | Nguyễn Anh Khôi | Lê Văn Vĩ | 3.0 | 3.0 | Done |
-| SCRUM-64 | **(C) Use Case Diagrams in Mermaid** (5 modular diagrams covering all FRs) | Lê Văn Vĩ | Lê Minh Thuận | 6.0 | 6.5 | Done |
-| SCRUM-65 | **(D-01) Use-Case Specifications** (32 use cases in RUP format) | Lê Minh Thuận, Phạm Võ Khang Duy | Nguyễn Minh Phú | 24.0 | 24.0 | Done |
+| SCRUM-64 | **(C) Use Case Diagrams in Mermaid** (5 modular diagrams covering all FRs) | Lê Văn Vĩ | Nguyễn Anh Khôi | 6.0 | 6.5 | Done |
+| SCRUM-65 | **(D-01) Use-Case Specifications** (31 use cases in RUP format) | Lê Minh Thuận, Phạm Võ Khang Duy | Phạm Võ Khang Duy, Lê Minh Thuận, Nguyễn Anh Khôi | 24.0 | 24.0 | Done |
 | SCRUM-66 | **(D-02) UI Prototypes for all use cases** with full screenshot set | Nguyễn Anh Khôi | Phạm Võ Khang Duy | 16.0 | 18.0 | Done |
 | SCRUM-67 | **(E-01) Implement 1 FR end-to-end with Spec Kit** (Auth: Login/Logout/Signup) | Nguyễn Minh Phú | Lê Văn Vĩ | 12.0 | 12.0 | Done |
 | SCRUM-68 | **(E-02) Recorded demo video with narration** (YouTube upload) | Nguyễn Minh Phú | Nguyễn Anh Khôi | 4.0 | 4.0 | Done |
-| SCRUM-69 | **(F) Compile individual AI Usage Reports** | Team HCD | Nguyễn Minh Phú | 3.0 | 3.0 | Done |
-| SCRUM-70 | **(F) Commit Weekly Reports** (Planning, Scrum x2, Review) + Jira progress | Nguyễn Anh Khôi | Lê Minh Thuận | 4.0 | 4.0 | Done |
-| SCRUM-72 | Packaging: markdown to PDF conversion, Git log export, zip archive | Lê Minh Thuận | Nguyễn Anh Khôi | 2.0 | 2.0 | Done |
+| SCRUM-69 | **(F) Compile individual AI Usage Reports** | Team HCD | Lê Văn Vĩ | 3.0 | 3.0 | Done |
+| SCRUM-70 | **(F) Commit Weekly Reports** (Planning, Scrum x2, Review) + Jira progress | Nguyễn Anh Khôi | Lê Văn Vĩ | 4.0 | 4.0 | Done |
+| SCRUM-72 | Packaging: markdown to PDF conversion, Git log export, zip archive | Nguyễn Anh Khôi | Lê Văn Vĩ | 2.0 | 2.0 | Done |
 
 **Sprint 4 Outline (PA4, 14/11 – 28/11/2026)**
 - Produce Software Architecture Document (system decomposition, component view, database ERD, physical deployment, and REST API contracts).
@@ -269,7 +269,7 @@ gantt
     Planning & Scope Refinement       :done, s3a, 2026-10-31, 2026-11-02
     Revised Plan & Vision (Changes.md):done, s3b, 2026-11-02, 2026-11-09
     Mermaid Use Case Diagrams (5 set) :done, s3c, 2026-11-03, 2026-11-10
-    32 Use Case Specifications (RUP)  :done, s3d, 2026-11-04, 2026-11-10
+    31 Use Case Specifications (RUP)  :done, s3d, 2026-11-04, 2026-11-10
     Full UI Prototypes & Screens      :done, s3e, 2026-11-05, 2026-11-11
     Spec Kit Implementation (Auth FR) :done, s3f, 2026-11-06, 2026-11-12
     Demo Video Recording              :done, s3g, 2026-11-12, 2026-11-13
@@ -319,7 +319,7 @@ The project risk register is reviewed during every Sprint Retrospective and upda
 | **R2** | **Scope Creep in Administrative Functions** | High | High | Successfully mitigated in Sprint 3 by streamlining admin workflows; non-critical administrative luxuries (bulk remind all, camera avatar capture) marked as optional. | Product Owner (Vĩ) |
 | **R3** | **Technology Stack & Spec Kit Adoption Curve** | Medium | Medium | Completed hands-on Spec Kit training in Sprint 2; successfully executed end-to-end auth feature spike in Sprint 3 to solidify team proficiency. | Lead Developer (Phú) |
 | **R4** | **LLM API Latency, Cost, or Quota Restrictions** | Medium | Medium | Implement local caching for book embedding vectors; isolate AI provider behind a modular service adapter; prepare offline mock dataset for demonstrations. | AI Lead (Duy) |
-| **R5** | **Business Rule & State Machine Inconsistencies** | High | High | Modeled all state lifecycles in the 32 RUP use-case specifications; automated PostgreSQL constraints and Row-Level Security enforce valid state transitions. | QA / Tester (Vĩ) |
+| **R5** | **Business Rule & State Machine Inconsistencies** | High | High | Modeled all state lifecycles in the 31 RUP use-case specifications; automated PostgreSQL constraints and Row-Level Security enforce valid state transitions. | QA / Tester (Vĩ) |
 | **R6** | **Late Feature Branch Integration Breakage** | Medium | High | Continuous integration on GitHub Actions for every pull request; compulsory code reviews and smoke testing on tagged builds. | Lead Developer (Phú) |
 | **R7** | **Inaccurate Effort Estimation** | Medium | Medium | Calibrated task estimates against Sprint 2 and 3 velocity; backlog tracked via Jira burn-down charts. | Project Manager (Thuận) |
 | **R8** | **Document Format Inconsistency (Addressed)** | Low | Medium | Established strict document formatting checklist and review gates directly addressing PA2 TA feedback. | Project Manager (Thuận) |

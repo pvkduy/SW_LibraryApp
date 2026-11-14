@@ -54,14 +54,24 @@ This revision addresses the specific feedback from the Teaching Assistant (TA) o
   - Added Revised Project Plan and Changes.md (`SCRUM-62`).
   - Added Detailed Vision Document and Changes.md (`SCRUM-63`).
   - Added Use-Case Catalog definition (`SCRUM-71`) and Mermaid diagrams (`SCRUM-64`).
-  - Expanded Use-Case Specifications (`SCRUM-65`) to cover all 32 use cases in RUP format.
+  - Expanded Use-Case Specifications (`SCRUM-65`) to cover all 31 use cases in RUP format.
   - Added UI Prototypes for all use cases (`SCRUM-66`).
   - Added Spec Kit end-to-end implementation of the Authentication functional group (`SCRUM-67`) and narrated demo video (`SCRUM-68`).
   - Added Weekly reports, AI usage reports, and packaging tasks (`SCRUM-69` to `SCRUM-72`).
 - **Gantt Chart (Mermaid):**  
   Updated the project timeline Gantt diagram in Section 4.2.4 with explicit `:done` states for Sprint 1, Sprint 2, and Sprint 3 milestone tasks, matching the project calendar through 14/11/2026.
 - **Scope Refinement Reflection:**  
-  Documented the streamlining of complex administrative features (simplifying manual acquisition batches and policies) decided during Sprint 3 planning and retrospective.
+  Documented the streamlining of complex administrative features (retiring UC-32 policy
+  configuration and simplifying manual acquisition batches) decided during Sprint 3
+  planning and retrospective.
+- **Reviewer and Assignee Alignment:**  
+  Corrected the Sprint 3 work-breakdown table so every row matches the attribution line
+  in its own deliverable: the Vision Document and the Mermaid use-case diagrams are
+  reviewed by Nguyễn Anh Khôi, AI Usage Reports and Weekly Reports are reviewed by
+  Lê Văn Vĩ, and submission packaging is assigned to Nguyễn Anh Khôi as group leader.
+- **Use-Case Count:**  
+  Updated the milestone, backlog row, Gantt chart, and risk-register references from 32
+  to 31 use cases after UC-32 was retired.
 
 ---
 
