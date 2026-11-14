@@ -40,16 +40,15 @@ Staff hand a book to the student at the counter.
 
 ### User Story 3 - Counter payment (Priority: P1)
 
-Staff record a payment taken in person.
+Staff settle a charge in the counter-payments tab.
 
-**Why this priority**: Enables the counter payment path for fees, memberships, and charges.
+**Why this priority**: Enables the counter payment path for charges.
 
-**Independent Test**: Record a counter payment, verify full-amount rule (TS-21).
+**Independent Test**: Settle a charge and verify a receipt is produced (TS-21).
 
 **Acceptance Scenarios** (FR-CIRC-07):
 
-1. **Given** a 6,000 VND fine paid at the counter, **Then** the charge is `paid`, a 6,000 VND receipt exists, and the debt hold clears if nothing else is owed.
-2. **Given** an amount different from the amount owed, **Then** the payment is rejected.
+1. **Given** a 6,000 VND fine settled with 10,000 VND collected, **Then** the panel shows 4,000 VND change and one 6,000 VND receipt is produced, clearing the debt hold if nothing else is owed.
 
 ### Edge Cases
 
@@ -62,9 +61,9 @@ Staff record a payment taken in person.
 
 ### Functional Requirements
 
-- **FR-CIRC-01** `[PA1 §3.7]` **Circulation list.** List loans with borrower name, student ID, borrow/due/return dates, status; tabs (Ready for pickup, Awaiting payment, On loan, Overdue, Lost, History); searchable by student ID, name, copy barcode, or pickup code.
+- **FR-CIRC-01** `[PA1 §3.7]` **Circulation list.** List loans with borrower name, student ID, borrow/due/return dates, status; tabs (Ready for pickup, Awaiting payment, On loan, Overdue, Lost, History, Counter payments); searchable by student ID, name, copy barcode, or pickup code.
 - **FR-CIRC-02** `[PA1 §3.7]` **Handover.** Find request, see student's standing (status/debt/membership), check each item against the physical copy (scan copy barcode), record condition out, collect counter fee, confirm. Confirmation sets `borrowed`, due date per POL-04, copy `borrowed` in one transaction. Subset handover allowed. Refused when not `active`, debt > 0, or deadline passed.
-- **FR-CIRC-07** `[PA1 §3.4]` **Record counter payment.** Record a counter payment for a Premium fee, membership, or charges: full amount, method `counter`, optional note. Creates Payment + Receipt(s), updates item/charge state in one transaction, shows printable receipt.
+- **FR-CIRC-07** `[PA1 §3.4]` **Counter payments (list + settle).** A Counter payments tab lists all charge entries with lookup and filters. Clicking a row opens a settle panel: optional note, input amount collected, auto-show change; Confirm settlement closes the charge (`paid`) and auto-produces the receipt in one transaction.
 
 ### Key Entities
 
@@ -76,14 +75,13 @@ Staff record a payment taken in person.
 
 - **SC-001**: Handover commits once per confirm, even on double-click (TS-20).
 - **SC-002**: No handover occurs with debt, inactive account, or passed deadline (FR-CIRC-02).
-- **SC-003**: Counter payments rejected unless the full amount owed (TS-21).
+- **SC-003**: Settling a charge closes it and produces exactly one receipt (TS-21).
 - **SC-004**: Due dates are computed deterministically in local time (TS-20).
 - **SC-005**: p95 ≤ 2 s for handover (NFR-03).
 
 ## Assumptions
 
-- Counter payments recorded by staff after taking cash/card elsewhere (ASM-02).
-- Partial payments out of scope (POL-05).
+- Counter payments are recorded by staff after taking cash/card elsewhere; the panel computes change from the amount collected.
 
 ## Test Scenarios
 

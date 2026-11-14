@@ -1,0 +1,5 @@
+**Link to Figma for Reader UI prototypes:** https://www.figma.com/design/MLW8EywTbtV3AUr3wQkvnY/ShelfHelp--reader-?node-id=0-1&t=z02UTlQlhHKbyOWi-1
+
+**Link to Figma for Admin UI prototypes:** https://www.figma.com/design/SvFuCqqWCI5nMckvxMZMI2/ShelfHelp--admin-?node-id=0-1&t=0qcBvka19yVyN4JR-1
+
+What we aim to show in each protoype screenshots are what features we want users to see, use and how we intend to organize and present it. Note that placeholders are used for error messages, highlight tab selection, or contents in the data tables since they will be implemented with dynamic behavior later on in the app and there are too many details for us to produce variants for. We have discussed thoroughly and agreed on the features, flow and design together so every screen is designed with intention and with multiple use cases/features in mind.

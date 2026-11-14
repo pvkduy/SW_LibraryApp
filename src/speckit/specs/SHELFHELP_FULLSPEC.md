@@ -3,11 +3,13 @@
 
 | Field | Value |
 |---|---|
-| Version | 1.2 (build-ready draft, Supabase platform, reduced scope) |
-| Date | 2026-10-23 |
+| Version | 1.3 (admin UI simplified per `scope_minimizing.md`; reduced scope) |
+| Date | 2026-11-14 |
 | Source document | Project Proposal PA1 (sections 3.1 to 3.10 and section 4) |
 | Target | React web app, responsive (mobile-first for readers, desktop-first for admin) |
 | Intended consumer | Agentic AI coding tool or Spec Kit |
+
+> **Scope note (v1.3).** §8 (Admin Mode) was pruned to match `docs/analysis-and-design/scope_minimizing.md`: the Settings screen is removed (policies are hardcoded defaults, two fixed tiers), Reports is three presets (Circulation, Fines & Revenues, Inventory), the Dashboard is eight metrics plus a top-10 list and one category-trend chart, notifications carry no deep links, the CSV import previews only erroneous rows, acquisitions is a hand-created checklist batch (no pricing/providers/partial shipments/export-versions), counter payments are a simplified settle panel in Circulation, and there is no dedicated staff resolve-lost flow (copy status changes happen in Books → Copies). Removed machinery is archived in §20.12 onward. The traceability matrix (§16–§17) and §19 build order are **stale pending regeneration by the `spec-matrix` script** and should not be treated as authoritative until refreshed.
 
 ---
 
@@ -80,7 +82,7 @@ Real payment gateway (an adapter is built, only the simulator is implemented), p
 | Role | Mode | Description |
 |---|---|---|
 | `student` | Reader | Registers themselves. Borrows, reserves, pays, suggests, chats. |
-| `admin` | Admin | All staff work: catalog, copies, circulation, counter payments, batches, receipts, slips, suggestions, reminders, account lifecycle, restoring access, refunds and receipt reversals, settings. |
+| `admin` | Admin | All staff work: catalog, copies, circulation, counter payments, batches, receipts, slips, suggestions, reminders, account lifecycle, restoring access, refunds and receipt reversals. |
 
 There is a single staff role. Staff accounts cannot borrow. A staff member who is also a student uses a separate student account with a different email. Admin accounts are created by hand (a seed script using the service role, or the Supabase dashboard). There is no in-app staff management in the current scope (Section 20). **Where the role lives:** the Supabase Auth `app_metadata.role` claim is the source of truth. Row Level Security and Edge Functions read it from the login token. `profiles.role` is a copy used for lists and display. Both are written together, only by server code (never by the client), and only in two places: `register-student` (assigns `student`) and the admin creation script (assigns `admin`). A role change takes effect when the user's token next refreshes. To cut access immediately, every Edge Function also loads the caller's `profiles.status`, so a deactivated admin is refused (`ACCOUNT_NOT_ACTIVE`) even while the old token is still valid. To deactivate an admin, set `profiles.status` to `inactive` and ban the Auth user (runbook in `docs/`). A nightly check reports any account whose claim and `profiles.role` differ (EC-36).
 
@@ -108,9 +110,8 @@ There is a single staff role. Staff accounts cannot borrow. A staff member who i
 | View dashboard, export reports | No | Yes |
 | Send "Remind all" | No | Yes |
 | Set student Inactive, restore from Restricted, waive charge | No | Yes |
-| Edit settings and plans | No | Yes |
 
-Because there is one staff role, every admin can do every action above, including money reversals and settings. The two-role design is archived in Section 20.
+Because there is one staff role, every admin can do every action above, including money reversals. The two-role design is archived in Section 20.
 
 ---
 
@@ -123,7 +124,7 @@ Each row is a place where PA1 is inconsistent, ambiguous, or silent. The **Adopt
 | DEC-01 | PA1 uses "librarian" and "administrator" for staff, and some actions (set Inactive, restore from Restricted, refund exceptions) sound privileged. | One staff role, `admin`, covers both. This is an owner decision to keep the project small. The two-role design is archived in Section 20. | No |
 | DEC-02 | No way to create staff accounts is described. | Admin accounts are created by hand with a script or the Supabase dashboard. There is no self-registration for staff and no in-app staff management (Section 20). | Yes |
 | DEC-03 | PA1 mentions a whole-degree plan that ends on the expected graduation date. | Removed by owner decision: there is no whole-degree plan and no graduation date field. When a student graduates or leaves, an admin sets the account Inactive (FR-AUTH-07). | No |
-| DEC-04 | Plans are described as "for an academic year" but the plan model is not defined. | Plans are fixed-duration (a number of days from the start date). One plan ships by default (Academic Year, 365 days). Admins can add other fixed-duration plans in settings. FR-MEM-06 (whole-degree end date) is retired and its ID is not reused. | Yes |
+| DEC-04 | Plans are described as "for an academic year" but the plan model is not defined. | The membership model is fixed to exactly two tiers: the Standard (unpaid) rank and one yearly Premium membership (Academic Year, 365 days). Admins may edit the policies of these two tiers but may not create new plans or deactivate them. FR-MEM-06 (whole-degree end date) is retired and its ID is not reused. | No |
 | DEC-05 | Cart lets the student "choose the loan duration" but loan period is fixed per tier. | Student chooses from allowed durations: non-member {7}, member {7, 14} days (settings). Non-member Premium fee is per 7 days. | Yes |
 | DEC-06 | Fee on renewal of a Premium book by a non-member is not stated. | Renewal costs another per-book fee, paid before the due date is extended. | Yes |
 | DEC-07 | Copy status list has no state for a copy held for pickup, yet copies must be "held". | Added copy status `held`. | No |
@@ -196,8 +197,8 @@ All values below are defaults stored in `settings` table, key `library` (4.17). 
 - **Restricted** is set automatically when a loan becomes `lost`. It is lifted only by an admin after the checklist in 4.9 passes. The student can press "Request review" to notify admins.
 
 ### 4.3 Membership and entitlements (POL-03)
-- Plans are prepaid, one-time, non-transferable, renewed manually.
-- Defaults: the Academic Year plan lasts 365 days from the start date. Every plan is a fixed number of days. There is no plan tied to a graduation date.
+- The membership model is fixed to exactly two tiers: the **Standard (unpaid) rank** (the default, no purchase) and one **yearly Premium membership** (Academic Year, 365 days from the start date). Admins may edit the policies of these two tiers (entitlements and, for Premium, price and duration) but may not create additional plans or deactivate either tier.
+- The Premium plan is prepaid, one-time, non-transferable, renewed manually. There is no plan tied to a graduation date.
 - Start date is the purchase time, or the day after the current end date when renewing early. Early renewal is allowed only within 30 days before expiry, or after expiry.
 - Each purchase stores a **snapshot**: plan name, price paid, start, end, and the privileges (max items, loan day options, renewals, can reserve). Later settings changes apply only to new purchases.
 - Membership status is computed from dates: `upcoming`, `active`, `expired`, plus `terminated` (admin refund or account inactivation).
@@ -208,7 +209,7 @@ All values below are defaults stored in `settings` table, key `library` (4.17). 
   2. If found, use its snapshot privileges.
   3. Else use non-member settings.
 
-| | Non-member | Member (default snapshot) |
+| | Standard (unpaid) rank | Yearly Premium (default snapshot) |
 |---|---|---|
 | Standard books | Free | Free |
 | Premium books | Fee per book per loan (5,000 VND per 7 days) | Free |
@@ -313,12 +314,11 @@ Renewal is allowed only if all hold: item is `borrowed` (not `overdue`), account
 Every notification has a `dedupe_key` so retried jobs never send twice. In-app notifications live 90 days.
 
 ### 4.12 Suggestions and acquisition (POL-12)
-- Statuses: `submitted`, `under_review`, `approved`, `in_batch`, `received`, `rejected`, `withdrawn`.
-- Rejection needs a reason code (`already_in_catalog`, `out_of_scope`, `too_expensive`, `duplicate`, `other`) and optional note. `already_in_catalog` links the Book.
+- Statuses: `submitted`, `under_review`, `rejected`, `in_batch`, `received`, `withdrawn`. (There is no separate `approved` backlog state in the simplified model.)
+- Rejection needs a rejection justification (free text) and is recorded. `already_in_catalog` may link the Book.
 - Student can withdraw while `submitted` or `under_review`.
-- Batch statuses: `draft`, `ordered`, `receiving`, `closed`, `cancelled`. Each export creates an immutable export version (v1, v2, ...). After "Mark as sent to procurement" (`ordered`), lines are locked except note edits.
-- Receiving more than ordered is allowed with a mandatory note. Closing with unreceived lines marks them `not_received` and returns linked suggestion groups to the Approved backlog, with a "delayed" notice to requesters.
-- Receiving a line whose Book does not exist yet forces the admin through the Book editor first (Book starts `draft`, becomes `active` at first receipt).
+- Batch statuses: `draft`, `ordered`, `closed`, `cancelled`. A batch is a hand-created named entry with an expected fulfillment date; each title is added directly from student suggestions with a set quantity. There is **no pricing estimation, no third-party/provider lookup, no partial shipment, and no export-version screen** (the generic table `batch export` button covers any tabular view). After "Mark ordered", lines are locked except note edits.
+- A line is marked received (delivered) with a target shelf staging location and an optional discrepancy/condition note; this records who marked which title received. Copies become `available` via `batch_receipt` transactions. A batch is closed automatically when every line is received. A title not yet in the catalog is created in the Book editor first (Book starts `draft`, becomes `active` at first receipt).
 
 ### 4.13 Inventory and write-off (POL-13)
 - Copy statuses: `available`, `held`, `borrowed`, `damaged`, `under_repair`, `lost`, `retired`. Allowed transitions in 5.4.
@@ -353,7 +353,7 @@ Rating 1 to 5 required, text optional up to 1,000 characters. One review per stu
 | `unverified_account_ttl_days` | 7 |
 | `nonmember.max_items` / `loan_days_options` / `renewals` / `can_reserve` | 3 / [7] / 1 / false |
 | `premium_fee_per_7_days` | 5000 |
-| `plans[]` | Academic Year (365 days, 150000 VND, member privileges 7 / [7,14] / 2 / true) |
+| `plans[]` | Fixed two tiers: Standard (unpaid; entitlements below) and Yearly Premium (365 days, 150000 VND, member privileges 7 / [7,14] / 2 / true). Admins edit the policies, not the set of tiers. |
 | `plan_renewal_window_days` | 30 |
 | `membership_reminder_days` | 7 |
 | `fine_per_day` | 2000 |
@@ -463,7 +463,7 @@ While `ready_for_pickup`, only the Reservation row exists; no Loan Item is creat
 - **Account:** `pending_verification` -> `active` <-> `restricted`; `active` -> `inactive` -> `active` (admin only).
 - **Payment:** `created` -> `pending` -> `succeeded` | `failed` | `cancelled` | `expired`; `succeeded` -> `refunded`.
 - **Charge:** `unpaid` -> `paid`; `unpaid` -> `waived` or `cancelled` (admin or system with reason).
-- **Suggestion, Batch, Slip:** see 4.12 and 4.13. Slip: `draft`, `completed`, `cancelled`. Batch line: `pending`, `partial`, `received`, `not_received`.
+- **Suggestion, Batch, Slip:** see 4.12 and 4.13. Slip: `draft`, `completed`, `cancelled`. Batch line: `pending`, `received`.
 - **Membership (derived):** `upcoming`, `active`, `expired`, `terminated`.
 
 ---
@@ -600,7 +600,7 @@ Tabs: Reservations (position, status, deadline countdown) and Wishlist (list, re
 - **FR-PROF-03** `[PA1 §3.2]` **Avatar upload or capture with crop.** The system SHALL accept an image file (JPEG, PNG, WebP up to 5 MB) or a camera capture, let the student crop to a square with zoom and pan, produce a 512x512 JPEG of at most 300 KB (EXIF orientation honored), upload to the `avatars` bucket at `{uid}/avatar.jpg` (the Storage policy checks the owner), and allow removal (falls back to initials). Cancel at any step discards everything. A failed upload keeps the old avatar. *AC:* Given a 4 MB PNG, then the stored file is at most 300 KB and square. Given cancel after crop, then the old avatar remains. Given an upload network failure, then an error with Retry shows and the old avatar remains.
 
 ### R-16 Membership `/membership`
-- **FR-MEM-01** `[PA1 §3.2]` **View plans.** The system SHALL show available plans (from settings) with price, duration in days, and the privileges table (4.3), and a comparison against non-member rules. *AC:* Given a settings price change, then the page shows the new price for new purchases.
+- **FR-MEM-01** `[PA1 §3.2]` **View plans.** The system SHALL show the two fixed tiers — the Standard (unpaid) rank and the yearly Premium membership — with price, duration in days, and the privileges table (4.3), and a comparison against non-member rules. *AC:* Given a settings price change, then the page shows the new price for new purchases.
 - **FR-MEM-02** `[PA1 §3.2]` **Buy or renew a plan.** The system SHALL show price, start, and end preview, then run the Edge Function `purchase-membership` through the simulated payment. Success creates the membership with its snapshot and a receipt, and notifies the student. Failure creates nothing. Purchase is blocked when Restricted or outside the renewal window. Double submit is safe. *AC:* Given a successful purchase, then membership `start`, `end`, `price_paid`, plan name, and privileges are stored and a receipt exists. Given a later settings price change, then the existing membership shows the original price paid. Given an active membership with 100 days left, then renewal is blocked with the earliest renewal date.
 - **FR-MEM-03** `[PA1 §3.2]` **Membership status.** The system SHALL show status (Active, Upcoming, Expired), expiry date, days left, exact privileges from the snapshot, and purchase history with receipt links. *AC:* Given a membership ended yesterday, then status is Expired and non-member rules are displayed.
 
@@ -635,20 +635,22 @@ Tabs: Reservations (position, status, deadline countdown) and Wishlist (list, re
 
 ## 8. Admin Mode: screens, flows, and features
 
-Admin shell: left navigation, header with the signed-in admin, global student/copy quick search. All admin lists are server-paginated (25 per page) with sort, search, and CSV export of the visible filter where noted.
+Admin shell: left navigation with eight destinations (Dashboard, Circulation, Books, Acquisitions, Queues, People, Money, Reports), and a header whose right side holds only a notification bell and a profile block (avatar + admin ID). There is **no top-level universal search bar**; search and filtering live inside each screen's own list. All admin lists are server-paginated (25 per page) with sort, search, and a **batch export** button that exports the currently configured table (CSV).
 
 ### A-01 Admin shell `/admin`
 Navigation and layout only. No feature requirements of its own.
 
+- **Header (right side):** a notification bell (opens the admin notification view) and a profile block showing the admin's avatar and admin ID. No global search bar.
+- **Notifications (admin):** notifications simply announce a feature/event and carry **no deep links**. The admin notification view offers mark-read (single and "mark all") and All/Unread read-status filters only.
+
 ### A-02 Dashboard `/admin`
 **Story:** As an admin, I want to see the state of the library at a glance.
 
-- **FR-ANLY-01** `[PA1 §3.10]` **Dashboard KPIs.** The system SHALL show for a selectable range (today, 7 days, 30 days, custom): items on loan vs total stock, overdue count, fines collected, membership revenue, Premium-loan revenue, damaged copies, lost copies. Definitions: on loan = Loan Items `borrowed` + `overdue`; total stock = copies not `retired` and not `lost`; revenue figures are net signed sums of receipts by type (DEC-41). Figures are computed by SQL RPCs (`get_dashboard_kpis`, `get_rankings`, `get_due_overdue_groups`) directly over indexed tables. *AC:* Given a fee of 5,000 VND paid and later reversed, then Premium-loan revenue is 0 for that item. Given no data in range, then zeros show with an empty-state note, not errors. Given a day's activity, then the dashboard totals equal a direct recount.
-- **FR-ANLY-02** `[PA1 §3.10]` **Rankings and trends.** The system SHALL show the 10 most and 10 least borrowed titles in the range (least includes titles with zero loans), and a monthly loans trend per category. *AC:* Given a title with no loans in range, then it can appear in the least-borrowed list.
-- **FR-ANLY-03** `[PA1 §3.10]` **Demand signals.** The system SHALL show top suggestion groups by demand, books with a reservation queue of 3 or more, and top wishlist counts, each linking to the relevant admin screen. *AC:* Given a group with 12 requesters, then it ranks above a group with 4.
+- **FR-ANLY-01** `[PA1 §3.10]` **Dashboard KPIs.** The system SHALL show **eight metric cards and nothing else**: items on loan vs total stock, overdue count, damaged copies, Premium-loan revenue, fines collected, lost copies, membership revenue, and active reservations. A range selector (Today / 7 days / 30 days / Custom) scopes the figures. Revenue figures are net signed sums of receipts by type (DEC-41). *AC:* Given a fee of 5,000 VND paid and later reversed, then Premium-loan revenue is 0 for that item. Given no data in range, then zeros show with an empty-state note, never an error.
+- **FR-ANLY-02** `[PA1 §3.10]` **Single chart and top titles.** The system SHALL show exactly (a) a monthly loans-trend-per-category chart and (b) a top-10 borrowed titles list for the selected range. There is no least-borrowed list and no demand-signal cards. *AC:* Given a category with no loans in range, then it contributes zero to the trend. Given a title with no loans in range, then it does not appear in the top-10 list.
 
 ### A-03 Reports `/admin/reports`
-- **FR-ANLY-04** `[PA1 §3.10]` **Report export.** The system SHALL let staff pick a report (loans, overdue, fines, revenue, inventory, suggestions, demand), apply date and category filters, preview, and export to CSV, PDF, or Excel. Files include a header with generator, time, and filters. Exports above 20,000 rows are refused with a prompt to narrow filters. PDFs embed a font supporting Vietnamese. *AC:* Given a filter returning 120 rows, then the CSV, PDF, and XLSX each contain 120 rows and correct Vietnamese characters. Given 25,000 rows, then export is blocked with an explanation.
+- **FR-ANLY-04** `[PA1 §3.10]` **Report export.** The system SHALL present exactly **three preset report modules — Circulation, Fines & Revenues, and Inventory** — with the only customizable option being a date range. There is no table preview and no other filters. Export is to CSV, PDF, or Excel. Files include a header with generator, time, and the chosen range. Exports above 20,000 rows are refused with a prompt to narrow the range. PDFs embed a font supporting Vietnamese. *AC:* Given a range returning 120 rows, then the CSV, PDF, and XLSX each contain 120 rows and correct Vietnamese characters. Given 25,000 rows, then export is blocked with an explanation.
 
 ### A-04 Books list `/admin/books` and A-05 Book editor `/admin/books/new`, `/admin/books/:id`
 **Story:** As an admin, I want to add and maintain books.
@@ -657,21 +659,22 @@ Navigation and layout only. No feature requirements of its own.
 - **FR-INV-03** `[PA1 §3.7]` **Edit metadata and collection.** The system SHALL edit title, authors, publisher, year, language, category, field, description, table of contents, keywords, collection (Standard or Premium), replacement price, default shelf location, and cover image (uploaded by staff to the `covers` bucket). Saving queues re-embedding when an embedded field changed; the search vector updates automatically. A collection change applies only to new checkouts (existing Loan Items keep their stored fee). Bulk "Set collection" is available on the list for selected books. *AC:* Given a change from Standard to Premium, then a non-member's next checkout shows a fee and an existing borrowed loan is unchanged.
 
 ### A-06 Bulk import `/admin/books/import`
-- **FR-INV-02** `[PA1 §3.7]` **CSV import.** The system SHALL offer a CSV template (columns: `isbn13,title,authors,publisher,year,language,category,field,collection,description,keywords,replacement_price,shelf_location,copies`), accept UTF-8 files up to 2 MB and 1,000 rows, validate every row client-side and server-side, show a preview with per-row errors, and let staff choose the duplicate-ISBN action (skip, add copies, or update metadata). Commit runs in chunks of 200, each row independent, producing a downloadable result report. Re-running the same file with "skip" creates nothing new. *AC:* Given 100 rows with 5 invalid, then 95 import, 5 are reported with reasons, and the report downloads. Given a file of 1,001 rows, then it is rejected before upload. Given a network drop mid-commit, then re-running with "skip duplicates" completes the rest with no duplicates.
+- **FR-INV-02** `[PA1 §3.7]` **CSV import.** The system SHALL offer a CSV template (columns: `isbn13,title,authors,publisher,year,language,category,field,collection,description,keywords,replacement_price,shelf_location,copies`), accept UTF-8 files up to 2 MB and 1,000 rows, validate every row client-side and server-side, and show a preview of **only the erroneous rows** with per-row reasons. Batch ingestion itself is underlying logic and is not exposed as an interactive step in the UI; valid rows are ingested in the background. *AC:* Given 100 rows with 5 invalid, then exactly the 5 invalid rows are previewed with reasons and the 95 valid rows are ingested. Given a file of 1,001 rows, then it is rejected before upload.
 
-### A-07 Copies `/admin/books/:id/copies`
+### A-07 Copies `/admin/books/:id/copies` (Books → Copies tab)
+**Kind:** master–detail panel. A table of copies with a detail pane opened by clicking a row.
 - **FR-INV-04** `[PA1 §3.7]` **Copy records and labels.** The system SHALL give every copy a unique barcode (Code 128) and show status, shelf location (copy override or book default), condition, acquisition source, and full history. Staff SHALL print a label sheet PDF for selected copies. Shelf location is shown to staff and students. *AC:* Given a new copy, then a barcode that is unique across all copies is assigned and scanning it finds the copy.
-- **FR-INV-07** `[PA1 §3.7]` **Copy status changes.** The system SHALL let staff change status among `available`, `damaged`, `under_repair` (and `found` for `lost` copies) with a mandatory reason, writing an inventory transaction each time. Staff cannot set `borrowed` or `held` manually, and cannot set a `held` copy to `lost` directly; the hold must be released first per POL-13 and EC-12. A change to `available` triggers promotion and wishlist logic. *AC:* Given a copy set to `damaged`, then available count decreases and a `status_change` transaction exists. Given a `lost` copy marked found, then a `found` transaction exists and the copy is `available`. Given a `held` copy, then attempting to set it `lost` is refused with the release-first message.
+- **FR-INV-07** `[PA1 §3.7]` **Copy status changes (the single copy-edit surface).** All copies and their statuses live in the Books → Copies tab. Clicking a row opens the detail pane where an admin picks a different status (`available`, `damaged`, `under_repair`, or `found`/`lost` resolution) and gives a mandatory reason, then saves; a `status_change` (or `found`) inventory transaction is written. This pane is the **only** place copies change status — there is no separate staff-only "resolve lost" flow; resolving a `lost` copy is changing its status here with a reason. When a `lost` copy that was on loan is resolved back to `available` (or `damaged`), the system applies the Path A lost-resolution effects in the same transaction (item `returned`, `lost_resolved_at` set, unpaid replacement charge waived, overdue fine retained; or a refund reversal if the replacement was already paid and the return is within the 90-day window). If the replacement was already paid for a still-missing copy, that is Path B and is settled by payment, not by this action. Staff cannot set `borrowed` or `held` manually, and cannot set a `held` copy to `lost` directly; the hold must be released first per POL-13 and EC-12. A change to `available` triggers promotion and wishlist logic. *AC:* Given a copy set to `damaged`, then available count decreases and a `status_change` transaction exists. Given a `lost` copy marked found, then a `found` transaction exists and the copy is `available`. Given a `held` copy, then attempting to set it `lost` is refused with the release-first message.
 
 ### A-08 Circulation `/admin/circulation`
 **Story:** As an admin at the counter, I want to hand over and take back books quickly and correctly.
 
-- **FR-CIRC-01** `[PA1 §3.7]` **Circulation list.** The system SHALL list loans with borrower name, student ID, borrow date, due date, return date, and status, in tabs (Ready for pickup, Awaiting payment, On loan, Overdue, Lost, History), searchable by student ID, name, copy barcode, or pickup code. *AC:* Given a student ID search, then only that student's items show across tabs.
+- **FR-CIRC-01** `[PA1 §3.7]` **Circulation list.** The system SHALL list loans with borrower name, student ID, borrow date, due date, return date, and status, in tabs (Ready for pickup, Awaiting payment, On loan, Overdue, Lost, History, Counter payments), searchable by student ID, name, copy barcode, or pickup code. *AC:* Given a student ID search, then only that student's items show across tabs.
 - **FR-CIRC-02** `[PA1 §3.7]` **Handover.** The system SHALL let staff find a request, see the student's standing (status, debt, membership), check each item against the handed physical copy (scan copy barcode), record condition out (FR-COND-01), collect any counter fee (FR-CIRC-07), and confirm. Confirmation sets `borrowed`, due date per 4.4, and copy `borrowed` in one transaction. Staff may hand over a subset; the rest stay ready until their deadline. Handover is refused when the account is not `active`, debt is above 0, or the pickup deadline has passed (with the specific reason). *AC:* Given a student with debt, then Confirm is disabled with "Settle outstanding charges first". Given a 14-day member loan on 2026-11-01, then due date is 2026-11-15 23:59:59 local. Given a double click on Confirm, then one handover happens.
-- **FR-CIRC-03** `[PA1 §3.7]` **Return.** The system SHALL let staff scan a copy barcode or open an active loan, show borrower, due date, overdue days, fine, and condition out, require condition in, let staff choose the copy's next status, and confirm. Confirmation sets `returned`, writes the copy status, finalizes charges (FR-CIRC-04), runs promotion and wishlist logic, and invites the student to rate. Scanning a copy that is not on loan shows an error. Scanning a `lost` copy opens the return-after-lost flow (POL-08). *AC:* Given a copy returned late by 3 days, then a 6,000 VND fine Charge is finalized. Given a returned copy with a waiting reservation, then the copy becomes `held` for the first eligible member instead of `available`.
+- **FR-CIRC-03** `[PA1 §3.7]` **Return.** The system SHALL let staff scan a copy barcode or open an active loan, show borrower, due date, overdue days, fine, and condition out, require condition in, let staff choose the copy's next status, and confirm. Confirmation sets `returned`, writes the copy status, finalizes charges (FR-CIRC-04), runs promotion and wishlist logic, and invites the student to rate. Scanning a copy that is not on loan shows an error. A `lost` copy is not returned here — a lost copy is resolved in the Books → Copies pane (FR-INV-07). *AC:* Given a copy returned late by 3 days, then a 6,000 VND fine Charge is finalized. Given a returned copy with a waiting reservation, then the copy becomes `held` for the first eligible member instead of `available`.
 - **FR-CIRC-04** `[PA1 §3.7]` **Charges at return.** The system SHALL compute the overdue fine per POL-08, require a damage decision when condition worsened, create `damage_fee` Charges, show the total, and let staff collect now (counter payment, FR-CIRC-07) or leave it unpaid (debt hold). Unpaid charges do not keep the loan open. *AC:* Given condition worsened from good to damaged and tier "major" with a 100,000 VND book, then a 30,000 VND Charge is created. Given charges left unpaid, then the loan is `returned` and the student has a debt hold. Given a loan with a paid 4,000 VND fine Charge (2 days) returned after 3 days, then one new 2,000 VND Charge is created and the total is 6,000 VND.
 - **FR-CIRC-05** `[PA1 §3.7]` **Mark as lost manually.** The system SHALL let staff mark a copy lost. If the copy is on loan, the confirmation dialog states the consequences (loan `lost`, student Restricted, replacement charge) and requires a reason. *AC:* Given confirmation on a borrowed copy, then the loan is `lost`, the student is `restricted`, and a `loss_fee` Charge exists.
-- **FR-CIRC-07** `[PA1 §3.4]` **Record counter payment.** The system SHALL let staff record a counter payment for a Premium fee, membership (via student detail), or charges: the full amount owed, method `counter`, and optional note. It creates a Payment, the Receipt(s), and updates item or charge state in one transaction, and shows a printable receipt. *AC:* Given a 6,000 VND fine paid at the counter, then the charge is `paid`, a 6,000 VND receipt exists, and the debt hold clears if nothing else is owed. Given an amount different from the amount owed, then the payment is rejected.
+- **FR-CIRC-07** `[PA1 §3.4]` **Counter payments (list + settle).** A **Counter payments** tab in Circulation SHALL list all charge entries (overdue fine, damage fee, loss fee, membership, Premium fee) with lookup and filters. Clicking a row opens a settle panel where the admin MAY add an optional note, inputs the amount collected, and the panel automatically shows the change due. A **Confirm settlement** button closes the charge (`paid`) and automatically produces the corresponding receipt in the same transaction. There is no auditing sub-view, no grouping, and no multi-step flow. *AC:* Given a 6,000 VND fine settled with 10,000 VND collected, then the panel shows 4,000 VND change and one 6,000 VND receipt is produced and the debt hold clears if nothing else is owed.
 - **FR-COND-01** `[PA1 §3.8]` **Record condition.** The system SHALL require a condition (`good`, `fair`, `poor`, `damaged`) with optional note and up to 3 photos at handover and at return, stored on the Loan Item. An admin MAY correct a recorded condition with a reason; the correction is audit-logged and does not change charges automatically. *AC:* Given handover without a condition, then Confirm is disabled. Given a correction, then an audit entry with old and new values exists.
 
 ### A-09 Reservation queues `/admin/reservations`
@@ -682,22 +685,27 @@ Navigation and layout only. No feature requirements of its own.
 - **FR-NOTIF-04** `[PA1 §3.5]` **Remind all.** The system SHALL show a "Remind all" button for the current group or filter. Clicking opens a confirmation with the recipient count (excluding students already bulk-reminded in the last 24 h). Confirming sends in-app notifications and shows the result (sent, skipped). Individual Remind buttons exist per student. *AC:* Given 10 students of whom 3 were reminded 2 hours ago, then the confirmation says 7 will be sent and 3 skipped.
 
 ### A-11 Suggestions review `/admin/suggestions`
-- **FR-SUGG-03** `[PA1 §3.6]` **Automatic grouping.** The system SHALL group new suggestions on creation: first by normalized ISBN, else by accent-insensitive title and author similarity (POL-17) at or above the threshold. Staff MAY merge two groups or split a request out. Demand = number of distinct students. *AC:* Given two suggestions with the same ISBN, then they share one group with demand 2. Given a staff split, then demand recomputes.
-- **FR-SUGG-04** `[PA1 §3.6]` **Review queue.** The system SHALL list groups sorted by demand, and let staff approve (enters Approved backlog) or reject (reason code required) one or many groups. Each decision notifies all requesters. Opening a group moves `submitted` requests to `under_review`. *AC:* Given a rejected group of 3 requesters, then 3 notifications and emails are created and all requests show the reason.
+**Kind:** master–detail panel over suggestion groups. **Purpose:** read patron justification and either reject a suggestion or add its title to a batch.
+
+- **FR-SUGG-03** `[PA1 §3.6]` **Automatic grouping.** The system SHALL group new suggestions on creation: first by normalized ISBN, else by accent-insensitive title and author similarity (POL-17) at or above the threshold. Grouped titles contribute all their members' justifications to the group view. Demand = number of distinct students. *AC:* Given two suggestions with the same ISBN, then they share one group whose view lists both patrons' justifications.
+- **FR-SUGG-04** `[PA1 §3.6]` **Review a suggestion.** When viewing a suggestion, the only information is the patron justifications. The panel offers: a **rejection justification** box plus a **Reject** button, and a **target purchase batch** selector (a stepper to increase copies) plus an **Add to batch** button. There is no pricing estimation, no third-party/provider lookup, and no separate approval backlog. *AC:* Given a suggestion rejected, then a rejection justification is required and all requesters are notified. Given a suggestion added to a batch, then its title becomes a line in that batch with the chosen quantity.
 
 ### A-12 Batches `/admin/batches` and A-13 Batch detail `/admin/batches/:id`
-- **FR-SUGG-05** `[PA1 §3.6]` **Create and build a batch.** The system SHALL create a named batch (for example "Semester 2, 2026") in `draft`, add lines from the Approved backlog or from any title with a requested quantity, edit or remove lines while `draft`, and mark it sent to procurement (`ordered`, lines locked). *AC:* Given a backlog group added with quantity 3, then its suggestions become `in_batch`. Given an `ordered` batch, then line quantities cannot be edited.
-- **FR-SUGG-06** `[PA1 §3.6]` **Export with versions.** The system SHALL export the line list as CSV, PDF, or Excel and store each export as an immutable version (v1, v2, ...) with who, when, format, and the line snapshot. *AC:* Given two exports, then both versions are listed and re-downloadable and differ if lines changed between them.
-- **FR-SUGG-07** `[PA1 §3.6]` **Receive and close.** The system SHALL record receipts per line (quantity received, date, note) creating copies with barcodes and `batch_receipt` inventory transactions, support partial receipts and over-receipt with note, force Book creation first for titles not yet in the catalog, and close the batch (remaining lines `not_received`, per POL-12). *AC:* Given a line ordered 3 and receipt of 2, then line is `partial`, 2 copies exist, and 2 transactions link to the batch. Given close with a pending line, then the dialog lists it and its suggestions return to the backlog.
-- **FR-SUGG-08** `[PA1 §3.6]` **Batch detail.** The batch page SHALL show ordered versus received per line, export versions, receipt records, and an activity log (created, edited, exported, sent, received, closed). *AC:* Given any change to a batch, then an activity entry with actor and time exists.
+**Kind:** master–detail panel. A batch is a hand-created tracking entry (a glorified checklist), not a procurement order.
+
+- **FR-SUGG-05** `[PA1 §3.6]` **Create and build a batch.** The system SHALL create a batch as a hand-made named entry (editable name) with an expected fulfillment date. Each title inside the batch is added directly from student suggestions (FR-SUGG-04); the admin sets the quantity per title, or removes a title entirely. Batches begin as `draft` and are kept as drafts until marked `ordered`. *AC:* Given a batch saved as draft, then it is stored and remains editable. Given a title added with quantity 3, then the batch shows that title with expected quantity 3.
+- **FR-SUGG-07** `[PA1 §3.6]` **Receive a line (mark delivered).** The system SHALL track only which title has been delivered, not any third-party operation, provider, estimated price, or partial shipment. Marking a line as received lets the admin add a target shelf staging location and an optional discrepancy/condition note. Each confirmed line records who marked which title received in the activity history. *AC:* Given a line marked received, then its title's copies become `available` (via `batch_receipt` transactions) and the activity history records the operator and time.
+- **FR-SUGG-08** `[PA1 §3.6]` **Batch detail and close.** The batch page uses the standard table–detail panel design: each row lists a title and its expected quantity, with a received/delivered state. The only activity tracked is who marked which title received. A batch is **closed automatically when every row is marked received**. There is no receiving backlog screen and no export-version screen (the generic table `batch export` button covers any tabular view). *AC:* Given all rows marked received, then the batch status becomes `closed`. Given any line marked received, then an activity entry with actor, title, and time exists.
 
 ### A-14 Inventory history `/admin/inventory-history`
 - **FR-INV-05** `[PA1 §3.7]` **Inventory transactions.** The system SHALL record, for every change of copy count or copy status, a transaction with timestamp, operator (or `system`), book, delta, type (DEC-36), reason, and reference (batch, slip, loan). Transactions are immutable. *AC:* Given any copy addition, status change, or loss, then exactly one matching transaction exists. Given the sum of deltas for a book, then it equals its current non-retired copy count change history.
 - **FR-INV-06** `[PA1 §3.7]` **Inventory history log.** The system SHALL show the log with quick filters (Batch receipts, Manual additions, Stock reductions including auto-flagged, Status changes), search by book, date range, drill-down to a copy's history, links to the reference record, and CSV, PDF, Excel export. *AC:* Given filter Stock reductions, then manual write-offs and automatic lost flags both appear. Given a batch receipt row, then its link opens the batch detail.
 
 ### A-15 Write-off slips `/admin/writeoffs`
-- **FR-COND-02** `[PA1 §3.8]` **Create and complete a slip.** The system SHALL create a slip (draft) with reason code, notes, multiple copies each with target status (`retired` or `lost`), evidence photos, and creator; and complete it, which sets the copies, writes inventory transactions, releases or blocks per 4.13, and never deletes records. *AC:* Given a slip with 2 copies completed, then both copies have the target status, 2 transactions link to the slip, and their histories remain intact.
-- **FR-COND-03** `[PA1 §3.8]` **Slip rules.** The system SHALL block completion when any copy is `borrowed` or `held` (message names the copy and the fix), require a photo for `damaged_beyond_repair`, make completed slips immutable, and allow cancelling only drafts. *AC:* Given a borrowed copy in the slip, then Complete is refused. Given a completed slip, then edit controls are absent and the API rejects edits.
+**Purpose:** a bulk status-change tool, and the only way to retire a book from circulation.
+
+- **FR-COND-02** `[PA1 §3.8]` **Create and complete a slip.** The system SHALL create a slip (draft) with a reason code and notes, and stage multiple copies to include. Completing it bulk-changes those copies' status (`retired` or `lost`), writes inventory transactions, and never deletes records. A slip can be saved as a draft and stage books to include. *AC:* Given a slip with 2 copies completed, then both copies have the target status, 2 transactions link to the slip, and their histories remain intact.
+- **FR-COND-03** `[PA1 §3.8]` **Slip rules.** The system SHALL block completion when any copy is `borrowed` or `held` (message names the copy and the fix), make completed slips immutable, and allow cancelling only drafts. Completing a slip is the **only** way to render a book retired from circulation; individual copy rescues happen in the Books → Copies pane (FR-INV-07). *AC:* Given a borrowed copy in the slip, then Complete is refused. Given a completed slip, then edit controls are absent and the API rejects edits.
 
 ### A-16 Receipt log `/admin/receipts`, A-17 Receipt detail, A-18 Manual receipt
 - **FR-RCPT-02** `[PA1 §3.9]` **Receipt log.** The system SHALL list receipts with filters for date range, student, transaction type, payment method, and status (Valid, Voided, Reversed), searchable by receipt number, and exportable. *AC:* Given filter status Reversed, then only receipts with a linked reversal show.
@@ -706,14 +714,13 @@ Navigation and layout only. No feature requirements of its own.
 - **FR-RCPT-05** `[PA1 §3.9]` **Reversal and refund.** An admin SHALL reverse a receipt fully with a reason code (`entry_error`, `refund_exception`, `lost_returned`, `cancellation`). Effects: reversal receipt (negative amount) linked to the original; for charge payments the charge returns to unpaid unless the admin picks "waive"; for membership the membership is terminated; for premium fee only when the item is not `borrowed` or `overdue`; for online payments the Payment becomes `refunded`. A receipt can be reversed once. *AC:* Given a reversed receipt, then a second reversal is rejected. Given a membership receipt reversal, then the membership status is `terminated` and non-member rules apply.
 
 ### A-19 Students `/admin/students`, `/admin/students/:uid`
-- **FR-SET-03** `[+]` **Student directory and detail.** The system SHALL search and filter students (status, debt, membership, strikes), and show detail with profile, status, membership history, loans, charges, receipts, and reservation strikes. Opening a detail page is audit-logged. *AC:* Given a detail view, then an audit entry "view_student" exists.
-- **FR-AUTH-07** `[PA1 §3.1]` **Set account Inactive.** An admin SHALL set Inactive only when the POL-02 checklist passes; the checklist is shown with each failing condition and a link. Effects per POL-02. *AC:* Given one borrowed book, then the action is disabled and the checklist shows "1 item not returned". Given a passing checklist, then the user's Auth account is disabled and the reservations are cancelled.
-- **FR-AUTH-08** `[PA1 §3.5]` **Restore a Restricted account.** An admin SHALL see the restore checklist (4.9) auto-evaluated and be able to restore only when all pass, with a note. The student is notified and the action is audit-logged. Students can send "Request review" which notifies admins. *AC:* Given an unreturned lost book with its replacement unpaid, then Restore is disabled. Given path A or path B completed, then Restore enables.
-- **FR-MEM-07** `[PA1 §3.2]` **Membership exceptions.** An admin SHALL be able to refund or terminate a membership through FR-RCPT-05. The student reverts to non-member entitlements immediately, and existing loans keep their due dates. Memberships cannot be transferred between students. *AC:* Given a reversed membership receipt, then the membership status is `terminated`, the student has non-member entitlements, and existing loans keep their due dates. Given any student, then no transfer option exists.
+**Kind:** master–detail panel over the student directory.
 
-### A-20 Settings `/admin/settings`
-- **FR-SET-01** `[+]` **Policy settings.** An admin SHALL edit every key in 4.17 with type and range validation, see the previous value, and have each change recorded in an immutable settings history (who, when, old, new). Changes apply to future actions only (memberships by snapshot; existing loan fees by stored values). *AC:* Given fine_per_day changed from 2,000 to 3,000, then new fines use 3,000 from the next nightly run and previously finalized fines are unchanged. Given a negative value, then save is rejected.
-- **FR-MEM-09** `[PA1 §3.2]` **Plans and Premium configuration.** The admin SHALL create, edit, and deactivate membership plans (name, price, duration in days, privileges) without code changes. Which titles are Premium is set per book (FR-INV-03) and in bulk. *AC:* Given a new plan with price 90,000 VND, then it appears on R-16 for new purchases and old memberships are unchanged.
+- **FR-SET-03** `[+]` **Student directory and detail.** The system SHALL search and filter students (status, membership), use a master table + detail panel layout, and show detail with profile, current status, membership, and a simplified account history: only records of tier changes, account status (`active` / `restricted`), strikes, and their corresponding timestamps — nothing else. There are no summary figures and no tabbed audit/auditing view; there is no dedicated receipts tab in the student detail (all receipts are deferred to the Money screen). The detail panel exposes **four actions: Set Inactive, Restore (from Restricted), Membership refund/termination, and Register/renew membership**. *AC:* Given a detail view, then the history shows only tier-change, status, and strike records with timestamps.
+- **FR-AUTH-07** `[PA1 §3.1]` **Set account Inactive.** An admin SHALL set Inactive only when the POL-02 checklist passes; the checklist is shown with each failing condition and a link. Effects per POL-02. *AC:* Given one borrowed book, then the action is disabled and the checklist shows "1 item not returned". Given a passing checklist, then the user's Auth account is disabled and the reservations are cancelled.
+- **FR-AUTH-08** `[PA1 §3.5]` **Restore a Restricted account.** An admin SHALL see the §4.9 restore checklist auto-evaluated and restore only when all pass, with a note. The student is notified and the action is audit-logged. *AC:* Given an unreturned lost book with its replacement unpaid, then Restore is disabled. Given path A or path B completed, then Restore enables.
+- **FR-MEM-07** `[PA1 §3.2]` **Membership refund/termination.** An admin SHALL refund/terminate a membership via a reversal receipt (FR-RCPT-05); the student reverts to non-member entitlements immediately and existing loans keep due dates. Memberships cannot be transferred. *AC:* Given a reversed membership receipt, then the membership status is `terminated`, the student has non-member entitlements, and existing loans keep their due dates.
+- **FR-MEM-10** `[+]` **Register or renew membership (counter).** An admin SHALL register a new membership or renew an existing one at the counter as a counter transaction (via the simulated/counter payment), showing eligibility and effective start/end dates, collecting an exact payment, creating the membership snapshot, and issuing a receipt. *AC:* Given a counter purchase, then a membership snapshot and a receipt exist and the student's entitlements update immediately.
 
 ---
 
@@ -863,7 +870,7 @@ Policies on `storage.objects` check the bucket, the caller's role from the JWT, 
 4. Default isolation (READ COMMITTED) with explicit row locks. On deadlock or serialization failure the function retries up to 3 times with jitter, then returns `RATE_LIMITED`.
 5. Idempotency: each mutation takes an `idempotency_key`. The key is inserted into `idempotency_keys` (unique per user and key) at the start of the transaction; a repeat returns the stored response.
 6. Counters (`books.available_copies`, `queue_length`, and others) are maintained by triggers in the same transaction as the change.
-7. Immutable tables (`receipts`, `inventory_transactions`, `audit_logs`, `settings_history`, `copy_events`, `batch_exports`) have a trigger that raises on UPDATE and DELETE, and no role has those privileges.
+7. Immutable tables (`receipts`, `inventory_transactions`, `audit_logs`, `settings_history`, `copy_events`) have a trigger that raises on UPDATE and DELETE, and no role has those privileges.
 
 ---
 
@@ -914,7 +921,7 @@ All tables use `uuid` primary keys unless noted, `timestamptz` timestamps, integ
 |---|---|---|
 | `profiles` | id (= `auth.users.id`), role (copy of the Auth claim, see 2.1), status, full_name, email (unique, case-insensitive), student_id (unique), faculty, phone, avatar_path, reservation_ban_until, debt_outstanding, active_items, created_at | Edge Functions; the student may update `full_name`, `phone`, `faculty`, `avatar_path` through column-level grants |
 | `reservation_strikes` | uid, at | Edge Functions |
-| `membership_plans` | name, price, duration_days, privileges (jsonb), active | Edge Functions |
+| `membership_plans` | name, price, duration_days, privileges (jsonb), tier (`standard` or `yearly_premium`) | Edge Functions |
 | `memberships` | uid, plan_name, price_paid, start_at, end_at, privileges (jsonb snapshot), receipt_id, terminated_at | Edge Functions |
 | `books` | title, authors[], isbn10, isbn13 (unique), publisher, year, language, category, field, description, toc, keywords[], collection, replacement_price, shelf_location, cover_path, status (active, draft), total_copies, available_copies, queue_length, wishlist_count, borrow_count, rating_avg, rating_count, popularity_score, added_at, search_vector (generated), embedding (vector), embedding_hash, embedding_model | Edge Functions and triggers |
 | `reviews` | book_id, uid (primary key together), rating, text, updated_at | Edge Functions |
@@ -933,7 +940,7 @@ All tables use `uuid` primary keys unless noted, `timestamptz` timestamps, integ
 | `email_outbox` | to, template, payload, status, attempts, next_attempt_at, dedupe_key | Edge Functions |
 | `chats`, `chat_messages` | uid, role, text, book_ids[], created_at, expires_at | Edge Functions; the student may delete own chats |
 | `suggestions`, `suggestion_groups` | requester, title, author, isbn_norm, link, reason, status, group_id; group: canonical fields, demand, status, book_id | Edge Functions |
-| `batches`, `batch_lines`, `batch_exports`, `batch_activity` | name, status; line: book or draft metadata, qty_ordered, qty_received, status; export: version, format, snapshot | Edge Functions |
+| `batches`, `batch_lines`, `batch_activity` | name, status, expected_fulfillment_at; line: title (book or draft metadata), qty_expected, status (`pending`/`received`), staging location, discrepancy note, received_by, received_at; activity: who marked which title received | Edge Functions |
 | `inventory_transactions` | at, actor, book_id, copy_id, delta, type, reason, ref_type, ref_id | Edge Functions (insert only) |
 | `writeoff_slips`, `writeoff_slip_copies` | number, status, reason_code, notes, photos[], created_by, completed_at; copy rows: copy_id, target_status | Edge Functions |
 | `audit_logs` | at, actor, action, entity_type, entity_id, before, after | Edge Functions and triggers (insert only) |
@@ -956,7 +963,7 @@ All tables use `uuid` primary keys unless noted, `timestamptz` timestamps, integ
 - RLS is enabled on every table. A table with no policy is unreadable.
 - Helper functions `auth_role()` and `is_admin()` read the role from the JWT (`app_metadata`). They are `SECURITY DEFINER` with a fixed `search_path`.
 - Students SELECT only their own rows in `profiles`, `memberships`, `loan_requests`, `loan_items`, `reservations`, `wishlist`, `cart_items`, `payments`, `charges`, `receipts`, `notifications`, `chats`, `chat_messages`, `suggestions`.
-- All signed-in users SELECT `books` where `status = 'active'`, `reviews`, active `membership_plans`, and the non-sensitive part of `settings` (through a view). The `books.embedding` column is revoked from client roles.
+- All signed-in users SELECT `books` where `status = 'active'`, `reviews`, the `membership_plans` rows (the fixed Standard and yearly Premium tiers), and the non-sensitive part of `settings` (through a view). The `books.embedding` column is revoked from client roles.
 - Admins SELECT every table the admin screens need. `audit_logs` and `settings_history` are readable by admins only and are written by Edge Functions and triggers.
 - Client write policies exist only for: `cart_items` (own rows), `notifications.read` (own, column grant), `chats` and `chat_messages` delete (own), and the `profiles` columns listed in 12.1. Everything else is written by Edge Functions with the service role.
 - Realtime is enabled only on `books` (counters), `notifications`, and `loan_items`; RLS applies to subscriptions.
@@ -968,12 +975,11 @@ All tables use `uuid` primary keys unless noted, `timestamptz` timestamps, integ
 | Account | `register-student`, `set-account-inactive`, `reactivate-account`, `restore-account`, `request-restore-review` |
 | Catalog | `lookup-isbn`, `save-book`, `import-books`, `add-copies`, `change-copy-status`, `set-books-collection`, `submit-review` |
 | Borrowing | `checkout-cart`, `cancel-loan-item`, `switch-to-counter-payment`, `renew-loan`, `reserve-book`, `cancel-reservation`, `toggle-wishlist` |
-| Money | `create-payment`, `complete-simulated-payment`, `purchase-membership`, `record-counter-payment`, `create-manual-receipt`, `reverse-receipt`, `waive-charge` |
+| Money | `create-payment`, `complete-simulated-payment`, `purchase-membership`, `record-counter-payment`, `create-manual-receipt`, `reverse-receipt` |
 | Circulation | `handover-items`, `return-loan`, `mark-loan-lost` |
 | Write-off | `save-writeoff-slip`, `complete-writeoff-slip`, `cancel-writeoff-slip` |
-| Acquisition | `submit-suggestion`, `withdraw-suggestion`, `decide-suggestion-group`, `merge-suggestion-groups`, `split-suggestion`, `save-batch`, `export-batch`, `mark-batch-ordered`, `receive-batch-line`, `close-batch` |
+| Acquisition | `submit-suggestion`, `withdraw-suggestion`, `reject-suggestion`, `add-suggestion-to-batch`, `save-batch`, `mark-batch-ordered`, `mark-batch-line-received` |
 | Notifications | `send-bulk-reminder` |
-| Settings | `update-settings`, `save-plan` |
 | Assistant | `chat-send` |
 
 **Client-callable RPCs (SQL functions, run under RLS):** `search_books`, `server_time` (for countdown skew), `get_dashboard_kpis` and `get_rankings` (staff only), `get_due_overdue_groups` (staff only).
@@ -1175,7 +1181,7 @@ Each FR carries its own acceptance criterion (Sections 7 to 9). The scenarios be
 
 Generated by `scripts/spec-matrix` from this file. CI fails if an FR has no scenario or a scenario names an unknown FR.
 
-**Totals:** 107 functional requirements, 64 functional test scenarios, 13 requirements added by this spec (`[+]`), 56 decisions.
+**Totals (v1.2, pre-pruning):** 107 functional requirements, 64 functional test scenarios, 13 requirements added by this spec (`[+]`), 56 decisions. **Stale after v1.3 admin pruning** (removed: FR-ANLY-03, FR-SUGG-06, FR-SET-01, FR-MEM-09; merged: FR-AUTH-08 → FR-AUTH-07; changed: FR-SUGG-04/05/07/08, FR-CIRC-07, FR-ANLY-01/02/04). Regenerate with `scripts/spec-matrix`.
 
 ### 17.1 Proposal section to requirements
 | PA1 section | Requirements |
@@ -1276,7 +1282,7 @@ Generated by `scripts/spec-matrix` from this file. CI fails if an FR has no scen
 | FR-AUTH-08 | Restore a Restricted account | §3.5 | A-19 | TS-29, TS-30 |
 | FR-MEM-07 | Membership exceptions | §3.2 | A-19 | TS-36 |
 | FR-SET-01 | Policy settings | Added | A-20 | TS-34, TS-58 |
-| FR-MEM-09 | Plans and Premium configuration | §3.2 | A-20 | TS-34 |
+| FR-MEM-09 | Membership tier policy configuration | §3.2 | A-20 | TS-34 |
 | FR-AUTH-05 | Role-based access control and gating | §3.1 | System | TS-02, TS-04, TS-05, TS-06, TS-61 |
 | FR-MEM-05 | Entitlement resolution | §3.2 | System | TS-14 |
 | FR-MEM-08 | Expiry with books on loan | §3.2 | System | TS-35 |
@@ -1508,3 +1514,28 @@ These features were specified and then deliberately cut to fit a 10-week, 5-spri
 - **Original behavior:** English and Vietnamese UI with a language switcher (EN, VI) in the header, all strings translated, locale-aware dates and numbers, and the browser tests run in both languages.
 - **Today:** English only, with all text in a locale file. Vietnamese catalog text, accent-aware search (POL-17), the Vietnamese-capable PDF font, and Vietnamese chat replies are still supported.
 - **To restore:** add the `vi` locale file, the language switcher, the translations, and run NT-06 in both languages.
+
+### 20.12 Settings / policy configuration screen (was FR-SET-01, FR-MEM-09, screen A-20)
+- **Original behavior:** an admin edited every policy key in §4.17 (fines, lost threshold, plan prices, limits) with validation, previous-value display, and an immutable `settings_history`, and edited the two fixed membership tiers' policies.
+- **Today (v1.3):** the Settings screen is removed. All policy values are **hardcoded defaults** per §4.17; the two tiers are the Standard (unpaid) rank and the yearly Premium membership with their default perks. `settings`/`settings_history` still exist in the schema (POL-18 semantics are inert because values never change at runtime).
+- **To restore:** re-add screen A-20, `update-settings`, FR-SET-01, FR-MEM-09, and the settings history viewer.
+
+### 20.13 Dashboard demand signals and least-borrowed ranking (was FR-ANLY-03 and part of FR-ANLY-02)
+- **Original behavior:** the dashboard showed top suggestion groups by demand, books with queue ≥ 3, and top wishlist counts (each deep-linking to a screen), plus a top-10 / **bottom-10** (least-borrowed) title ranking.
+- **Today (v1.3):** the dashboard is eight metric cards, a monthly loans-trend-per-category chart, and a top-10 borrowed titles list. Demand-signal cards and the least-borrowed list are removed.
+- **To restore:** re-add FR-ANLY-03 and the bottom-10 half of FR-ANLY-02.
+
+### 20.14 Batch export versions (was FR-SUGG-06)
+- **Original behavior:** a batch line list exported to CSV/PDF/Excel was also stored as an immutable version (v1, v2, …) with who/when/format/snapshot, re-downloadable later.
+- **Today (v1.3):** the batch detail uses the standard table–detail panel design; the generic table **batch export** button exports the current table, but versions are not persisted as records.
+- **To restore:** re-add `batch_exports`, `export-batch`, and FR-SUGG-06.
+
+### 20.15 Dedicated staff resolve-lost flow
+- **Original behavior:** a dedicated "Resolve lost" panel in Circulation handled Path A (scan returned copy, cancel/refund replacement) and Path B (record full replacement payment) with 90-day refund logic, separate from the automatic lost conversion.
+- **Today (v1.3):** the lost *automation* stays (FR-LOAN-08/09, POL-08 — the 60-day auto-lost, Restricted status, and replacement charge). But there is **no dedicated resolve-lost screen and no return-after-lost step in Circulation**: staff resolve a `lost` copy by changing its status in the Books → Copies detail pane (FR-INV-07), which applies the Path A effects (waive/refund replacement, keep the fine, set `lost_resolved_at`) in the same transaction. Path B (pay the replacement) is a payment, unchanged.
+- **To restore:** re-add the Resolve-lost panel to Circulation and re-link FR-CIRC-03/05 and UC-18's staff resolution path.
+
+### 20.16 Acquisition pricing, providers, and partial shipment
+- **Original behavior:** batch lines tracked a third-party provider, an estimated unit price, partial/over receipt quantities, and force-through-ISBN metadata for procurement.
+- **Today (v1.3):** none of that is modeled. A batch is a hand-created named entry (editable name + expected fulfillment date) where titles are added directly from student suggestions with a set quantity, and lines are marked received/delivered one at a time (a checklist). No provider, price, or partial shipment fields exist.
+- **To restore:** re-add provider/price fields, partial/over receipt logic, and the procurement export path to `batches`/`batch_lines`.

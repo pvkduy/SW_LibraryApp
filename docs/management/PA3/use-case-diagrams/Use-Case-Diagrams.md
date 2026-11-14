@@ -14,7 +14,7 @@
 | Actor | Kind | Primary / Secondary | Use cases |
 | :--- | :--- | :--- | :--- |
 | Student (Reader) | Human | Primary, active | UC-01 to UC-18, UC-28 |
-| Librarian (Admin) | Human | Primary, active | UC-02, UC-04, UC-13, UC-18, UC-19 to UC-27, UC-28 to UC-32 |
+| Librarian (Admin) | Human | Primary, active | UC-02, UC-04, UC-13, UC-18, UC-19 to UC-27, UC-28 to UC-31 |
 | Authentication and email service | Non-human | Secondary, passive | UC-01, UC-02, UC-03, UC-25, UC-28, UC-30, UC-31 |
 | Payment provider / simulator | Non-human | Secondary, passive | UC-05, UC-10, UC-13 |
 | AI provider | Non-human | Secondary, passive | UC-17 |
@@ -270,14 +270,12 @@ systemBoundary "ShelfHelp: Smart Library Management System"
   UC25("UC-25 Receive an acquisition shipment")
   UC27("UC-27 Review analytics and export reports")
   UC31("UC-31 Manage student accounts")
-  UC32("UC-32 Configure library policies")
 end
 
 Librarian -- UC24
 Librarian -- UC25
 Librarian -- UC27
 Librarian -- UC31
-Librarian -- UC32
 UC25 -- Auth
 UC31 -- Auth
 ```
@@ -288,12 +286,11 @@ UC31 -- Auth
 | UC-25 Receive an acquisition shipment | Librarian | Authentication and email service |
 | UC-27 Review analytics and export reports | Librarian | — |
 | UC-31 Manage student accounts | Librarian | Authentication and email service |
-| UC-32 Configure library policies | Librarian | — |
 
-**Scope note on UC-32.** Membership plans, prices, durations, and privilege tiers
-are fixed system policy configured at deployment (Vision Document v2.0,
-FEAT-03). Staff do not create, edit, deactivate, or re-price plans at runtime,
-so plan administration is not drawn as a use case.
+**Scope note on UC-32 (retired).** UC-32 (Configure library policies) is retired in
+spec v1.3: policy values are hardcoded defaults and the two membership tiers are
+fixed (Standard unpaid rank and yearly Premium), so the Settings screen and its
+use case are no longer part of the admin scope. See `SHELFHELP_FULLSPEC.md` §20.12.
 
 ## 7. Coverage
 
@@ -303,8 +300,8 @@ so plan administration is not drawn as a use case.
 | 2. Discovery and selection | UC-06 to UC-09, UC-14, UC-16, UC-17 | 7 |
 | 3. Checkout, payment, and loans | UC-10 to UC-13, UC-15, UC-18 | 6 |
 | 4. Desk circulation and inventory | UC-19 to UC-23, UC-26, UC-29, UC-30 | 8 |
-| 5. Acquisitions, analytics, and administration | UC-24, UC-25, UC-27, UC-31, UC-32 | 5 |
-| **Total** | **UC-01 to UC-32, no gaps, no duplicates** | **32** |
+| 5. Acquisitions, analytics, and administration | UC-24, UC-25, UC-27, UC-31 | 4 |
+| **Total** | **UC-01 to UC-31 (UC-32 retired)** | **31** |
 
 The diagrams are split across five views for readability. All five share the same
 boundary label, actor names, and notation, and together they cover every use case

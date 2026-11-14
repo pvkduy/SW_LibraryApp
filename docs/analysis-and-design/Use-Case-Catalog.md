@@ -66,7 +66,7 @@ The university board, procurement department, and auditors are stakeholders or r
 | UC-29 | Oversee reservation queues | Librarian (Admin) | Review queue order and pickup deadlines, and cancel a reservation with a reason when needed. | FR-RES-05 |
 | UC-30 | Review due items and send reminders | Librarian (Admin) | Review loans grouped by due or overdue period and send individual or bulk reminders. | FEAT-15; FR-ANLY-05, FR-NOTIF-04 |
 | UC-31 | Manage student accounts | Librarian (Admin) | Find and review student records, apply eligible account-status changes, and restore eligible restricted accounts. | FR-SET-03, FR-AUTH-07, FR-AUTH-08, FR-MEM-07 |
-| UC-32 | Configure library policies and membership plans | Librarian (Admin) | Maintain configurable library rules and membership plan definitions for future transactions. | FR-SET-01, FR-MEM-09 |
+| UC-32 | Configure library policies and membership tier policies | Librarian (Admin) | **Retired (spec v1.3)** — the Settings screen was cut; policies are hardcoded defaults and the two tiers are fixed. | — (was FR-SET-01, FR-MEM-09) |
 
 ## Candidate UML relationships
 
@@ -115,4 +115,4 @@ To keep diagrams readable, consider creating separate diagrams with the same sys
 
 1. **Reader services:** UC-01 through UC-18, and UC-28.
 2. **Circulation and inventory:** UC-19 through UC-23, UC-26, UC-29, and UC-30.
-3. **Acquisition and administration:** UC-24, UC-25, UC-27, UC-31, and UC-32.
+3. **Acquisition and administration:** UC-24, UC-25, UC-27, and UC-31. (UC-32 is retired in spec v1.3.)
