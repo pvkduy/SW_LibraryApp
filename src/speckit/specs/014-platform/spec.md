@@ -1,12 +1,12 @@
 # Feature Specification: Settings, Platform & System
 
-**Source**: `specs/SHELFHELP_FULLSPEC.md` — Admin A-19/A-20, System §9; FR-SET-01, 03; FR-SYS-01..03, 05.
+**Source**: `specs/SHELFHELP_FULLSPEC.md` — Admin A-19, System §9; FR-SET-03; FR-SYS-01..03, 05.
 
 **Created**: 2026-10-23
 
-**Status**: Draft
+**Status**: Draft (v1.3 — policy settings removed)
 
-**Side**: Admin (FR-SET-*, A-19/A-20) + System-wide (FR-SYS-*)
+**Side**: Admin (FR-SET-03, A-19) + System-wide (FR-SYS-*)
 
 **Shared context**: `specs/000-core/spec.md` (POL-16, §4.17 settings, NFRs).
 
@@ -23,21 +23,8 @@ Staff search and inspect students, with audit-logged access.
 **Acceptance Scenarios** (FR-SET-03):
 
 1. **Given** a detail view, **Then** an audit entry "view_student" exists.
-2. **Given** filters (status, debt, membership, strikes), **Then** results match.
-
-### User Story 2 - Policy settings (Priority: P1)
-
-Staff edit the configurable values in 4.17 with history.
-
-**Why this priority**: Every limit/fee/duration is configurable and auditable.
-
-**Independent Test**: Change a setting and verify history + future-only effect (TS-34, TS-58).
-
-**Acceptance Scenarios** (FR-SET-01):
-
-1. **Given** `fine_per_day` changed from 2,000 to 3,000, **Then** new fines use 3,000 from the next nightly run and previously finalized fines are unchanged.
-2. **Given** a negative value, **Then** save is rejected.
-3. **Given** any change, **Then** the previous value and actor are recorded in immutable history.
+2. **Given** filters (status, membership), **Then** results match.
+3. **Given** a detail panel, **Then** it exposes four actions — Set Inactive, Restore, Membership refund/termination, Register/renew membership — and a history of tier changes, status, and strikes with timestamps.
 
 ### User Story 3 - Scheduled jobs registry (Priority: P1)
 
@@ -89,26 +76,23 @@ Uploads and downloads obey role/owner/size/type policies.
 
 ### Functional Requirements
 
-- **FR-SET-01** `[+]` **Policy settings.** Admin SHALL edit every key in 4.17 with type/range validation, see previous value, and have each change recorded in immutable settings history (who/when/old/new). Changes apply to future actions only.
-- **FR-SET-03** `[+]` **Student directory and detail.** Search/filter students (status, debt, membership, strikes); detail shows profile, status, membership history, loans, charges, receipts, strikes. Opening detail is audit-logged.
+- **FR-SET-03** `[+]` **Student directory and detail.** Search/filter students (status, membership); master table + detail panel showing profile, current status, membership, and a simplified history (tier changes, account status, strikes, timestamps). Four actions: Set Inactive, Restore, Membership refund/termination, Register/renew membership. Opening detail is audit-logged.
 - **FR-SYS-01** `[+]` **Scheduled jobs registry.** Jobs exist as `pg_cron` schedules in UTC (DEC-55), idempotent, recording a run in `job_runs`: `nightly-loans`, `due-notifications`, `hold-expiry` (15 min), `payment-expiry` (5 min), `membership-reminders`, `pickup-warnings` (30 min), `email-outbox` (1 min), `embed-queue` (5 min), `unverified-cleanup` (daily), `ttl-cleanup` (daily), `reconcile` (nightly). Pure SQL jobs inside Postgres; external-service jobs as Edge Functions via `pg_net` with a secret header. Each job processes everything due.
 - **FR-SYS-02** `[+]` **Idempotency and concurrency.** All mutating Edge Functions SHALL accept an idempotency key, run one Postgres transaction following the lock order and retry rules (10.7), and be safe to retry.
-- **FR-SYS-03** `[+]` **Audit logging.** Write immutable audit entries for status changes, money actions, settings changes, role changes, restore/inactivation, condition corrections, and staff views of student detail.
+- **FR-SYS-03** `[+]` **Audit logging.** Write immutable audit entries for status changes, money actions, role changes, restore/inactivation, condition corrections, and staff views of student detail.
 - **FR-SYS-05** `[+]` **File handling.** Uploads and private downloads use Storage buckets with policies checking role, owner path, content type, and size (avatars 300 KB, covers 1 MB, evidence 2 MB each, CSV 2 MB).
 
 ### Key Entities
 
-- **Settings / SettingsHistory**: key, value (jsonb), version; history key/old/new/actor/at.
 - **AuditLog**: at, actor, action, entity type/id, before, after (insert only).
 - **JobRuns**: run records for scheduled jobs.
 
 ## Success Criteria
 
-- **SC-001**: No setting is hardcoded; all live in the `settings` table (FR-SET-01, agent rules).
-- **SC-002**: Every job is idempotent and catches up missed work (FR-SYS-01, TS-65).
-- **SC-003**: Every mutating Edge Function is retry-safe via idempotency key (FR-SYS-02).
-- **SC-004**: All listed sensitive actions are audit-logged immutably (FR-SYS-03, TS-58).
-- **SC-005**: File policies deny cross-user and oversized uploads (FR-SYS-05, TS-42).
+- **SC-001**: Every job is idempotent and catches up missed work (FR-SYS-01, TS-65).
+- **SC-002**: Every mutating Edge Function is retry-safe via idempotency key (FR-SYS-02).
+- **SC-003**: All listed sensitive actions are audit-logged immutably (FR-SYS-03, TS-58).
+- **SC-004**: File policies deny cross-user and oversized uploads (FR-SYS-05, TS-42).
 
 ## Assumptions
 
@@ -118,4 +102,4 @@ Uploads and downloads obey role/owner/size/type policies.
 
 ## Test Scenarios
 
-TS-34, TS-42, TS-58, TS-59, TS-65, TS-66.
+TS-42, TS-58, TS-59, TS-65, TS-66.

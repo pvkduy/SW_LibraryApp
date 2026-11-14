@@ -46,14 +46,14 @@ An admin marks a copy lost, with consequences.
 - Return scanned for a copy not on loan → clear error with current status (EC-14).
 - Return at 00:00:01 next day counts as 1 day overdue (EC-31).
 - Student Restricted while holding ready items → handover blocked, items expire normally (EC-18).
-- `lost` copy scanned → return-after-lost flow (POL-08).
+- A `lost` copy is resolved in the Books → Copies pane (FR-INV-07); it is not returned via Circulation.
 - Copy held for a ready item is found damaged before handover → staff set it `damaged`/`under_repair`, releasing the hold; the item stays `ready_for_pickup` and later expires unless cancelled. Swap/staff-cancel out of scope (SRS §20.6, EC-12).
 
 ## Requirements
 
 ### Functional Requirements
 
-- **FR-CIRC-03** `[PA1 §3.7]` **Return.** Scan copy barcode or open active loan; show borrower/due/overdue/fine/condition out; require condition in; choose copy next status; confirm sets `returned`, writes copy status, finalizes charges, runs promotion/wishlist, invites rating. Not-on-loan copy → error. `lost` copy → return-after-lost flow.
+- **FR-CIRC-03** `[PA1 §3.7]` **Return.** Scan copy barcode or open active loan; show borrower/due/overdue/fine/condition out; require condition in; choose copy next status; confirm sets `returned`, writes copy status, finalizes charges, runs promotion/wishlist, invites rating. Not-on-loan copy → error. A `lost` copy is resolved in the Books → Copies pane (FR-INV-07), not here.
 - **FR-CIRC-04** `[PA1 §3.7]` **Charges at return.** Compute overdue fine per POL-08, require damage decision when worsened, create `damage_fee` Charges, show total, collect now (counter) or leave unpaid (debt hold). The final fine reconciles with paid/unpaid fine Charges (top-up for missing days at the current rate; never refund an automatic payment).
 - **FR-CIRC-05** `[PA1 §3.7]` **Mark as lost manually.** Mark a copy lost; if on loan, confirmation states consequences (loan `lost`, student Restricted, replacement charge) and requires reason.
 - **FR-COND-01** `[PA1 §3.8]` **Record condition.** Require condition (`good`/`fair`/`poor`/`damaged`) with optional note and up to 3 photos at handover and return. Admin MAY correct with reason (audit-logged, no auto charge change).

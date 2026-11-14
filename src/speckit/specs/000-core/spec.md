@@ -164,7 +164,7 @@ but the default is built so work is not blocked.
 | DEC-29 | Email "when the pickup window is close to expiring" has no threshold. | 12 hours before the deadline. | Yes |
 | DEC-30 | "Remind all" scope and spam control are missing. | Targets students in the currently filtered due/overdue group. Preview count and confirm. Max one bulk reminder per student per 24 h. | Yes |
 | DEC-31 | Suggestion needs "ISBN or link" and "similar requests grouped automatically" with no rules. | Title and author required, at least one of ISBN or link required. Grouping: exact normalized ISBN, else fuzzy title+author similarity at or above 0.85. Admin can merge and split. Max 5 open suggestions per student. | Yes |
-| DEC-32 | Approved suggestions are "accepted in the upcoming batch" but the admin also "builds the batch by adding titles". | Approval puts the group in an Approved backlog. The admin adds backlog items (and any other titles) to a Draft batch. Nothing is auto-added. | Yes |
+| DEC-32 | Approved suggestions are "accepted in the upcoming batch" but the admin also "builds the batch by adding titles". | A batch is a hand-created named entry (editable name + expected fulfillment date). Titles are added directly from student suggestions with a set quantity. There is no separate approval backlog. | Yes |
 | DEC-33 | Requesters are notified when books arrive and when the batch closes; timing unclear. | Requesters of a title are notified when that title's receipt is saved (idempotent). Closing the batch does not re-notify. | Yes |
 | DEC-34 | "Choosing from a library catalog" when adding books is ambiguous. | Means the internal catalog (add copies to an existing title). Metadata autofill uses an external ISBN lookup (Google Books, fallback Open Library). | Yes |
 | DEC-35 | "Scan the loaned book's barcode" at return conflicts with ISBN scanning. | Two barcode types: ISBN barcode (title lookup) and copy barcode label (Code 128, unique per copy, used for return and audits). | No |
@@ -377,7 +377,7 @@ A function reads settings once at the start of its transaction (one `settings.ve
 ### 5.1 Core entities
 User, Membership, MembershipPlan, Book, Copy, Review, LoanRequest, LoanItem,
 Reservation, WishlistEntry, Charge, Payment, Receipt, Notification, Suggestion,
-SuggestionGroup, Batch, BatchLine, BatchExport, InventoryTransaction, WriteOffSlip,
+SuggestionGroup, Batch, BatchLine, InventoryTransaction, WriteOffSlip,
 AuditLog, ChatConversation, Settings, StatsDaily. (Attributes in Section 12 of the SRS.)
 
 ### 5.2 Loan Item states
@@ -429,7 +429,7 @@ While `ready_for_pickup`, only the Reservation row exists; no Loan Item is creat
 - **Account:** `pending_verification` → `active` ⇄ `restricted`; `active` → `inactive` → `active` (admin only).
 - **Payment:** `created` → `pending` → `succeeded` | `failed` | `cancelled` | `expired`; `succeeded` → `refunded`.
 - **Charge:** `unpaid` → `paid`; `unpaid` → `waived` or `cancelled` (admin or system with reason).
-- **Suggestion, Batch, Slip:** see POL-12/POL-13. Slip: `draft`, `completed`, `cancelled`. Batch line: `pending`, `partial`, `received`, `not_received`.
+- **Suggestion, Batch, Slip:** see POL-12/POL-13. Slip: `draft`, `completed`, `cancelled`. Batch line: `pending`, `received`.
 - **Membership (derived):** `upcoming`, `active`, `expired`, `terminated`.
 
 ---
@@ -526,20 +526,20 @@ The full edge-case table (EC-01 through EC-36) is in Section 15.2 of
 | M0 Foundations | Repo, CI, Supabase projects, local stack, migration pipeline, shared package, settings loader, clock, i18n, design system, error contract, seed, spec-matrix | CI green; hello-world Edge Function; pgTAP RLS test; Playwright smoke test |
 | M1 Accounts | FR-AUTH-01..05, FR-PROF-01..03, FR-SYS-05, FR-GLOB-02 | TS-01..06, TS-41, TS-42, TS-60 |
 | M2 Catalog and search | FR-INV-01..04, 07, 09, FR-SRCH-01..05, 07, 08, FR-HOME-01 | TS-08..12, TS-47..49 |
-| M3 Membership and money | FR-MEM-01..03, 05, 09, FR-CART-06, FR-RCPT-01, 06, FR-SET-01, FR-SYS-03 | TS-33, TS-34, TS-58 |
+| M3 Membership and money | FR-MEM-01..03, 05, 10, FR-CART-06, FR-RCPT-01, 06, FR-SYS-03 | TS-33, TS-58 |
 | M4 Borrowing and circulation | FR-CART-01..05, 07, 08, FR-CIRC-01..03, 07, FR-COND-01, FR-LOAN-01..03, FR-SYS-02 | TS-14..24, TS-63 |
 | M5 Charges, lost, restriction | FR-CIRC-04, 05, FR-LOAN-04..10, FR-AUTH-07, 08, FR-MEM-04, 07, 08, FR-NOTIF-01..03, 05, FR-GLOB-01, FR-SYS-01 | TS-25..32, TS-35, TS-36, TS-61, TS-64, TS-65 |
 | M6 Reservations and wishlist | FR-RES-01..05, FR-SRCH-06, FR-NOTIF-04, FR-ANLY-05 | TS-13, TS-37..40, TS-43 |
 | M7 Back-office finance and stock | FR-RCPT-02..05, FR-COND-02, 03, FR-INV-05, 06, FR-SET-03 | TS-51..53, TS-59 |
-| M8 Suggestions and acquisition | FR-SUGG-01..09 | TS-44..46 |
-| M9 Analytics | FR-ANLY-01..04 | TS-54, TS-55, NT-01 |
+| M8 Suggestions and acquisition | FR-SUGG-01..05, 07, 08, 09 | TS-44..46 |
+| M9 Analytics | FR-ANLY-01, 02, 04 | TS-54, TS-55, NT-01 |
 | M10 Assistant | FR-AI-01..07 | TS-56, TS-57, NT-07 |
 | M11 Hardening | NFR-01..16 verification, accessibility pass, load test, security review, backup drill | NT-01..07 green; owner sign-off on `[CONFIRM]` items |
 
 **Definition of done for any task:** (1) the FR's AC passes as an automated test;
 (2) its TS scenario passes; (3) loading/empty/error/cancel states exist; (4) strings
 are in the locale file; (5) accessibility passes; (6) audit entries and notifications
-exist per POL-11 and FR-SYS-03; (7) no setting hardcoded; (8) spec-matrix check passes.
+exist per POL-11 and FR-SYS-03; (7) policy defaults are hardcoded constants per §4.17; (8) spec-matrix check passes.
 
 ---
 

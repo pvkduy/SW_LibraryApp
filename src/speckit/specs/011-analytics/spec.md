@@ -1,10 +1,10 @@
 # Feature Specification: Analytics & Reports
 
-**Source**: `specs/SHELFHELP_FULLSPEC.md` — Admin A-02, A-03; FR-ANLY-01..05.
+**Source**: `specs/SHELFHELP_FULLSPEC.md` — Admin A-02, A-03; FR-ANLY-01, 02, 04, 05.
 
 **Created**: 2026-10-23
 
-**Status**: Draft
+**Status**: Draft (v1.3 — dashboard and reports simplified)
 
 **Shared context**: `specs/000-core/spec.md` (DEC-41 net revenue).
 
@@ -24,44 +24,34 @@ Staff see library state at a glance for a selectable range.
 2. **Given** no data in range, **Then** zeros show with an empty-state note, not errors.
 3. **Given** a day's activity, **Then** the dashboard totals equal a direct recount.
 
-### User Story 2 - Rankings and trends (Priority: P2)
+### User Story 2 - Chart and top titles (Priority: P2)
 
-Staff see most/least borrowed titles and category trends.
+Staff see a monthly loans-trend-per-category chart and a top-10 borrowed titles list.
 
-**Why this priority**: Informs purchasing and weeding decisions.
+**Why this priority**: Informs purchasing decisions.
 
-**Independent Test**: Verify least-borrowed includes zero-loan titles (TS-54).
+**Independent Test**: Verify the chart contributes zero for an inactive category (TS-54).
 
 **Acceptance Scenarios** (FR-ANLY-02):
 
-1. **Given** a title with no loans in range, **Then** it can appear in the least-borrowed list.
+1. **Given** a category with no loans in range, **Then** it contributes zero to the trend.
+2. **Given** a title with no loans in range, **Then** it does not appear in the top-10 list.
 
-### User Story 3 - Demand signals (Priority: P2)
+### User Story 3 - Report export (Priority: P2)
 
-Staff see suggestion groups, reservation queues, and wishlists ranking demand.
+Staff export one of three preset report modules to CSV, PDF, and Excel.
 
-**Why this priority**: Data-driven acquisition.
-
-**Independent Test**: Verify demand ranking (TS-54).
-
-**Acceptance Scenarios** (FR-ANLY-03):
-
-1. **Given** a group with 12 requesters, **Then** it ranks above a group with 4.
-
-### User Story 4 - Report export (Priority: P2)
-
-Staff export reports to CSV, PDF, and Excel.
-
-**Why this priority**: Official reporting and procurement.
+**Why this priority**: Official reporting.
 
 **Independent Test**: Export identical rows across formats (TS-55).
 
 **Acceptance Scenarios** (FR-ANLY-04):
 
-1. **Given** a filter returning 120 rows, **Then** CSV, PDF, and XLSX each contain 120 rows and correct Vietnamese characters.
+1. **Given** a range returning 120 rows, **Then** CSV, PDF, and XLSX each contain 120 rows and correct Vietnamese characters.
 2. **Given** 25,000 rows, **Then** export is blocked with an explanation.
+3. **Given** a selected preset module (Circulation, Fines & Revenues, or Inventory), **Then** the only selectable option is the date range.
 
-### User Story 5 - Due/overdue grouping (Priority: P2)
+### User Story 4 - Due/overdue grouping (Priority: P2)
 
 Staff see loans due or overdue grouped by day or week.
 
@@ -84,10 +74,9 @@ Staff see loans due or overdue grouped by day or week.
 
 ### Functional Requirements
 
-- **FR-ANLY-01** `[PA1 §3.10]` **Dashboard KPIs.** For a selectable range (today/7 days/30 days/custom): items on loan vs total stock, overdue count, fines collected, membership revenue, Premium-loan revenue, damaged copies, lost copies. On loan = `borrowed` + `overdue`; total stock = copies not `retired`/`lost`; revenue = net signed sums by type (DEC-41). SQL RPCs over indexed tables.
-- **FR-ANLY-02** `[PA1 §3.10]` **Rankings and trends.** 10 most and 10 least borrowed titles (least includes zero-loan), monthly loans trend per category.
-- **FR-ANLY-03** `[PA1 §3.10]` **Demand signals.** Top suggestion groups, books with queue ≥ 3, top wishlist counts, each linking to the relevant admin screen.
-- **FR-ANLY-04** `[PA1 §3.10]` **Report export.** Pick report (loans, overdue, fines, revenue, inventory, suggestions, demand), date/category filters, preview, export to CSV/PDF/Excel. Header with generator/time/filters. Over 20,000 rows refused. PDF embeds Vietnamese font.
+- **FR-ANLY-01** `[PA1 §3.10]` **Dashboard KPIs.** Eight metric cards for a selectable range (today/7 days/30 days/custom): items on loan vs total stock, overdue count, damaged copies, Premium-loan revenue, fines collected, lost copies, membership revenue, active reservations. On loan = `borrowed` + `overdue`; total stock = copies not `retired`/`lost`; revenue = net signed sums by type (DEC-41).
+- **FR-ANLY-02** `[PA1 §3.10]` **Chart and top titles.** A monthly loans-trend-per-category chart and a top-10 borrowed titles list for the range.
+- **FR-ANLY-04** `[PA1 §3.10]` **Report export.** Three preset modules — Circulation, Fines & Revenues, Inventory — with the only selectable option a date range; export to CSV/PDF/Excel (no table preview). Header with generator/time/range. Over 20,000 rows refused. PDF embeds Vietnamese font.
 - **FR-ANLY-05** `[PA1 §3.5]` **Due and overdue grouping.** Loans due or overdue grouped by day or week (toggle), with counts and expandable student lists.
 
 ### Key Entities
