@@ -65,7 +65,7 @@ The university board, procurement department, and auditors are stakeholders or r
 | UC-29 | Oversee reservation queues | Librarian (Admin) | Review queue order and pickup deadlines, and cancel a reservation with a reason when needed. | FR-RES-05 |
 | UC-30 | Review due items and send reminders | Librarian (Admin) | Review loans grouped by due or overdue period and send individual or bulk reminders. | FEAT-15; FR-ANLY-05, FR-NOTIF-04 |
 | UC-31 | Manage student accounts | Librarian (Admin) | Find and review student records, apply eligible account-status changes, and restore eligible restricted accounts. | FR-SET-03, FR-AUTH-07, FR-AUTH-08, FR-MEM-07 |
-| UC-32 | Configure library policies and membership plans | Librarian (Admin) | Maintain configurable library rules and membership plan definitions for future transactions. | FR-SET-01, FR-MEM-09 |
+| UC-32 | Configure library policies and membership tier policies | Librarian (Admin) | Maintain configurable library rules and the two fixed membership tier policies for future transactions. | FR-SET-01, FR-MEM-09 |
 
 ## Candidate UML relationships
 
