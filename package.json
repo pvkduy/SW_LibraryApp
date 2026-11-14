@@ -22,7 +22,8 @@
     "functions:serve": "supabase functions serve --workdir src --no-verify-jwt",
     "e2e": "playwright test --config src/e2e/playwright.config.ts",
     "e2e:install": "playwright install --with-deps chromium",
-    "verify": "npm run typecheck && npm run spec-matrix"
+    "verify": "npm run typecheck && npm run spec-matrix",
+    "dev": "npm run dev --workspace=frontend"
   },
   "engines": {
     "node": ">=20"

@@ -1,25 +1,43 @@
 import { useEffect, useState } from 'react'
 import '../App.css'
+import '../features/auth/auth.css'
 import { useAuth } from '../features/auth/AuthContext.jsx'
+import { LoginPage } from '../features/auth/LoginPage.jsx'
+import { RegisterPage } from '../features/auth/RegisterPage.jsx'
+import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage.jsx'
+import { VerifyOtpPage } from '../features/auth/VerifyOtpPage.jsx'
+import { ResetPasswordPage } from '../features/auth/ResetPasswordPage.jsx'
+import { AuthSuccessModal, AuthErrorModal, AuthConfirmModal } from '../features/auth/components/AuthModals.jsx'
 import { supabase } from '../lib/supabase'
+
+function getInitialRoute() {
+  if (typeof window === 'undefined') return 'login'
+  const path = window.location.pathname.replace(/^\//, '')
+  if (['login', 'register', 'forgot-password', 'reset-password', 'verify-email'].includes(path)) {
+    return path === 'verify-email' ? 'verify-otp' : path
+  }
+  return 'login'
+}
 
 function App() {
   const { user, profile, loading, logout } = useAuth()
+  const [currentRoute, setCurrentRoute] = useState(getInitialRoute)
+  const [registeredEmail, setRegisteredEmail] = useState('')
   const [books, setBooks] = useState([])
   const [error, setError] = useState(null)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
+  const navigate = (route, params = {}) => {
+    if (params.email) setRegisteredEmail(params.email)
+    setCurrentRoute(route)
+    window.history.pushState({}, '', `/${route}`)
+  }
+
+  // Load books when authenticated
   useEffect(() => {
-    // SRS §12.3: catalog reads are for signed-in users only, and §2.2 limits
-    // unauthenticated visitors to the auth routes. Querying while logged out
-    // therefore returns "permission denied" from RLS, so do not try.
-    //
-    // Nothing is reset here: `books`/`error` start empty and the effect no-ops
-    // until a session exists. Calling setState synchronously in an effect would
-    // trigger a cascading render (oxlint react/set-state-in-effect).
     if (!user) return
 
     let active = true
-
     supabase
       .from('books')
       .select('id, title, authors, collection, available_copies')
@@ -37,37 +55,145 @@ function App() {
     }
   }, [user])
 
-  if (loading) return <p>Đang tải...</p>
+  if (loading) {
+    return (
+      <div className="auth-viewport" style={{ alignItems: 'center' }}>
+        <p style={{ color: '#6e665e', fontWeight: 500 }}>Đang tải ShelfHelp...</p>
+      </div>
+    )
+  }
 
-  return (
-    <main className="app">
-      <header>
-        <h1>SW Library</h1>
-        {user ? (
-          <div className="user">
-            <span>{profile?.full_name || user.email}</span>
-            <button onClick={logout}>Đăng xuất</button>
+  // 1. Authenticated User Experience (FR-AUTH-03 & Role Routing)
+  if (user) {
+    // If user's account is pending verification, gate to verification screen (FR-AUTH-02)
+    if (profile?.status === 'pending_verification') {
+      return (
+        <VerifyOtpPage
+          email={profile.email || user.email}
+          onNavigate={navigate}
+          onVerified={() => navigate('success')}
+        />
+      )
+    }
+
+    // Authenticated Home / Dashboard View
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#faf8f5', fontFamily: 'inherit' }}>
+        {/* Status banner for Restricted accounts (FR-GLOB-01, POL-09) */}
+        {profile?.status === 'restricted' && (
+          <div style={{ backgroundColor: '#fff3cd', color: '#856404', padding: '12px 16px', textAlign: 'center', fontWeight: 600, borderBottom: '1px solid #ffeeba' }}>
+            ⚠️ Account Restricted: Your account has an unresolved loss or restriction. Please settle any fees or contact the librarian.
           </div>
-        ) : (
-          <p>Chưa đăng nhập</p>
         )}
-      </header>
 
-      <section>
-        <h2>Danh sách sách</h2>
-        {error && <p className="error">{error}</p>}
-        <ul>
-          {books.map((book) => (
-            <li key={book.id}>
-              <strong>{book.title}</strong> - {book.authors?.join(', ')}
-              {book.collection === 'premium' && <em> (Premium)</em>}
-            </li>
-          ))}
-        </ul>
-        {!error && books.length === 0 && <p>Chưa có sách nào.</p>}
-      </section>
-    </main>
-  )
+        <main className="app" style={{ maxWidth: '840px', margin: '0 auto', padding: '24px 16px' }}>
+          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid #ede6db' }}>
+            <div>
+              <h1 style={{ margin: 0, fontSize: '24px', color: '#221c18' }}>ShelfHelp Library</h1>
+              <span style={{ fontSize: '13px', color: '#6e665e' }}>
+                Mode: {profile?.role === 'admin' ? 'Admin Mode (Librarian)' : 'Reader Mode (Student)'}
+              </span>
+            </div>
+
+            <div className="user" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontWeight: 600, color: '#2a2421', fontSize: '14px' }}>
+                {profile?.full_name || user.email}
+              </span>
+              <button
+                type="button"
+                className="auth-btn-primary"
+                style={{ width: 'auto', height: '36px', padding: '0 16px', marginTop: 0, fontSize: '13px' }}
+                onClick={() => setShowLogoutConfirm(true)}
+              >
+                Đăng xuất
+              </button>
+            </div>
+          </header>
+
+          {showLogoutConfirm && (
+            <AuthConfirmModal
+              title="Xác nhận đăng xuất"
+              subtitle="Bạn có chắc chắn muốn đăng xuất khỏi tài khoản không?"
+              confirmText="Đăng xuất"
+              cancelText="Không, ở lại"
+              onConfirm={() => {
+                setShowLogoutConfirm(false)
+                logout()
+              }}
+              onCancel={() => setShowLogoutConfirm(false)}
+            />
+          )}
+
+          <section style={{ marginTop: '24px' }}>
+            <h2 style={{ fontSize: '18px', color: '#221c18', marginBottom: '16px' }}>Danh sách sách mới trong thư viện</h2>
+            {error && <p className="error">{error}</p>}
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+              {books.map((book) => (
+                <li key={book.id} style={{ padding: '12px 16px', backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #ede6db', marginBottom: '8px' }}>
+                  <strong style={{ color: '#2a2421' }}>{book.title}</strong> — <span style={{ color: '#6e665e' }}>{book.authors?.join(', ')}</span>
+                  {book.collection === 'premium' && <span style={{ marginLeft: '8px', color: '#6e472a', fontWeight: 600, fontSize: '12px' }}>(Premium)</span>}
+                  <div style={{ fontSize: '12px', color: '#8c827a', marginTop: '4px' }}>
+                    Có sẵn: {book.available_copies} bản
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {!error && books.length === 0 && <p style={{ color: '#6e665e' }}>Chưa có sách nào trong thư viện.</p>}
+          </section>
+        </main>
+      </div>
+    )
+  }
+
+  // 2. Unauthenticated Auth Flows (Matching 8 Figma Mockups)
+  switch (currentRoute) {
+    case 'register':
+      return (
+        <RegisterPage
+          onNavigate={navigate}
+          onRegistered={(em) => navigate('verify-otp', { email: em })}
+        />
+      )
+
+    case 'forgot-password':
+      return <ForgotPasswordPage onNavigate={navigate} />
+
+    case 'verify-otp':
+      return (
+        <VerifyOtpPage
+          email={registeredEmail || user?.email || ''}
+          onNavigate={navigate}
+          onVerified={() => navigate('success')}
+        />
+      )
+
+    case 'reset-password':
+      return <ResetPasswordPage onNavigate={navigate} />
+
+    case 'success':
+      return (
+        <AuthSuccessModal
+          title="Registration Completed"
+          subtitle="Welcome to ShelfHelp!"
+          buttonText="Back to Home"
+          onAction={() => navigate('login')}
+        />
+      )
+
+    case 'error':
+      return (
+        <AuthErrorModal
+          title="Something went wrong"
+          subtitle="Please try again later"
+          buttonText="Try Again"
+          onAction={() => navigate('login')}
+        />
+      )
+
+    case 'login':
+    default:
+      return <LoginPage onNavigate={navigate} />
+  }
 }
 
 export default App

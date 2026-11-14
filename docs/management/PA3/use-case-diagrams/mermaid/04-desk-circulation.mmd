@@ -1,0 +1,31 @@
+---
+config:
+  theme: neutral
+  look: classic
+  layout: elk
+---
+usecase-beta
+direction LR
+actor Librarian("Librarian (Admin)")
+actor Auth("Authentication and email service") <<system>>
+
+systemBoundary "ShelfHelp: Smart Library Management System"
+  UC19("UC-19 Maintain catalog and copies")
+  UC20("UC-20 Hand over requested books")
+  UC21("UC-21 Process a book return")
+  UC22("UC-22 Assess damage and write off copies")
+  UC23("UC-23 Manage receipts and reversals")
+  UC26("UC-26 Review inventory history")
+  UC29("UC-29 Oversee reservation queues")
+  UC30("UC-30 Review due items and send reminders")
+end
+
+Librarian -- UC19
+Librarian -- UC20
+Librarian -- UC21
+Librarian -- UC22
+Librarian -- UC23
+Librarian -- UC26
+Librarian -- UC29
+Librarian -- UC30
+UC30 -- Auth

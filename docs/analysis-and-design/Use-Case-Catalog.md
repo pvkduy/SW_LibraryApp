@@ -3,6 +3,7 @@
 **Status:** Diagram-oriented draft
 **Sources:** [ShelfHelp Vision Document](./Vision-Document.md) and [ShelfHelp Full Specification](../../../../src/speckit/specs/SHELFHELP_FULLSPEC.md)
 **Purpose:** Provide a concise, goal-level use-case inventory for UML diagrams. Detailed rules and acceptance criteria remain in the source documents.
+**Diagrams:** [PA3 use-case diagrams](../management/PA3/use-case-diagrams/Use-Case-Diagrams.md)
 
 ## Modeling scope and conventions
 
