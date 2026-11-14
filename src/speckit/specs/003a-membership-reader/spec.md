@@ -14,11 +14,11 @@
 
 ### User Story 1 - View plans (Priority: P1)
 
-A student sees available membership plans and their privileges.
+A student sees the two fixed membership tiers and their privileges.
 
 **Why this priority**: Understanding entitlements is the precondition to buying.
 
-**Independent Test**: Render plans from settings and verify price reflects changes (TS-33).
+**Independent Test**: Render the two tiers from settings and verify price reflects changes (TS-33).
 
 **Acceptance Scenarios** (R-16, FR-MEM-01):
 
@@ -78,7 +78,7 @@ When a membership ends, existing loans keep due dates and reminders are sent.
 
 ### Functional Requirements
 
-- **FR-MEM-01** `[PA1 §3.2]` **View plans.** SHALL show available plans (from settings) with price, duration, privileges table, and comparison to non-member rules.
+- **FR-MEM-01** `[PA1 §3.2]` **View plans.** SHALL show the two fixed tiers — the Standard (unpaid) rank and the yearly Premium membership — with price, duration, privileges table, and comparison to non-member rules.
 - **FR-MEM-02** `[PA1 §3.2]` **Buy or renew a plan.** SHALL show price/start/end preview, run `purchase-membership` through simulated payment. Success creates membership with snapshot and receipt, notifies. Failure creates nothing. Blocked when Restricted or outside renewal window. Double submit safe.
 - **FR-MEM-03** `[PA1 §3.2]` **Membership status.** SHALL show status, expiry, days left, exact snapshot privileges, purchase history with receipt links.
 - **FR-MEM-04** `[PA1 §3.2]` **(System) Expiry reminder.** Scheduled job SHALL send email + in-app notice 7 days before end, once per membership.
@@ -88,7 +88,7 @@ When a membership ends, existing loans keep due dates and reminders are sent.
 ### Key Entities
 
 - **Membership**: uid, plan name, price paid, start/end, privileges snapshot, receipt id, terminated flag.
-- **MembershipPlan**: name, price, duration days, privileges, active flag.
+- **MembershipPlan**: name, price, duration days, privileges, tier (`standard` or `yearly_premium`).
 
 ## Success Criteria
 
@@ -98,7 +98,7 @@ When a membership ends, existing loans keep due dates and reminders are sent.
 
 ## Assumptions
 
-- Plans are fixed-duration, prepaid, manually renewed (DEC-04).
+- Plans are fixed two tiers (Standard unpaid + yearly Premium), prepaid, manually renewed (DEC-04).
 - Membership non-transferable; no whole-degree plan (DEC-03).
 - Online purchases non-refundable except admin exception (POL-03).
 

@@ -108,7 +108,7 @@ There is a single staff role. Staff accounts cannot borrow. A staff member who i
 | View dashboard, export reports | No | Yes |
 | Send "Remind all" | No | Yes |
 | Set student Inactive, restore from Restricted, waive charge | No | Yes |
-| Edit settings and plans | No | Yes |
+| Edit settings and membership tier policies | No | Yes |
 
 Because there is one staff role, every admin can do every action above, including money reversals and settings. The two-role design is archived in Section 20.
 
@@ -123,7 +123,7 @@ Each row is a place where PA1 is inconsistent, ambiguous, or silent. The **Adopt
 | DEC-01 | PA1 uses "librarian" and "administrator" for staff, and some actions (set Inactive, restore from Restricted, refund exceptions) sound privileged. | One staff role, `admin`, covers both. This is an owner decision to keep the project small. The two-role design is archived in Section 20. | No |
 | DEC-02 | No way to create staff accounts is described. | Admin accounts are created by hand with a script or the Supabase dashboard. There is no self-registration for staff and no in-app staff management (Section 20). | Yes |
 | DEC-03 | PA1 mentions a whole-degree plan that ends on the expected graduation date. | Removed by owner decision: there is no whole-degree plan and no graduation date field. When a student graduates or leaves, an admin sets the account Inactive (FR-AUTH-07). | No |
-| DEC-04 | Plans are described as "for an academic year" but the plan model is not defined. | Plans are fixed-duration (a number of days from the start date). One plan ships by default (Academic Year, 365 days). Admins can add other fixed-duration plans in settings. FR-MEM-06 (whole-degree end date) is retired and its ID is not reused. | Yes |
+| DEC-04 | Plans are described as "for an academic year" but the plan model is not defined. | The membership model is fixed to exactly two tiers: the Standard (unpaid) rank and one yearly Premium membership (Academic Year, 365 days). Admins may edit the policies of these two tiers but may not create new plans or deactivate them. FR-MEM-06 (whole-degree end date) is retired and its ID is not reused. | No |
 | DEC-05 | Cart lets the student "choose the loan duration" but loan period is fixed per tier. | Student chooses from allowed durations: non-member {7}, member {7, 14} days (settings). Non-member Premium fee is per 7 days. | Yes |
 | DEC-06 | Fee on renewal of a Premium book by a non-member is not stated. | Renewal costs another per-book fee, paid before the due date is extended. | Yes |
 | DEC-07 | Copy status list has no state for a copy held for pickup, yet copies must be "held". | Added copy status `held`. | No |
@@ -196,8 +196,8 @@ All values below are defaults stored in `settings` table, key `library` (4.17). 
 - **Restricted** is set automatically when a loan becomes `lost`. It is lifted only by an admin after the checklist in 4.9 passes. The student can press "Request review" to notify admins.
 
 ### 4.3 Membership and entitlements (POL-03)
-- Plans are prepaid, one-time, non-transferable, renewed manually.
-- Defaults: the Academic Year plan lasts 365 days from the start date. Every plan is a fixed number of days. There is no plan tied to a graduation date.
+- The membership model is fixed to exactly two tiers: the **Standard (unpaid) rank** (the default, no purchase) and one **yearly Premium membership** (Academic Year, 365 days from the start date). Admins may edit the policies of these two tiers (entitlements and, for Premium, price and duration) but may not create additional plans or deactivate either tier.
+- The Premium plan is prepaid, one-time, non-transferable, renewed manually. There is no plan tied to a graduation date.
 - Start date is the purchase time, or the day after the current end date when renewing early. Early renewal is allowed only within 30 days before expiry, or after expiry.
 - Each purchase stores a **snapshot**: plan name, price paid, start, end, and the privileges (max items, loan day options, renewals, can reserve). Later settings changes apply only to new purchases.
 - Membership status is computed from dates: `upcoming`, `active`, `expired`, plus `terminated` (admin refund or account inactivation).
@@ -208,7 +208,7 @@ All values below are defaults stored in `settings` table, key `library` (4.17). 
   2. If found, use its snapshot privileges.
   3. Else use non-member settings.
 
-| | Non-member | Member (default snapshot) |
+| | Standard (unpaid) rank | Yearly Premium (default snapshot) |
 |---|---|---|
 | Standard books | Free | Free |
 | Premium books | Fee per book per loan (5,000 VND per 7 days) | Free |
@@ -353,7 +353,7 @@ Rating 1 to 5 required, text optional up to 1,000 characters. One review per stu
 | `unverified_account_ttl_days` | 7 |
 | `nonmember.max_items` / `loan_days_options` / `renewals` / `can_reserve` | 3 / [7] / 1 / false |
 | `premium_fee_per_7_days` | 5000 |
-| `plans[]` | Academic Year (365 days, 150000 VND, member privileges 7 / [7,14] / 2 / true) |
+| `plans[]` | Fixed two tiers: Standard (unpaid; entitlements below) and Yearly Premium (365 days, 150000 VND, member privileges 7 / [7,14] / 2 / true). Admins edit the policies, not the set of tiers. |
 | `plan_renewal_window_days` | 30 |
 | `membership_reminder_days` | 7 |
 | `fine_per_day` | 2000 |
@@ -600,7 +600,7 @@ Tabs: Reservations (position, status, deadline countdown) and Wishlist (list, re
 - **FR-PROF-03** `[PA1 §3.2]` **Avatar upload or capture with crop.** The system SHALL accept an image file (JPEG, PNG, WebP up to 5 MB) or a camera capture, let the student crop to a square with zoom and pan, produce a 512x512 JPEG of at most 300 KB (EXIF orientation honored), upload to the `avatars` bucket at `{uid}/avatar.jpg` (the Storage policy checks the owner), and allow removal (falls back to initials). Cancel at any step discards everything. A failed upload keeps the old avatar. *AC:* Given a 4 MB PNG, then the stored file is at most 300 KB and square. Given cancel after crop, then the old avatar remains. Given an upload network failure, then an error with Retry shows and the old avatar remains.
 
 ### R-16 Membership `/membership`
-- **FR-MEM-01** `[PA1 §3.2]` **View plans.** The system SHALL show available plans (from settings) with price, duration in days, and the privileges table (4.3), and a comparison against non-member rules. *AC:* Given a settings price change, then the page shows the new price for new purchases.
+- **FR-MEM-01** `[PA1 §3.2]` **View plans.** The system SHALL show the two fixed tiers — the Standard (unpaid) rank and the yearly Premium membership — with price, duration in days, and the privileges table (4.3), and a comparison against non-member rules. *AC:* Given a settings price change, then the page shows the new price for new purchases.
 - **FR-MEM-02** `[PA1 §3.2]` **Buy or renew a plan.** The system SHALL show price, start, and end preview, then run the Edge Function `purchase-membership` through the simulated payment. Success creates the membership with its snapshot and a receipt, and notifies the student. Failure creates nothing. Purchase is blocked when Restricted or outside the renewal window. Double submit is safe. *AC:* Given a successful purchase, then membership `start`, `end`, `price_paid`, plan name, and privileges are stored and a receipt exists. Given a later settings price change, then the existing membership shows the original price paid. Given an active membership with 100 days left, then renewal is blocked with the earliest renewal date.
 - **FR-MEM-03** `[PA1 §3.2]` **Membership status.** The system SHALL show status (Active, Upcoming, Expired), expiry date, days left, exact privileges from the snapshot, and purchase history with receipt links. *AC:* Given a membership ended yesterday, then status is Expired and non-member rules are displayed.
 
@@ -713,7 +713,7 @@ Navigation and layout only. No feature requirements of its own.
 
 ### A-20 Settings `/admin/settings`
 - **FR-SET-01** `[+]` **Policy settings.** An admin SHALL edit every key in 4.17 with type and range validation, see the previous value, and have each change recorded in an immutable settings history (who, when, old, new). Changes apply to future actions only (memberships by snapshot; existing loan fees by stored values). *AC:* Given fine_per_day changed from 2,000 to 3,000, then new fines use 3,000 from the next nightly run and previously finalized fines are unchanged. Given a negative value, then save is rejected.
-- **FR-MEM-09** `[PA1 §3.2]` **Plans and Premium configuration.** The admin SHALL create, edit, and deactivate membership plans (name, price, duration in days, privileges) without code changes. Which titles are Premium is set per book (FR-INV-03) and in bulk. *AC:* Given a new plan with price 90,000 VND, then it appears on R-16 for new purchases and old memberships are unchanged.
+- **FR-MEM-09** `[PA1 §3.2]` **Membership tier policy configuration.** The admin SHALL edit the policies of the two fixed tiers — the Standard (unpaid) rank and the yearly Premium membership (price, duration in days, privileges) — without code changes. Admins SHALL NOT create new plans or deactivate either tier. Which titles are Premium is set per book (FR-INV-03) and in bulk. *AC:* Given the yearly Premium price changed from 150,000 to 180,000 VND, then new purchases use 180,000 VND and existing memberships keep their snapshot. Given an attempt to add or deactivate a plan, then the option is not available (the tier set is fixed).
 
 ---
 
@@ -914,7 +914,7 @@ All tables use `uuid` primary keys unless noted, `timestamptz` timestamps, integ
 |---|---|---|
 | `profiles` | id (= `auth.users.id`), role (copy of the Auth claim, see 2.1), status, full_name, email (unique, case-insensitive), student_id (unique), faculty, phone, avatar_path, reservation_ban_until, debt_outstanding, active_items, created_at | Edge Functions; the student may update `full_name`, `phone`, `faculty`, `avatar_path` through column-level grants |
 | `reservation_strikes` | uid, at | Edge Functions |
-| `membership_plans` | name, price, duration_days, privileges (jsonb), active | Edge Functions |
+| `membership_plans` | name, price, duration_days, privileges (jsonb), tier (`standard` or `yearly_premium`) | Edge Functions |
 | `memberships` | uid, plan_name, price_paid, start_at, end_at, privileges (jsonb snapshot), receipt_id, terminated_at | Edge Functions |
 | `books` | title, authors[], isbn10, isbn13 (unique), publisher, year, language, category, field, description, toc, keywords[], collection, replacement_price, shelf_location, cover_path, status (active, draft), total_copies, available_copies, queue_length, wishlist_count, borrow_count, rating_avg, rating_count, popularity_score, added_at, search_vector (generated), embedding (vector), embedding_hash, embedding_model | Edge Functions and triggers |
 | `reviews` | book_id, uid (primary key together), rating, text, updated_at | Edge Functions |
@@ -956,7 +956,7 @@ All tables use `uuid` primary keys unless noted, `timestamptz` timestamps, integ
 - RLS is enabled on every table. A table with no policy is unreadable.
 - Helper functions `auth_role()` and `is_admin()` read the role from the JWT (`app_metadata`). They are `SECURITY DEFINER` with a fixed `search_path`.
 - Students SELECT only their own rows in `profiles`, `memberships`, `loan_requests`, `loan_items`, `reservations`, `wishlist`, `cart_items`, `payments`, `charges`, `receipts`, `notifications`, `chats`, `chat_messages`, `suggestions`.
-- All signed-in users SELECT `books` where `status = 'active'`, `reviews`, active `membership_plans`, and the non-sensitive part of `settings` (through a view). The `books.embedding` column is revoked from client roles.
+- All signed-in users SELECT `books` where `status = 'active'`, `reviews`, the `membership_plans` rows (the fixed Standard and yearly Premium tiers), and the non-sensitive part of `settings` (through a view). The `books.embedding` column is revoked from client roles.
 - Admins SELECT every table the admin screens need. `audit_logs` and `settings_history` are readable by admins only and are written by Edge Functions and triggers.
 - Client write policies exist only for: `cart_items` (own rows), `notifications.read` (own, column grant), `chats` and `chat_messages` delete (own), and the `profiles` columns listed in 12.1. Everything else is written by Edge Functions with the service role.
 - Realtime is enabled only on `books` (counters), `notifications`, and `loan_items`; RLS applies to subscriptions.
@@ -973,7 +973,7 @@ All tables use `uuid` primary keys unless noted, `timestamptz` timestamps, integ
 | Write-off | `save-writeoff-slip`, `complete-writeoff-slip`, `cancel-writeoff-slip` |
 | Acquisition | `submit-suggestion`, `withdraw-suggestion`, `decide-suggestion-group`, `merge-suggestion-groups`, `split-suggestion`, `save-batch`, `export-batch`, `mark-batch-ordered`, `receive-batch-line`, `close-batch` |
 | Notifications | `send-bulk-reminder` |
-| Settings | `update-settings`, `save-plan` |
+| Settings | `update-settings` |
 | Assistant | `chat-send` |
 
 **Client-callable RPCs (SQL functions, run under RLS):** `search_books`, `server_time` (for countdown skew), `get_dashboard_kpis` and `get_rankings` (staff only), `get_due_overdue_groups` (staff only).
@@ -1276,7 +1276,7 @@ Generated by `scripts/spec-matrix` from this file. CI fails if an FR has no scen
 | FR-AUTH-08 | Restore a Restricted account | §3.5 | A-19 | TS-29, TS-30 |
 | FR-MEM-07 | Membership exceptions | §3.2 | A-19 | TS-36 |
 | FR-SET-01 | Policy settings | Added | A-20 | TS-34, TS-58 |
-| FR-MEM-09 | Plans and Premium configuration | §3.2 | A-20 | TS-34 |
+| FR-MEM-09 | Membership tier policy configuration | §3.2 | A-20 | TS-34 |
 | FR-AUTH-05 | Role-based access control and gating | §3.1 | System | TS-02, TS-04, TS-05, TS-06, TS-61 |
 | FR-MEM-05 | Entitlement resolution | §3.2 | System | TS-14 |
 | FR-MEM-08 | Expiry with books on loan | §3.2 | System | TS-35 |

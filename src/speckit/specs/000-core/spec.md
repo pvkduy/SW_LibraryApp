@@ -118,7 +118,7 @@ reports any account whose claim and `profiles.role` differ (EC-36).
 | View dashboard, export reports | No | Yes |
 | Send "Remind all" | No | Yes |
 | Set student Inactive, restore from Restricted, waive charge | No | Yes |
-| Edit settings and plans | No | Yes |
+| Edit settings and membership tier policies | No | Yes |
 
 Because there is one staff role, every admin can do every action above, including
 money reversals and settings. The two-role design is archived in Section 20 of the SRS.
@@ -136,7 +136,7 @@ but the default is built so work is not blocked.
 | DEC-01 | PA1 uses "librarian" and "administrator" for staff, and some actions sound privileged. | One staff role, `admin`, covers both. The two-role design is archived. | No |
 | DEC-02 | No way to create staff accounts is described. | Admin accounts are created by hand with a script or the Supabase dashboard. No self-registration for staff, no in-app staff management. | Yes |
 | DEC-03 | PA1 mentions a whole-degree plan that ends on the expected graduation date. | Removed: no whole-degree plan and no graduation date field. An admin sets the account Inactive when a student leaves. | No |
-| DEC-04 | Plans are "for an academic year" but the plan model is not defined. | Plans are fixed-duration (days from start). One plan ships by default (Academic Year, 365 days). Admins can add others. | Yes |
+| DEC-04 | Plans are "for an academic year" but the plan model is not defined. | The membership model is fixed to two tiers: Standard (unpaid) rank and one yearly Premium (Academic Year, 365 days). Admins edit the policies of these two tiers but cannot create new plans or deactivate either. | No |
 | DEC-05 | Cart lets the student "choose the loan duration" but loan period is fixed per tier. | Student chooses from allowed durations: non-member {7}, member {7, 14} days (settings). Non-member Premium fee is per 7 days. | Yes |
 | DEC-06 | Fee on renewal of a Premium book by a non-member is not stated. | Renewal costs another per-book fee, paid before the due date is extended. | Yes |
 | DEC-07 | Copy status list has no state for a copy held for pickup. | Added copy status `held`. | No |
@@ -211,7 +211,7 @@ All values below are defaults stored in the `settings` table, key `library`.
 
 ### 4.3 Membership and entitlements (POL-03)
 - Plans are prepaid, one-time, non-transferable, renewed manually.
-- Defaults: Academic Year plan lasts 365 days from start. Every plan is a fixed number of days. No plan tied to a graduation date.
+- Defaults: the membership model is fixed to two tiers — the Standard (unpaid) rank and one yearly Premium (Academic Year, 365 days from start). Admins edit the policies of these two tiers but cannot create or deactivate tiers. No plan tied to a graduation date.
 - Start date is the purchase time, or the day after the current end date when renewing early. Early renewal allowed only within 30 days before expiry, or after expiry.
 - Each purchase stores a **snapshot**: plan name, price paid, start, end, and the privileges (max items, loan day options, renewals, can reserve). Later settings changes apply only to new purchases.
 - Membership status is computed from dates: `upcoming`, `active`, `expired`, plus `terminated` (admin refund or account inactivation).
@@ -220,7 +220,7 @@ All values below are defaults stored in the `settings` table, key `library`.
 
 **Entitlement resolution (FR-MEM-05):** find the membership with start at or before now and end at or after now, not terminated; if found use its snapshot privileges; else use non-member settings.
 
-| | Non-member | Member (default snapshot) |
+| | Standard (unpaid) rank | Yearly Premium (default snapshot) |
 |---|---|---|
 | Standard books | Free | Free |
 | Premium books | Fee per book per loan (5,000 VND per 7 days) | Free |
@@ -327,7 +327,7 @@ See the AI Assistant feature spec (`specs/0NN-assistant/spec.md`).
 | `unverified_account_ttl_days` | 7 |
 | `nonmember.max_items` / `loan_days_options` / `renewals` / `can_reserve` | 3 / [7] / 1 / false |
 | `premium_fee_per_7_days` | 5000 |
-| `plans[]` | Academic Year (365 days, 150000 VND, member privileges 7 / [7,14] / 2 / true) |
+| `plans[]` | Fixed two tiers: Standard (unpaid; entitlements below) and Yearly Premium (365 days, 150000 VND, member privileges 7 / [7,14] / 2 / true). Admins edit the policies, not the set of tiers. |
 | `plan_renewal_window_days` | 30 |
 | `membership_reminder_days` | 7 |
 | `fine_per_day` | 2000 |
