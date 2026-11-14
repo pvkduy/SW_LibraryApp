@@ -15,9 +15,14 @@
 | :--- | :--- | :--- | :--- |
 | Student (Reader) | Human | Primary, active | UC-01 to UC-18, UC-28 |
 | Librarian (Admin) | Human | Primary, active | UC-02, UC-04, UC-13, UC-18, UC-19 to UC-27, UC-28 to UC-31 |
-| Authentication and email service | Non-human | Secondary, passive | UC-01, UC-02, UC-03, UC-25, UC-28, UC-30, UC-31 |
+| Authentication and email service | Non-human | Secondary, passive | UC-01, UC-02, UC-03, UC-24, UC-25, UC-28, UC-30, UC-31 |
 | Payment provider / simulator | Non-human | Secondary, passive | UC-05, UC-10, UC-13 |
 | AI provider | Non-human | Secondary, passive | UC-17 |
+
+> **Rendering note.** The diagram sources use Mermaid's `usecase-beta` diagram type,
+> which requires **Mermaid ≥ 12**. GitHub, VS Code and most Markdown previewers
+> ship Mermaid 11.x and render these blocks as *"no matching type"*, so each
+> diagram is also embedded below as the rendered PNG from `mermaid/`.
 
 ## 2. Diagram 1 — Account, membership, and notifications
 
@@ -62,6 +67,8 @@ UC03 -- Auth
 UC05 -- Pay
 UC28 -- Auth
 ```
+
+![Diagram 1 — Account, membership, and notifications](mermaid/01-account-membership.png)
 
 | Use case | Primary actor | Supporting actor |
 | :--- | :--- | :--- |
@@ -120,6 +127,8 @@ UC07 ..> : extend UC06
 note for UC07 "`Condition: the student scans an ISBN barcode instead of searching the catalogue.
 Extension point: barcode scan (UC-06).`"
 ```
+
+![Diagram 2 — Discovery and selection](mermaid/02-discovery-selection.png)
 
 | Use case | Primary actor | Relationship |
 | :--- | :--- | :--- |
@@ -182,6 +191,8 @@ note for UC13 "`Condition: the student settles the replacement fee instead of re
 Extension point: replacement fee payment (UC-18).`"
 ```
 
+![Diagram 3 — Checkout, payment, and loans](mermaid/03-checkout-payment-loans.png)
+
 | Use case | Primary actor | Relationship |
 | :--- | :--- | :--- |
 | UC-10 Check out books | Student | Payment provider participates |
@@ -234,6 +245,8 @@ Librarian -- UC30
 UC30 -- Auth
 ```
 
+![Diagram 4 — Desk circulation and inventory](mermaid/04-desk-circulation.png)
+
 | Use case | Primary actor | Supporting actor |
 | :--- | :--- | :--- |
 | UC-19 Maintain catalog and copies | Librarian | — |
@@ -250,8 +263,7 @@ drawn between them.
 
 ## 6. Diagram 5 — Acquisitions, analytics, and administration
 
-Scope: buying stock, reporting on operations, and administering accounts and
-policy.
+Scope: buying stock, reporting on operations, and administering student accounts.
 
 ```mermaid
 ---
@@ -276,21 +288,19 @@ Librarian -- UC24
 Librarian -- UC25
 Librarian -- UC27
 Librarian -- UC31
+UC24 -- Auth
 UC25 -- Auth
 UC31 -- Auth
 ```
 
+![Diagram 5 — Acquisitions, analytics, and administration](mermaid/05-acquisitions-admin.png)
+
 | Use case | Primary actor | Supporting actor |
 | :--- | :--- | :--- |
-| UC-24 Plan book acquisitions | Librarian | — |
+| UC-24 Plan book acquisitions | Librarian | Authentication and email service |
 | UC-25 Receive an acquisition shipment | Librarian | Authentication and email service |
 | UC-27 Review analytics and export reports | Librarian | — |
 | UC-31 Manage student accounts | Librarian | Authentication and email service |
-
-**Scope note on UC-32 (retired).** UC-32 (Configure library policies) is retired in
-spec v1.3: policy values are hardcoded defaults and the two membership tiers are
-fixed (Standard unpaid rank and yearly Premium), so the Settings screen and its
-use case are no longer part of the admin scope. See `SHELFHELP_FULLSPEC.md` §20.12.
 
 ## 7. Coverage
 
@@ -301,15 +311,15 @@ use case are no longer part of the admin scope. See `SHELFHELP_FULLSPEC.md` §20
 | 3. Checkout, payment, and loans | UC-10 to UC-13, UC-15, UC-18 | 6 |
 | 4. Desk circulation and inventory | UC-19 to UC-23, UC-26, UC-29, UC-30 | 8 |
 | 5. Acquisitions, analytics, and administration | UC-24, UC-25, UC-27, UC-31 | 4 |
-| **Total** | **UC-01 to UC-31 (UC-32 retired)** | **31** |
+| **Total** | **UC-01 to UC-31** | **31** |
 
 The diagrams are split across five views for readability. All five share the same
-boundary label, actor names, and notation, and together they cover every use case
-in the Use-Case Catalogue exactly once.
+boundary label, actor names, and notation, and together they cover the 31 use cases
+listed above exactly once.
 
 ## 8. References
 
 - `docs/analysis-and-design/Use-Case-Catalog.md` — use-case IDs, names, actors, and candidate extend relationships.
-- `docs/management/PA3/vision-document/Vision-Document.md` — feature scope, including the fixed membership policy that limits UC-32.
+- `docs/management/PA3/vision-document/Vision-Document.md` — feature scope.
 - `docs/management/PA3/UseCase/UC*.md` — detailed description of each use case.
 - `mermaid/*.mmd` — diagram sources; `mermaid/*.png` — rendered images for the report.
