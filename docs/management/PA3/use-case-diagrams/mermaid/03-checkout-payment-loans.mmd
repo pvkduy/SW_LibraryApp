@@ -1,0 +1,40 @@
+---
+config:
+  theme: neutral
+  look: classic
+  layout: elk
+  themeVariables:
+    noteBkgColor: "#fffdf5"
+    noteBorderColor: "#5a5a5a"
+    noteTextColor: "#111111"
+---
+usecase-beta
+direction LR
+actor Student
+actor Librarian("Librarian (Admin)")
+actor Pay("Payment provider / simulator") <<system>>
+
+systemBoundary "ShelfHelp: Smart Library Management System"
+  UC10("UC-10 Check out books")
+  UC11("UC-11 View loans, charges and payment history")
+  UC12("UC-12 Renew a loan")
+  UC13("UC-13 Pay a charge")
+  UC15("UC-15 Rate and review a returned book")
+  UC18("`UC-18 Resolve a lost-book case
+extension points: replacement fee payment`")
+end
+
+Student -- UC10
+Student -- UC11
+Student -- UC12
+Student -- UC13
+Student -- UC15
+Student -- UC18
+Librarian -- UC13
+Librarian -- UC18
+UC10 -- Pay
+UC13 -- Pay
+UC13 ..> : extend UC18
+
+note for UC13 "`Condition: the student settles the replacement fee instead of returning the lost copy.
+Extension point: replacement fee payment (UC-18).`"

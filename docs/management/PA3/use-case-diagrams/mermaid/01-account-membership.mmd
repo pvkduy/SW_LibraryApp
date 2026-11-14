@@ -1,0 +1,36 @@
+---
+config:
+  theme: neutral
+  look: classic
+  layout: elk
+---
+usecase-beta
+direction LR
+actor Student
+actor Librarian("Librarian (Admin)")
+actor Auth("Authentication and email service") <<system>>
+actor Pay("Payment provider") <<system>>
+
+systemBoundary "ShelfHelp: Smart Library Management System"
+  UC01("UC-01 Register for library access")
+  UC02("UC-02 Sign in and sign out")
+  UC03("UC-03 Recover account credentials")
+  UC04("UC-04 Manage personal profile")
+  UC05("UC-05 Manage membership")
+  UC28("UC-28 View notifications")
+end
+
+Student -- UC01
+Student -- UC02
+Student -- UC03
+Student -- UC04
+Student -- UC05
+Student -- UC28
+Librarian -- UC02
+Librarian -- UC04
+Librarian -- UC28
+UC01 -- Auth
+UC02 -- Auth
+UC03 -- Auth
+UC05 -- Pay
+UC28 -- Auth
