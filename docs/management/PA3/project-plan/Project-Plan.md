@@ -222,10 +222,10 @@ Total planned effort was 85 hours. Work items were organized to address PA2 TA f
 | SCRUM-71 | **(C) Define master Use-Case catalog** & scope boundaries | Nguyễn Anh Khôi | Lê Văn Vĩ | 3.0 | 3.0 | Done |
 | SCRUM-64 | **(C) Use Case Diagrams in Mermaid** (5 modular diagrams covering all FRs) | Lê Văn Vĩ | Nguyễn Anh Khôi | 6.0 | 6.5 | Done |
 | SCRUM-65 | **(D-01) Use-Case Specifications** (31 use cases in RUP format) | Lê Minh Thuận, Phạm Võ Khang Duy | Phạm Võ Khang Duy, Lê Minh Thuận, Nguyễn Anh Khôi | 24.0 | 24.0 | Done |
-| SCRUM-66 | **(D-02) UI Prototypes for all use cases** with full screenshot set | Nguyễn Anh Khôi | Phạm Võ Khang Duy | 16.0 | 18.0 | Done |
-| SCRUM-67 | **(E-01) Implement 1 FR end-to-end with Spec Kit** (Auth: Login/Logout/Signup) | Nguyễn Minh Phú | Lê Văn Vĩ | 12.0 | 12.0 | Done |
+| SCRUM-66 | **(D-02) UI Prototypes for all use cases** with full screenshot set | Nguyễn Anh Khôi | Lê Văn Vĩ | 16.0 | 18.0 | Done |
+| SCRUM-67 | **(E-01) Implement 1 FR end-to-end with Spec Kit** (Auth: Login/Logout/Signup) | Nguyễn Minh Phú | Nguyễn Anh Khôi | 12.0 | 12.0 | Done |
 | SCRUM-68 | **(E-02) Recorded demo video with narration** (YouTube upload) | Nguyễn Minh Phú | Nguyễn Anh Khôi | 4.0 | 4.0 | Done |
-| SCRUM-69 | **(F) Compile individual AI Usage Reports** | Team HCD | Lê Văn Vĩ | 3.0 | 3.0 | Done |
+| SCRUM-69 | **(F) Compile individual AI Usage Reports** | Team HCD | Nguyễn Anh Khôi | 3.0 | 3.0 | Done |
 | SCRUM-70 | **(F) Commit Weekly Reports** (Planning, Scrum x2, Review) + Jira progress | Nguyễn Anh Khôi | Lê Văn Vĩ | 4.0 | 4.0 | Done |
 | SCRUM-72 | Packaging: markdown to PDF conversion, Git log export, zip archive | Nguyễn Anh Khôi | Lê Văn Vĩ | 2.0 | 2.0 | Done |
 
