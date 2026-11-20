@@ -9,6 +9,9 @@ import { VerifyOtpPage } from '../features/auth/VerifyOtpPage.jsx'
 import { ResetPasswordPage } from '../features/auth/ResetPasswordPage.jsx'
 import { AuthSuccessModal, AuthErrorModal, AuthConfirmModal } from '../features/auth/components/AuthModals.jsx'
 import { supabase } from '../lib/supabase'
+import { AdminLayout } from '../features/admin/components/AdminLayout.jsx'
+import { CirculationPage } from '../features/admin/circulation/CirculationPage.jsx'
+import { QueuesPage } from '../features/admin/queues/QueuesPage.jsx'
 
 function getInitialRoute() {
   if (typeof window === 'undefined') return 'login'
@@ -26,6 +29,7 @@ function App() {
   const [books, setBooks] = useState([])
   const [error, setError] = useState(null)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [adminPage, setAdminPage] = useState('circulation')
 
   const navigate = (route, params = {}) => {
     if (params.email) setRegisteredEmail(params.email)
@@ -76,7 +80,45 @@ function App() {
       )
     }
 
-    // Authenticated Home / Dashboard View
+    // 1A. Admin Experience (Circulation & Queues)
+    if (profile?.role === 'admin') {
+      return (
+        <>
+          <AdminLayout
+            activePage={adminPage}
+            onNavigate={(page) => setAdminPage(page)}
+            user={user}
+            profile={profile}
+            onLogout={() => setShowLogoutConfirm(true)}
+          >
+            {adminPage === 'circulation' && <CirculationPage />}
+            {adminPage === 'queues' && <QueuesPage />}
+            {adminPage !== 'circulation' && adminPage !== 'queues' && (
+              <div style={{ textAlign: 'center', padding: '60px 0', color: '#72685e' }}>
+                <h2 style={{ color: '#241e19' }}>Màn hình {adminPage.toUpperCase()} đang được phát triển</h2>
+                <p>Vui lòng chọn <strong>Circulation</strong> hoặc <strong>Queues & Holds</strong> ở menu bên trái.</p>
+              </div>
+            )}
+          </AdminLayout>
+
+          {showLogoutConfirm && (
+            <AuthConfirmModal
+              title="Xác nhận đăng xuất"
+              subtitle="Bạn có chắc chắn muốn đăng xuất khỏi tài khoản không?"
+              confirmText="Đăng xuất"
+              cancelText="Không, ở lại"
+              onConfirm={() => {
+                setShowLogoutConfirm(false)
+                logout()
+              }}
+              onCancel={() => setShowLogoutConfirm(false)}
+            />
+          )}
+        </>
+      )
+    }
+
+    // 1B. Student / Reader Experience
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#faf8f5', fontFamily: 'inherit' }}>
         {/* Status banner for Restricted accounts (FR-GLOB-01, POL-09) */}

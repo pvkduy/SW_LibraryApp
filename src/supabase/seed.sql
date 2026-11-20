@@ -189,3 +189,185 @@ select b.id, b.isbn13 || '-02', 'available', b.shelf_location, 'good'
 from public.books b
 where b.isbn13 = '9780132350884'
 on conflict (barcode) do nothing;
+
+-- -----------------------------------------------------------------------------
+-- Seed Second Student (for overdue & multi-user tests)
+-- -----------------------------------------------------------------------------
+insert into auth.users (
+  id, instance_id, aud, role, email, encrypted_password,
+  email_confirmed_at, last_sign_in_at, raw_app_meta_data, raw_user_meta_data,
+  created_at, updated_at, confirmation_token, email_change, email_change_token_new, recovery_token
+)
+values (
+  '33333333-3333-3333-3333-333333333333',
+  '00000000-0000-0000-0000-000000000000',
+  'authenticated', 'authenticated',
+  'minh.nguyen@shelfhelp.edu.vn',
+  crypt('Password123!', gen_salt('bf', 10)),
+  now(), now(),
+  '{"provider":"email","providers":["email"],"role":"student"}'::jsonb,
+  '{"full_name":"Nguyễn Văn Minh","student_id":"24125088"}'::jsonb,
+  now(), now(), '', '', '', ''
+)
+on conflict (id) do nothing;
+
+insert into public.profiles (
+  id, role, status, full_name, email, student_id, faculty, debt_outstanding, active_items, created_at, updated_at
+)
+values (
+  '33333333-3333-3333-3333-333333333333',
+  'student', 'active', 'Nguyễn Văn Minh', 'minh.nguyen@shelfhelp.edu.vn', '24125088',
+  'Khoa Học Máy Tính', 15000, 1, now(), now()
+)
+on conflict (id) do update set
+  debt_outstanding = excluded.debt_outstanding,
+  active_items = excluded.active_items;
+
+-- -----------------------------------------------------------------------------
+-- Seed Circulation: Loan Requests & Loan Items
+-- -----------------------------------------------------------------------------
+insert into public.loan_requests (id, uid, pickup_code, status, created_at, updated_at)
+values (
+  'aaaa1111-1111-1111-1111-111111111111',
+  '11111111-1111-1111-1111-111111111111',
+  'PICKUP-8921',
+  'pending',
+  now(), now()
+)
+on conflict (id) do nothing;
+
+-- Item 1: Ready for pickup (Clean Code - copy 01)
+insert into public.loan_items (
+  id, request_id, uid, book_id, copy_id, source, status, duration_days, pickup_deadline, created_at, updated_at
+)
+select
+  'bbbb1111-1111-1111-1111-111111111111',
+  'aaaa1111-1111-1111-1111-111111111111',
+  '11111111-1111-1111-1111-111111111111',
+  b.id,
+  c.id,
+  'cart',
+  'ready_for_pickup',
+  14,
+  now() + interval '24 hours',
+  now(), now()
+from public.books b
+join public.copies c on c.book_id = b.id and c.barcode = '9780132350884-01'
+where b.isbn13 = '9780132350884'
+on conflict (id) do nothing;
+
+update public.copies
+set status = 'held', held_for_type = 'loan_item', held_until = now() + interval '24 hours'
+where barcode = '9780132350884-01';
+
+-- Item 2: Borrowed (Hóa học đại cương - on loan)
+insert into public.loan_items (
+  id, uid, book_id, copy_id, source, status, is_premium, duration_days, handover_at, due_at, condition_out, created_at, updated_at
+)
+select
+  'bbbb2222-2222-2222-2222-222222222222',
+  '11111111-1111-1111-1111-111111111111',
+  b.id,
+  c.id,
+  'cart',
+  'borrowed',
+  true,
+  14,
+  now() - interval '3 days',
+  (now() + interval '11 days')::date + time '23:59:59',
+  'good',
+  now() - interval '3 days', now()
+from public.books b
+join public.copies c on c.book_id = b.id and c.barcode = '9786040000001-01'
+where b.isbn13 = '9786040000001'
+on conflict (id) do nothing;
+
+update public.copies
+set status = 'borrowed'
+where barcode = '9786040000001-01';
+
+-- Item 3: Overdue 3 days (Họa tiết dân tộc - overdue)
+insert into public.loan_items (
+  id, uid, book_id, copy_id, source, status, duration_days, handover_at, due_at, condition_out, created_at, updated_at
+)
+select
+  'bbbb3333-3333-3333-3333-333333333333',
+  '33333333-3333-3333-3333-333333333333',
+  b.id,
+  c.id,
+  'cart',
+  'overdue',
+  14,
+  now() - interval '17 days',
+  (now() - interval '3 days')::date + time '23:59:59',
+  'good',
+  now() - interval '17 days', now()
+from public.books b
+join public.copies c on c.book_id = b.id and c.barcode = '9786040000002-01'
+where b.isbn13 = '9786040000002'
+on conflict (id) do nothing;
+
+update public.copies
+set status = 'borrowed'
+where barcode = '9786040000002-01';
+
+-- -----------------------------------------------------------------------------
+-- Seed Charges (Unpaid fine for student 33333333-3333...)
+-- -----------------------------------------------------------------------------
+insert into public.charges (
+  id, uid, type, loan_item_id, amount, status, rate, notes, created_at, updated_at
+)
+values (
+  'cccc1111-1111-1111-1111-111111111111',
+  '33333333-3333-3333-3333-333333333333',
+  'overdue_fine',
+  'bbbb3333-3333-3333-3333-333333333333',
+  15000,
+  'unpaid',
+  5000,
+  'Tiền phạt trễ hạn 3 ngày (Sách: Họa tiết dân tộc)',
+  now(), now()
+)
+on conflict (id) do nothing;
+
+-- -----------------------------------------------------------------------------
+-- Seed Reservations (Queues)
+-- -----------------------------------------------------------------------------
+-- Reservation 1: Ready for pickup (Hoa văn Việt Nam)
+insert into public.reservations (
+  id, uid, book_id, copy_id, status, hold_until, pickup_code, created_at, updated_at
+)
+select
+  'dddd1111-1111-1111-1111-111111111111',
+  '11111111-1111-1111-1111-111111111111',
+  b.id,
+  c.id,
+  'ready_for_pickup',
+  now() + interval '36 hours',
+  'RES-4412',
+  now() - interval '2 days', now()
+from public.books b
+join public.copies c on c.book_id = b.id and c.barcode = '9786040000003-01'
+where b.isbn13 = '9786040000003'
+on conflict (id) do nothing;
+
+update public.copies
+set status = 'held', held_for_type = 'reservation', held_until = now() + interval '36 hours'
+where barcode = '9786040000003-01';
+
+-- Reservation 2: Waiting in queue #1 for Clean Code
+insert into public.reservations (
+  id, uid, book_id, copy_id, status, queue_position, created_at, updated_at
+)
+select
+  'dddd2222-2222-2222-2222-222222222222',
+  '33333333-3333-3333-3333-333333333333',
+  b.id,
+  null,
+  'waiting',
+  1,
+  now() - interval '1 day', now()
+from public.books b
+where b.isbn13 = '9780132350884'
+on conflict (id) do nothing;
+
