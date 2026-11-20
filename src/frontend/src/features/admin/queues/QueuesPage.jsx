@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../../../lib/supabase'
+import { api } from '../../../lib/api'
 import { IconRefresh } from '../components/AdminIcons'
 
 export function QueuesPage() {
@@ -49,28 +50,24 @@ export function QueuesPage() {
     return title.includes(q) || student.includes(q) || studentId.includes(q)
   })
 
-  // Handle Staff Cancel Reservation (FR-RES-05 / UC-29)
+  // Handle Staff Cancel Reservation (Calls Edge Function cancel-reservation, FR-RES-05 / UC-29)
   const handleCancelStaff = async () => {
     if (!selectedRes) return
     setActionLoading(true)
     setActionFeedback(null)
 
     try {
-      const { data, error } = await supabase.rpc('rpc_cancel_reservation_staff', {
-        p_reservation_id: selectedRes.id,
-        p_reason: cancelReason,
+      const res = await api.invoke('cancel-reservation', {
+        reservation_id: selectedRes.id,
+        reason: cancelReason,
       })
 
-      if (error || (data && !data.success)) {
-        setActionFeedback({ type: 'error', message: error?.message || data?.error })
-      } else {
-        setActionFeedback({
-          type: 'success',
-          message: 'Hủy đặt trước thành công! Cuốn sách đã được tự động đôn cho bạn đọc kế tiếp trong hàng đợi (nếu có).',
-        })
-        setShowCancelModal(false)
-        await loadQueues()
-      }
+      setActionFeedback({
+        type: 'success',
+        message: res.message || 'Hủy đặt trước thành công! Cuốn sách đã được tự động đôn cho bạn đọc kế tiếp trong hàng đợi (nếu có).',
+      })
+      setShowCancelModal(false)
+      await loadQueues()
     } catch (err) {
       setActionFeedback({ type: 'error', message: err.message })
     } finally {

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../../../lib/supabase'
+import { api } from '../../../lib/api'
 import { IconBarcode, IconRefresh, IconCheck } from '../components/AdminIcons'
 
 export function CirculationPage() {
@@ -105,25 +106,21 @@ export function CirculationPage() {
     return true
   })
 
-  // Handle Handover Confirmation
+  // Handle Handover Confirmation (Calls Edge Function handover-items)
   const handleConfirmHandover = async () => {
     if (!selectedItem) return
     setActionLoading(true)
     setActionFeedback(null)
 
     try {
-      const { data, error } = await supabase.rpc('rpc_confirm_handover', {
-        p_loan_item_id: selectedItem.id,
-        p_condition_out: handoverCondition,
-        p_notes: handoverNotes,
+      const res = await api.invoke('handover-items', {
+        loan_item_id: selectedItem.id,
+        condition_out: handoverCondition,
+        notes: handoverNotes,
       })
 
-      if (error || (data && !data.success)) {
-        setActionFeedback({ type: 'error', message: error?.message || data?.error })
-      } else {
-        setActionFeedback({ type: 'success', message: 'Xuất mượn thành công! Đã chuyển sách sang trạng thái Borrowed.' })
-        await loadData()
-      }
+      setActionFeedback({ type: 'success', message: res.message || 'Xuất mượn thành công! Đã chuyển sách sang trạng thái Borrowed.' })
+      await loadData()
     } catch (err) {
       setActionFeedback({ type: 'error', message: err.message })
     } finally {
@@ -131,7 +128,7 @@ export function CirculationPage() {
     }
   }
 
-  // Handle Return Confirmation
+  // Handle Return Confirmation (Calls Edge Function return-loan)
   const handleConfirmReturn = async () => {
     const targetBarcode = returnBarcode.trim() || selectedItem?.copies?.barcode
     if (!targetBarcode) {
@@ -143,25 +140,22 @@ export function CirculationPage() {
     setActionFeedback(null)
 
     try {
-      const { data, error } = await supabase.rpc('rpc_process_return', {
-        p_copy_barcode: targetBarcode,
-        p_condition_in: returnCondition,
-        p_damage_tier: Number(returnDamageTier),
-        p_settle_now: returnSettleNow,
-        p_amount_collected: Number(returnAmountCollected) || 0,
+      const res = await api.invoke('return-loan', {
+        copy_barcode: targetBarcode,
+        condition_in: returnCondition,
+        damage_tier: Number(returnDamageTier),
+        settle_now: returnSettleNow,
+        amount_collected: Number(returnAmountCollected) || 0,
       })
 
-      if (error || (data && !data.success)) {
-        setActionFeedback({ type: 'error', message: error?.message || data?.error })
-      } else {
-        let msg = `Nhận trả sách thành công! Trạng thái bản sao: ${data.copy_status}.`
-        if (data.total_fee > 0) {
-          msg += ` Tổng phí phạt: ${data.total_fee.toLocaleString()}đ (${data.settled ? 'Đã thu tiền tại quầy, Mã biên lai: ' + data.receipt_number : 'Đã ghi nợ vào tài khoản SV'}).`
-        }
-        setActionFeedback({ type: 'success', message: msg })
-        setReturnBarcode('')
-        await loadData()
+      const data = res.data
+      let msg = res.message || `Nhận trả sách thành công! Trạng thái bản sao: ${data?.copy_status}.`
+      if (data && data.total_fee > 0) {
+        msg += ` Tổng phí phạt: ${data.total_fee.toLocaleString()}đ (${data.settled ? 'Đã thu tiền tại quầy, Mã biên lai: ' + data.receipt_number : 'Đã ghi nợ vào tài khoản SV'}).`
       }
+      setActionFeedback({ type: 'success', message: msg })
+      setReturnBarcode('')
+      await loadData()
     } catch (err) {
       setActionFeedback({ type: 'error', message: err.message })
     } finally {
@@ -169,7 +163,7 @@ export function CirculationPage() {
     }
   }
 
-  // Handle Settle Counter Payment
+  // Handle Settle Counter Payment (Calls Edge Function record-counter-payment)
   const handleSettlePayment = async () => {
     if (!selectedCharge) return
     const collected = Number(paymentAmountCollected)
@@ -185,22 +179,19 @@ export function CirculationPage() {
     setActionFeedback(null)
 
     try {
-      const { data, error } = await supabase.rpc('rpc_settle_counter_charge', {
-        p_charge_id: selectedCharge.id,
-        p_amount_collected: collected,
-        p_notes: paymentNotes || 'Thu tiền tại quầy lưu thông',
+      const res = await api.invoke('record-counter-payment', {
+        charge_id: selectedCharge.id,
+        amount_collected: collected,
+        notes: paymentNotes || 'Thu tiền tại quầy lưu thông',
       })
 
-      if (error || (data && !data.success)) {
-        setActionFeedback({ type: 'error', message: error?.message || data?.error })
-      } else {
-        setActionFeedback({
-          type: 'success',
-          message: `Thu tiền thành công! Biên lai: ${data.receipt_number}. Tiền thối lại: ${data.change.toLocaleString()}đ.`,
-        })
-        setPaymentAmountCollected('')
-        await loadData()
-      }
+      const data = res.data
+      setActionFeedback({
+        type: 'success',
+        message: res.message || `Thu tiền thành công! Biên lai: ${data?.receipt_number}. Tiền thối lại: ${data?.change?.toLocaleString()}đ.`,
+      })
+      setPaymentAmountCollected('')
+      await loadData()
     } catch (err) {
       setActionFeedback({ type: 'error', message: err.message })
     } finally {
