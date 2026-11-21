@@ -12,6 +12,11 @@ import { supabase } from '../lib/supabase'
 import { AdminLayout } from '../features/admin/components/AdminLayout.jsx'
 import { CirculationPage } from '../features/admin/circulation/CirculationPage.jsx'
 import { QueuesPage } from '../features/admin/queues/QueuesPage.jsx'
+import { FinancialLedgerPage } from '../features/admin/ledger/FinancialLedgerPage.jsx'
+import { ReaderLayout } from '../features/reader/components/ReaderLayout.jsx'
+import { LoansPage } from '../features/reader/loans/LoansPage.jsx'
+import { FinesPage } from '../features/reader/fines/FinesPage.jsx'
+import { ReservationsPage } from '../features/reader/reservations/ReservationsPage.jsx'
 
 function getInitialRoute() {
   if (typeof window === 'undefined') return 'login'
@@ -30,6 +35,7 @@ function App() {
   const [error, setError] = useState(null)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [adminPage, setAdminPage] = useState('circulation')
+  const [readerTab, setReaderTab] = useState('books')
 
   const navigate = (route, params = {}) => {
     if (params.email) setRegisteredEmail(params.email)
@@ -93,10 +99,11 @@ function App() {
           >
             {adminPage === 'circulation' && <CirculationPage />}
             {adminPage === 'queues' && <QueuesPage />}
-            {adminPage !== 'circulation' && adminPage !== 'queues' && (
+            {adminPage === 'money' && <FinancialLedgerPage />}
+            {adminPage !== 'circulation' && adminPage !== 'queues' && adminPage !== 'money' && (
               <div style={{ textAlign: 'center', padding: '60px 0', color: '#72685e' }}>
                 <h2 style={{ color: '#241e19' }}>Màn hình {adminPage.toUpperCase()} đang được phát triển</h2>
-                <p>Vui lòng chọn <strong>Circulation</strong> hoặc <strong>Queues & Holds</strong> ở menu bên trái.</p>
+                <p>Vui lòng chọn <strong>Circulation</strong>, <strong>Queues & Holds</strong> hoặc <strong>Money</strong> ở menu bên trái.</p>
               </div>
             )}
           </AdminLayout>
@@ -118,72 +125,70 @@ function App() {
       )
     }
 
-    // 1B. Student / Reader Experience
+    // 1B. Student / Reader Experience (Matching Figma Reader Mockups)
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#faf8f5', fontFamily: 'inherit' }}>
-        {/* Status banner for Restricted accounts (FR-GLOB-01, POL-09) */}
-        {profile?.status === 'restricted' && (
-          <div style={{ backgroundColor: '#fff3cd', color: '#856404', padding: '12px 16px', textAlign: 'center', fontWeight: 600, borderBottom: '1px solid #ffeeba' }}>
-            ⚠️ Account Restricted: Your account has an unresolved loss or restriction. Please settle any fees or contact the librarian.
-          </div>
-        )}
-
-        <main className="app" style={{ maxWidth: '840px', margin: '0 auto', padding: '24px 16px' }}>
-          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid #ede6db' }}>
-            <div>
-              <h1 style={{ margin: 0, fontSize: '24px', color: '#221c18' }}>ShelfHelp Library</h1>
-              <span style={{ fontSize: '13px', color: '#6e665e' }}>
-                Mode: {profile?.role === 'admin' ? 'Admin Mode (Librarian)' : 'Reader Mode (Student)'}
-              </span>
-            </div>
-
-            <div className="user" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ fontWeight: 600, color: '#2a2421', fontSize: '14px' }}>
-                {profile?.full_name || user.email}
-              </span>
-              <button
-                type="button"
-                className="auth-btn-primary"
-                style={{ width: 'auto', height: '36px', padding: '0 16px', marginTop: 0, fontSize: '13px' }}
-                onClick={() => setShowLogoutConfirm(true)}
-              >
-                Đăng xuất
-              </button>
-            </div>
-          </header>
-
-          {showLogoutConfirm && (
-            <AuthConfirmModal
-              title="Xác nhận đăng xuất"
-              subtitle="Bạn có chắc chắn muốn đăng xuất khỏi tài khoản không?"
-              confirmText="Đăng xuất"
-              cancelText="Không, ở lại"
-              onConfirm={() => {
-                setShowLogoutConfirm(false)
-                logout()
-              }}
-              onCancel={() => setShowLogoutConfirm(false)}
-            />
-          )}
-
-          <section style={{ marginTop: '24px' }}>
-            <h2 style={{ fontSize: '18px', color: '#221c18', marginBottom: '16px' }}>Danh sách sách mới trong thư viện</h2>
+      <ReaderLayout
+        activeTab={readerTab}
+        onSelectTab={(tab) => setReaderTab(tab)}
+        user={user}
+        profile={profile}
+        onLogout={() => setShowLogoutConfirm(true)}
+      >
+        {readerTab === 'loans' && <LoansPage />}
+        {readerTab === 'fines' && <FinesPage onProfileRefresh={() => window.location.reload()} />}
+        {readerTab === 'reservations' && <ReservationsPage />}
+        {readerTab === 'books' && (
+          <section>
+            <h2 style={{ fontSize: '20px', color: '#221c18', marginBottom: '16px' }}>Danh sách sách trong thư viện</h2>
             {error && <p className="error">{error}</p>}
-            <ul style={{ listStyle: 'none', padding: 0 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
               {books.map((book) => (
-                <li key={book.id} style={{ padding: '12px 16px', backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #ede6db', marginBottom: '8px' }}>
-                  <strong style={{ color: '#2a2421' }}>{book.title}</strong> — <span style={{ color: '#6e665e' }}>{book.authors?.join(', ')}</span>
-                  {book.collection === 'premium' && <span style={{ marginLeft: '8px', color: '#6e472a', fontWeight: 600, fontSize: '12px' }}>(Premium)</span>}
-                  <div style={{ fontSize: '12px', color: '#8c827a', marginTop: '4px' }}>
-                    Có sẵn: {book.available_copies} bản
+                <div key={book.id} style={{ padding: '16px', backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #ede6db', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', color: '#2a2421' }}>
+                      {book.title}
+                      {book.collection === 'premium' && (
+                        <span style={{ marginLeft: '8px', color: '#6e472a', fontWeight: 600, fontSize: '11px', background: '#f5eee6', padding: '2px 6px', borderRadius: '4px' }}>
+                          Premium
+                        </span>
+                      )}
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '13px', color: '#6e665e' }}>{book.authors?.join(', ')}</p>
                   </div>
-                </li>
+                  <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', color: '#8c827a' }}>
+                      Bản có sẵn: <strong>{book.available_copies}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      className="auth-btn-primary"
+                      style={{ width: 'auto', padding: '0 12px', height: '30px', fontSize: '12px', marginTop: 0 }}
+                      onClick={() => setReaderTab('loans')}
+                    >
+                      Mượn / Đặt trước
+                    </button>
+                  </div>
+                </div>
               ))}
-            </ul>
+            </div>
             {!error && books.length === 0 && <p style={{ color: '#6e665e' }}>Chưa có sách nào trong thư viện.</p>}
           </section>
-        </main>
-      </div>
+        )}
+
+        {showLogoutConfirm && (
+          <AuthConfirmModal
+            title="Xác nhận đăng xuất"
+            subtitle="Bạn có chắc chắn muốn đăng xuất khỏi tài khoản không?"
+            confirmText="Đăng xuất"
+            cancelText="Không, ở lại"
+            onConfirm={() => {
+              setShowLogoutConfirm(false)
+              logout()
+            }}
+            onCancel={() => setShowLogoutConfirm(false)}
+          />
+        )}
+      </ReaderLayout>
     )
   }
 
