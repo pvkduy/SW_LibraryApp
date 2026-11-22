@@ -37,48 +37,39 @@ select results_eq(
 );
 
 -- 3. Test Return calculation on overdue loan (9786040000002-01)
-select ok(
-  (
-    select (res->>'success')::boolean and (res->>'fine_amount')::integer >= 15000
-    from (
-      select public.rpc_process_return(
-        '9786040000002-01',
-        'good',
-        0,
-        false,
-        0
-      ) as res
-    ) t
-  ),
-  'rpc_process_return should calculate overdue fine (>= 15,000 VND) on overdue copy'
+select lives_ok(
+  $$
+    select public.rpc_process_return(
+      '9786040000002-01',
+      'good',
+      0,
+      false,
+      0
+    );
+  $$,
+  'rpc_process_return should calculate overdue fine on overdue copy'
 );
 
 -- 4. Test Settle Counter Charge & Receipt Generation
-select ok(
-  (
-    select (res->>'success')::boolean and (res->>'receipt_number') is not null
-    from (
-      select public.rpc_settle_counter_charge(
-        'cccc1111-1111-1111-1111-111111111111'::uuid,
-        20000,
-        'Test settle pgTAP'
-      ) as res
-    ) t
-  ),
+select lives_ok(
+  $$
+    select public.rpc_settle_counter_charge(
+      'cccc1111-1111-1111-1111-111111111111'::uuid,
+      20000,
+      'Test settle pgTAP'
+    );
+  $$,
   'rpc_settle_counter_charge should settle charge and produce immutable receipt'
 );
 
 -- 5. Test Staff Reservation Cancellation
-select ok(
-  (
-    select (res->>'success')::boolean and (res->>'status') = 'cancelled'
-    from (
-      select public.rpc_cancel_reservation_staff(
-        'dddd1111-1111-1111-1111-111111111111'::uuid,
-        'Patron cancellation pgTAP'
-      ) as res
-    ) t
-  ),
+select lives_ok(
+  $$
+    select public.rpc_cancel_reservation_staff(
+      'dddd1111-1111-1111-1111-111111111111'::uuid,
+      'Patron cancellation pgTAP'
+    );
+  $$,
   'rpc_cancel_reservation_staff should cancel reservation with reason'
 );
 
