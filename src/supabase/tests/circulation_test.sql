@@ -36,13 +36,13 @@ select results_eq(
   'Loan item status should transition to borrowed after handover'
 );
 
--- 3. Test Return calculation on overdue loan (978604000002-01)
+-- 3. Test Return calculation on overdue loan (9786040000002-01)
 select ok(
   (
     select (res->>'success')::boolean and (res->>'fine_amount')::integer >= 15000
     from (
       select public.rpc_process_return(
-        '978604000002-01',
+        '9786040000002-01',
         'good',
         0,
         false,

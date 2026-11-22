@@ -4,6 +4,15 @@
 -- Figma Mockups: Active Loans, Fines, FineCheckout, BookReview, FinancialLedger
 -- ============================================================================
 
+-- Ensure loan_items has due_date and renew_count columns for reader views & renew RPC
+alter table public.loan_items
+  add column if not exists due_date timestamptz,
+  add column if not exists renew_count integer not null default 0;
+
+update public.loan_items
+set due_date = due_at, renew_count = renewals_used
+where due_date is null and due_at is not null;
+
 -- 1. Create table for Book Reviews (UC-15 / FR-LOAN-04)
 create table if not exists public.book_reviews (
   id uuid primary key default gen_random_uuid(),

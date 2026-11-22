@@ -36,13 +36,21 @@ values
   ('22222222-2222-2222-2222-222222222222', '00000000-0000-0000-0000-000000000000',
    'authenticated', 'authenticated', 'student2@example.edu', 'x', now(), now(), now()),
   ('33333333-3333-3333-3333-333333333333', '00000000-0000-0000-0000-000000000000',
-   'authenticated', 'authenticated', 'admin@example.edu', 'x', now(), now(), now());
+   'authenticated', 'authenticated', 'admin@example.edu', 'x', now(), now(), now())
+on conflict (id) do update set
+  email = excluded.email;
 
 insert into public.profiles (id, role, status, full_name, email, student_id)
 values
   ('11111111-1111-1111-1111-111111111111', 'student', 'active', 'Student One', 'student1@example.edu', 'S001'),
   ('22222222-2222-2222-2222-222222222222', 'student', 'active', 'Student Two', 'student2@example.edu', 'S002'),
-  ('33333333-3333-3333-3333-333333333333', 'admin',   'active', 'Admin User',  'admin@example.edu',    null);
+  ('33333333-3333-3333-3333-333333333333', 'admin',   'active', 'Admin User',  'admin@example.edu',    null)
+on conflict (id) do update set
+  role = excluded.role,
+  status = excluded.status,
+  full_name = excluded.full_name,
+  email = excluded.email,
+  student_id = excluded.student_id;
 
 insert into public.books (id, title, status, total_copies, available_copies, embedding)
 values

@@ -18,35 +18,30 @@ import { expect, test } from '@playwright/test'
  * a column-level GRANT change can introduce.
  */
 
-test.describe('M0 smoke', () => {
+test.describe('App smoke', () => {
   test('app shell renders', async ({ page }) => {
     const response = await page.goto('/')
 
     expect(response?.status(), 'index.html should be served').toBe(200)
     await expect(page.locator('#root')).toBeAttached()
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('SW Library')
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Welcome Back')
   })
 
-  test('signed-out visitor settles with no permission error', async ({ page }) => {
+  test('signed-out visitor lands on login page', async ({ page }) => {
     await page.goto('/')
 
     // AuthProvider resolves the session before App renders its <main>.
     await expect(page.locator('main')).toBeVisible({ timeout: 15_000 })
 
     // The loading line is replaced once getSession() settles.
-    await expect(page.getByText('Đang tải...')).toHaveCount(0, { timeout: 15_000 })
+    await expect(page.getByText('Đang tải ShelfHelp...')).toHaveCount(0, { timeout: 15_000 })
 
-    // Wait for in-flight requests to finish BEFORE asserting. This matters:
-    // `toHaveCount(0)` passes immediately when the count is already 0, so it
-    // cannot catch an error that arrives a few ms later. Verified: without this
-    // wait the assertion passed while `.error` appeared 4 ms afterwards.
     await page.waitForLoadState('networkidle')
 
-    // No session yet (M1 adds the login screen), so the signed-out state shows.
-    await expect(page.getByText('Chưa đăng nhập')).toBeVisible()
+    // Signed-out visitor sees login screen
+    await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible()
 
-    // The regression guard: Supabase/RLS problems land in the inline error slot
-    // (§14 load error). M0 must reach the stack cleanly, never "permission denied".
+    // No load/runtime error
     await expect(page.locator('.error')).toHaveCount(0)
   })
 })
