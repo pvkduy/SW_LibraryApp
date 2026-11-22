@@ -525,7 +525,7 @@ begin
   -- 3. Emit immutable receipt
   v_receipt_number := 'RCP-' || to_char(app_now(), 'YYYYMMDD') || '-' || upper(substring(gen_random_uuid()::text, 1, 6));
   insert into public.receipts (number, uid, amount, method, type, ref_type, ref_id, charge_id, notes)
-  values (v_receipt_number, v_charge.uid, v_charge.amount, 'cash', 'fine', 'charge', p_charge_id, p_notes);
+  values (v_receipt_number, v_charge.uid, v_charge.amount, 'cash', 'fine', 'charge', p_charge_id, p_charge_id, p_notes);
 
   return jsonb_build_object(
     'success', true,

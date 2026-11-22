@@ -170,7 +170,7 @@ begin
     insert into public.receipts (
       number, uid, amount, method, type, ref_type, ref_id, charge_id, notes
     ) values (
-      v_receipt_number, v_uid, v_charge.amount, p_method, v_charge.type, 'charge', v_charge.id, 'Thanh toán trực tuyến phí ' || v_charge.type
+      v_receipt_number, v_uid, v_charge.amount, p_method, v_charge.type, 'charge', v_charge.id, v_charge.id, 'Thanh toán trực tuyến phí ' || v_charge.type
     );
   end loop;
 
