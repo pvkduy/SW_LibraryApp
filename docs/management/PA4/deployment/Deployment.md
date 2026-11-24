@@ -14,7 +14,7 @@
 ### Table of contents
 
 - [1. Introduction](#1-introduction)
-- [2. Mapping containers to infrastructure nodes](#2-mapping-containers-to-infrastructure-nodes)
+- [2. Mapping containers and platform services to infrastructure nodes](#2-mapping-containers-and-platform-services-to-infrastructure-nodes)
 - [3. Deployment diagram](#3-deployment-diagram)
 - [4. Infrastructure node catalogue](#4-infrastructure-node-catalogue)
 - [5. Deployment environments](#5-deployment-environments)
@@ -32,18 +32,19 @@ This document specifies the **Deployment Architecture** for ShelfHelp. It satisf
 ### 1.2 Scope
 
 The deployment architecture covers the complete product lifecycle from PA1 through PA4 and planned PA5 features:
+
 1. **Production cloud topology:** Vercel serves the static SPA from its global CDN; Supabase Edge Functions, database, Auth, Storage and Realtime all run in AWS `ap-southeast-1` (Singapore).
 2. **Local development topology:** Containerized local development stack orchestrated via Docker Desktop and the Supabase CLI.
 3. **Continuous Integration (CI) topology:** Automated ephemeral test runners managed by GitHub Actions.
 
 ### 1.3 References
 
-| ID | Document | Role in this document |
+| ID | Document | Use in this document |
 | :--- | :--- | :--- |
 | R1 | [`Container.md`](../architecture/container/Container.md) | Authoritative software container catalogue and protocols (C4 Level 2) |
 | R2 | [`System-Context.md`](../architecture/system-context/System-Context.md) | External systems and technological foundations (C4 Level 1) |
 | R3 | [`Component.md`](../architecture/component/Component.md) | Internal module decomposition of Web Application and API (C4 Level 3) |
-| R4 | [`SHELFHELP_FULLSPEC.md`](../../../../src/speckit/specs/SHELFHELP_FULLSPEC.md) | System requirements, operational parameters, and deployment baseline (§10.1 region, §10.5 buckets, §10.6 environments and secrets, ASM-06, RISK-03) |
+| R4 | [`SHELFHELP_FULLSPEC.md`](../../../../src/speckit/specs/SHELFHELP_FULLSPEC.md) | System requirements, operational parameters, and deployment baseline |
 | R5 | [`requirements.md`](requirements.md) | Coursework deployment submission requirements |
 | R6 | [`DECISIONS.md`](../../../DECISIONS.md) | Recorded architectural decisions |
 
@@ -145,7 +146,7 @@ C4Deployment
     UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
 ```
 
-Source diagram: [`mermaid/deployment.mmd`](mermaid/deployment.mmd).
+Source: [`mermaid/deployment.mmd`](mermaid/deployment.mmd).
 
 ---
 
@@ -157,9 +158,9 @@ Source diagram: [`mermaid/deployment.mmd`](mermaid/deployment.mmd).
 | :--- | :--- |
 | **Node type** | Client Physical Hardware & Browser Execution Environment |
 | **Hardware / OS** | Student smartphones (iOS / Android), student laptops (macOS / Windows), librarian desktop workstations |
-| **Execution container** | **ShelfHelp Web Application** executed within modern evergreen browsers (current versions of Google Chrome, Mozilla Firefox, Apple Safari, and Microsoft Edge). Cross-browser camera variance is a known risk (RISK-09), so manual ISBN entry is always available. |
+| **Execution container** | **ShelfHelp Web Application** executed within modern evergreen browsers (current versions of Google Chrome, Mozilla Firefox, Apple Safari, and Microsoft Edge). Camera barcode scanning varies across phones and browsers, so manual ISBN entry is always available as a fallback. |
 
-**Description & Responsibilities:**
+**Description and responsibilities:**
 The client hardware executes the compiled single-page application in browser memory. It renders both **Reader Mode** (optimized for mobile touchscreens and responsive viewports) and **Admin Mode** (optimized for multi-column desktop workflows), manages local routing state via React Router, and interfaces with device peripherals such as webcams for barcode scanning (`@zxing/browser`).
 
 **Communication protocols:**
@@ -180,7 +181,7 @@ The client hardware executes the compiled single-page application in browser mem
 | **Cloud platform** | Vercel Global Edge Network |
 | **Deployed assets** | **Static Web Assets**: Compiled, minified HTML5, ES modules (JavaScript), CSS (Tailwind), and optimized SVGs/images |
 
-**Description & Responsibilities:**
+**Description and responsibilities:**
 Hosts the immutable build output produced by Vite. Deployed automatically via Git push triggers in CI. Edge nodes cache static assets across geographically distributed Points of Presence (PoPs), serving readers with minimal round-trip latency, automatic HTTP/2 and HTTP/3 multiplexing, and Gzip/Brotli compression. Non-asset URL paths rewrite to `/index.html` to support client-side HTML5 History API routing.
 
 **Communication protocols:**
@@ -191,7 +192,7 @@ Hosts the immutable build output produced by Vite. Deployed automatically via Gi
 
 ### 4.3 Supabase Managed Platform
 
-Per [SHELFHELP_FULLSPEC §10.1](../../../../src/speckit/specs/SHELFHELP_FULLSPEC.md), the Supabase project and every persistent backend service (database, storage, auth, and realtime) are provisioned in the **AWS Singapore region (`ap-southeast-1`)** to maintain minimal network latency for Vietnamese university users. The Edge Functions runtime is **region-pinned to the same region**: every ShelfHelp command is one PostgreSQL transaction ([§10.7](../../../../src/speckit/specs/SHELFHELP_FULLSPEC.md)), so a function running at a distant edge PoP would add a round trip to Singapore on every request without reducing the dominant cost.
+The Supabase project and every persistent backend service (database, storage, auth, and realtime) are provisioned in the **AWS Singapore region (`ap-southeast-1`)** to maintain minimal network latency for Vietnamese university users. The Edge Functions runtime is **region-pinned to the same region**: every ShelfHelp command executes as a single PostgreSQL transaction, so a function running at a distant edge PoP would add a round trip to Singapore on every request without reducing the dominant cost.
 
 #### 4.3.1 Edge Functions Runtime Node
 
@@ -201,7 +202,7 @@ Per [SHELFHELP_FULLSPEC §10.1](../../../../src/speckit/specs/SHELFHELP_FULLSPEC
 | **Cloud service** | Supabase Edge Runtime (isolated Deno V8 workers pinned to `ap-southeast-1`) |
 | **Containers running** | **ShelfHelp API** (stateless business command handlers and scheduled background job functions) |
 
-**Description & Responsibilities:**
+**Description and responsibilities:**
 Executes stateless TypeScript functions on Deno V8 isolates that run in the same region as the database. Validates incoming JSON payloads against Zod schemas, extracts and verifies caller identity from JWT tokens, reloads profile status to enforce debt holds and suspension policies, applies `@shelfhelp/shared` domain logic, and routes commands to PostgreSQL stored procedures in `ap-southeast-1`.
 
 **Communication protocols:**
@@ -216,10 +217,10 @@ Executes stateless TypeScript functions on Deno V8 isolates that run in the same
 | Property | Value |
 | :--- | :--- |
 | **Node type** | Managed Relational Database Node |
-| **Cloud service** | Supabase PostgreSQL 15 on Linux. Production assumes a paid plan (SRS RISK-03); a pilot may run on the free tier with the plan limits checked before launch (SRS ASM-06). |
+| **Cloud service** | Supabase PostgreSQL 15 on Linux. Production assumes a paid plan, but a pilot may run on the free tier with the plan limits checked before launch. |
 | **Containers running** | PostgreSQL Database (`public` schema, `auth` schema, `storage` schema, extensions: `pg_trgm`, `unaccent`, `pgvector`, `pg_cron`, `pg_net`) |
 
-**Description & Responsibilities:**
+**Description and responsibilities:**
 The primary system of record. Enforces data integrity through foreign keys, check constraints, immutable ledger triggers, and deny-by-default Row Level Security (RLS). Houses all core transactional business logic inside security definer RPCs (`rpc_confirm_handover`, `rpc_process_return`, etc.), where mutation RPC execution is restricted strictly to `service_role`. Manages full-text search indexes (`tsvector`), vector similarity search (`pgvector` HNSW indexes), and scheduled crons via `pg_cron`.
 
 **Communication protocols:**
@@ -255,7 +256,7 @@ These three services are managed platform services, not team-owned containers ([
 
 ## 5. Deployment environments
 
-ShelfHelp defines four formal deployment environments, matching [Container.md §6](../architecture/container/Container.md#6-deployment-and-environments) and the three hosted Supabase projects (`dev`, `staging`, `prod`) required by SHELFHELP_FULLSPEC §10.6:
+ShelfHelp defines four formal deployment environments, matching [Container.md §6](../architecture/container/Container.md#6-deployment-and-environments) and the three hosted Supabase projects (`dev`, `staging`, `prod`):
 
 | Aspect | Local Development | Continuous Integration (CI) | Dev / Staging | Production |
 | :--- | :--- | :--- | :--- | :--- |
@@ -285,7 +286,7 @@ ShelfHelp defines four formal deployment environments, matching [Container.md §
 
 ### 6.3 Backup, recovery, and reliability
 
-- **Automated database backups:** Automated daily physical backups and Point-in-Time Recovery (PITR) via continuous WAL archiving are provisioned per Supabase plan. Production assumes a **paid plan**: the pilot assumption of free tiers (SRS ASM-06) is overridden by RISK-03, because free-tier projects pause after inactivity, have capped backups and recovery, and stop cron jobs. The pilot may still run on the free tier once its limits are checked before launch, with jobs catching up on resume.
+- **Automated database backups:** Automated daily physical backups and Point-in-Time Recovery (PITR) via continuous WAL archiving are provisioned per Supabase plan. Production assumes a **paid plan** because free-tier projects pause after inactivity, have capped backups and recovery, and stop cron jobs. The pilot may still run on the free tier once its limits are checked before launch, with jobs catching up on resume.
 - **Schema as code:** In all tiers, the entire relational schema, table structures, RLS policies, triggers, seed data, and RPCs are version-controlled in `src/supabase/migrations/`. In the event of catastrophic infrastructure loss or environment replication, an identical database environment can be reproduced deterministically using `supabase db reset`.
 - **Stateless compute:** Edge Functions and the frontend SPA maintain no local state; any failed worker isolate is terminated and replaced instantly without data loss.
 
