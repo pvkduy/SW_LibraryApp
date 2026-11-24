@@ -29,12 +29,17 @@
 
 ## 1. Introduction
 
-This document is the **C4 Level 3 (Component) view** of ShelfHelp. It opens the two core application
-containers from the [Container view](../container/Container.md) and shows the modules inside them,
-their responsibilities, and their collaborations.
+### 1.1 Purpose
 
-A *component* is a group of related code with a clear responsibility inside its container. Components
-are not separately deployed: they are compiled into the React bundle or the Edge Function bundle.
+This document is the **C4 Level 3 (Component) view** of ShelfHelp. It opens the two core application containers from the [Container view](../container/Container.md) and shows the modules inside them, their responsibilities, and their collaborations.
+
+A *component* is a group of related code with a clear responsibility inside its container. Components are not separately deployed: they are compiled into the React bundle or the Edge Function bundle.
+
+### 1.2 Scope
+
+The view covers the two core application containers across the whole product scope from PA1–PA4: the Web Application and the ShelfHelp API. Managed platform services and the PostgreSQL database are not decomposed at this level, and features planned for PA5 use the components shown here without adding new ones.
+
+### 1.3 References
 
 | ID | Document | Use in this document |
 | :--- | :--- | :--- |
@@ -47,12 +52,9 @@ are not separately deployed: they are compiled into the React bundle or the Edge
 
 ## 2. Why these two containers
 
-The Web Application and the ShelfHelp API carry almost all product behaviour. The Web Application is
-where Reader and Admin experiences differ; the API is where every command, job, and provider adapter
-runs.
+The Web Application and the ShelfHelp API carry almost all product behaviour. The Web Application is where Reader and Admin experiences differ; the API is where every command, job, and provider adapter runs.
 
-PostgreSQL is not decomposed here because its components are tables, constraints, indexes, policies,
-triggers, and RPCs, which are documented in the specification and migrations. Auth, Storage, and
+PostgreSQL is not decomposed here because its components are tables, constraints, indexes, policies, triggers, and RPCs, which are documented in the specification and migrations. Auth, Storage, and
 Realtime are managed services with no team-owned internal modules.
 
 ---
@@ -121,8 +123,7 @@ C4Component
 
 Source: [`mermaid/component-web-app.mmd`](mermaid/component-web-app.mmd).
 
-All feature components use the shared presentation kit and the shared validation contracts. These are
-cross-cutting libraries rather than collaborating components, so they are omitted from the diagram.
+All feature components use the shared presentation kit and the shared validation contracts. These are cross-cutting libraries rather than collaborating components, so they are omitted from the diagram.
 
 ---
 
@@ -144,9 +145,7 @@ cross-cutting libraries rather than collaborating components, so they are omitte
 
 ### 4.1 Reader and Admin Mode in one container
 
-Reader and Admin Mode share the App Shell, the Data Access client, and the shared contracts, but their
-route bundles are separate so a student never downloads admin code. The App Shell chooses the mode
-from the authenticated profile:
+Reader and Admin Mode share the App Shell, the Data Access client, and the shared contracts, but their route bundles are separate so a student never downloads admin code. The App Shell chooses the mode from the authenticated profile:
 
 - `role = student` → Reader shell and reader routes;
 - `role = admin` → Admin shell and admin routes;
@@ -229,8 +228,7 @@ C4Component
 
 Source: [`mermaid/component-api.mmd`](mermaid/component-api.mmd).
 
-HTTP, auth, validation, and error logging are shared `_shared/` helpers called by each function, not a central
-router. The arrows show that use. `pg_cron` inside PostgreSQL calls the job handlers through
+HTTP, auth, validation, and error logging are shared `_shared/` helpers called by each function, not a central router. The arrows show that use. `pg_cron` inside PostgreSQL calls the job handlers through
 `pg_net` with a secret header.
 
 ---

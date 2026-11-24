@@ -2,7 +2,6 @@
 
 ## PA4 Software Architecture — Technology Stack and System Context (C4 Level 1)
 
-
 ### Revision history
 
 | Date | Version | Description | Author |
@@ -122,7 +121,7 @@ The frontend is a responsive **React 19.3.1 + Vite 8.3.5** application. Reader M
 - **Data and forms:** TanStack Query with `supabase-js` for server state; React Hook Form with Zod schemas shared with Edge Functions so client and server validation agree.
 - **UI:** Tailwind CSS with shadcn/ui (Radix) for accessible components; Recharts for dashboards; react-i18next and date-fns for English UI and `Asia/Ho_Chi_Minh` formatting.
 - **Specialised features:** `@zxing/browser` for ISBN scanning, JsBarcode and a PDF library for label sheets, PapaParse/ExcelJS for import and export, pdfmake for Vietnamese-capable PDFs, and react-easy-crop for avatars.
-- **Language note:** the UI is currently JavaScript/JSX; the shared domain and type contracts are strict TypeScript, matching the project's incremental path to the SRS TypeScript target.
+- **Language note:** the UI is currently JavaScript/JSX; the shared domain and type contracts are strict TypeScript, following an incremental path toward an all-TypeScript frontend.
 
 ### 3.3 Backend
 

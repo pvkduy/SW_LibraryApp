@@ -29,9 +29,9 @@
 
 ## 1. Introduction
 
-This document is the **C4 Level 2 (Container) view** of ShelfHelp. It opens the single ShelfHelp system
-box from the [System Context view](../system-context/System-Context.md) into the runtime containers
-that execute the product, and shows the managed platform services that support them.
+### 1.1 Purpose
+
+This document is the **C4 Level 2 (Container) view** of ShelfHelp. It opens the single ShelfHelp system box from the [System Context view](../system-context/System-Context.md) into the runtime containers that execute the product, and shows the managed platform services that support them.
 
 | View | Question answered | Document |
 | :--- | :--- | :--- |
@@ -40,14 +40,11 @@ that execute the product, and shows the managed platform services that support t
 | **L3 — Component** | What modules live inside the two core application containers? | [Component.md](../component/Component.md) |
 | **Deployment** | How are the containers mapped to physical and cloud infrastructure nodes? | [Deployment.md](../../deployment/Deployment.md) |
 
-### 1.1 Scope
+### 1.2 Scope
 
-The view covers the whole product scope from PA1–PA4: identity and membership, catalog and discovery,
-cart and checkout, desk circulation, inventory and write-offs, money and receipts, reservations,
-acquisitions, notifications, reporting, and the AI assistant. Features planned for PA5 use the same
-containers and do not change this view.
+The view covers the whole product scope from PA1–PA4: identity and membership, catalog and discovery, cart and checkout, desk circulation, inventory and write-offs, money and receipts, reservations, acquisitions, notifications, reporting, and the AI assistant. Features planned for PA5 use the same containers and do not change this view.
 
-### 1.2 References
+### 1.3 References
 
 | ID | Document | Use in this document |
 | :--- | :--- | :--- |
@@ -214,13 +211,11 @@ The source is also stored as [`mermaid/container.mmd`](mermaid/container.mmd).
 
 ### 4.5 External systems
 
-The email provider, payment simulator, AI provider, and bibliographic services sit outside ShelfHelp
-and are reached only through adapters in the API. Their role is shown by the diagram arrows; the
+The email provider, payment simulator, AI provider, and bibliographic services sit outside ShelfHelp and are reached only through adapters in the API. Their role is shown by the diagram arrows; the
 Level 1 view describes their integration and failure behaviour in
 [§3.7](../system-context/System-Context.md#37-external-apis-and-service-integrations).
 
-Static hosting, Cloudflare Turnstile, Sentry, and CI are supporting services rather than business
-systems; they are listed in the Level 1 technology stack.
+Static hosting, Cloudflare Turnstile, Sentry, and CI are supporting services rather than business systems; they are listed in the Level 1 technology stack.
 
 ---
 
@@ -242,8 +237,7 @@ systems; they are listed in the Level 1 technology stack.
 4. The function returns the result or the standard error envelope, and the SPA maps the reason to a
    user-facing message.
 
-The underlying principles are summarized in [Key principles](../system-context/System-Context.md#23-key-principles)
-and detailed in the [API component view](../component/Component.md#9-shelfhelp-api--interactions-and-design-notes).
+The underlying principles are summarized in [Key principles](../system-context/System-Context.md#23-key-principles) and detailed in the [API component view](../component/Component.md#9-shelfhelp-api--interactions-and-design-notes).
 
 ### 5.3 Authentication path
 
@@ -286,8 +280,7 @@ and detailed in the [API component view](../component/Component.md#9-shelfhelp-a
 | **Dev / staging** | Preview deployment of the SPA | Supabase project with migrations applied by CI | Separate Supabase project |
 | **Production** | Static host and CDN over HTTPS | Supabase project | Managed PostgreSQL with backups |
 
-Schema changes move only through migrations applied by CI. The SPA release is a static asset build;
-the API release deploys the changed functions.
+Schema changes move only through migrations applied by CI. The SPA release is a static asset build; the API release deploys the changed functions.
 
 ---
 
@@ -308,8 +301,7 @@ the API release deploys the changed functions.
 | **AI research assistant** | FEAT-26 | UC-17 | Web App, API, Database (`pgvector`), AI Provider |
 | **Notifications and reminders** | FEAT-15 | UC-28, UC-30 | Web App, API, Database, Email |
 
-All feature groups and all 31 use cases use the Web Application and PostgreSQL; groups with a business
-write add the API, and groups that touch a third party add the corresponding external system.
+All feature groups and all 31 use cases use the Web Application and PostgreSQL; groups with a business write add the API, and groups that touch a third party add the corresponding external system.
 
 ---
 
@@ -324,19 +316,16 @@ write add the API, and groups that touch a third party add the corresponding ext
 | **Recoverability** | Idempotency keys make retries safe; the email outbox retries; jobs record outcomes; migrations are reproducible. |
 | **Observability** | Sentry, PostgreSQL logs, append-only `audit_logs` and `inventory_transactions`, `job_runs` for scheduled work. |
 
-If the Supabase project is unavailable, reads, writes, auth, and storage fail; the SPA remains
-loadable from the CDN but cannot serve data. This is accepted for a course-scale system.
+If the Supabase project is unavailable, reads, writes, auth, and storage fail; the SPA remains loadable from the CDN but cannot serve data. This is accepted for a course-scale system.
 
 ---
 
 ## 9. Scope and assumptions
 
-**Out of scope:** deployment topology inside Supabase, network diagrams, vendor internals, and
-class/module structure.
+**Out of scope:** deployment topology inside Supabase, network diagrams, vendor internals, and class/module structure.
 
 **Assumptions:** one library branch, one staff role, institutional email, a catalog at or below roughly
-50,000 titles, simulated payments with no card data, best-effort email with an in-app durable record,
-and Supabase as the managed backend.
+50,000 titles, simulated payments with no card data, best-effort email with an in-app durable record, and Supabase as the managed backend.
 
 ---
 
