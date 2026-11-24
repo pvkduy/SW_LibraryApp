@@ -156,9 +156,7 @@ traffic to Supabase Auth, Storage and Realtime, labelled **PKCE (auth), signed U
 (live)**. The arrow points at the *Managed Platform Services* boundary rather than at any one service.
 Drawing the three client-to-service edges individually produces a dense crossing cluster that makes the
 diagram unreadable at page width, so the aggregation is deliberate. The Web Application's edges to the
-database and to the ShelfHelp API remain separate arrows. Every individual relationship and protocol is
-enumerated in §4.1, §4.3.1, §4.3.2 and §4.3.3, so the diagram and the catalogue together are the
-complete statement of the topology.
+database and to the ShelfHelp API remain separate arrows.
 
 Source: [`mermaid/deployment.mmd`](mermaid/deployment.mmd).
 
@@ -181,12 +179,10 @@ The client hardware executes the compiled single-page application in browser mem
 - **Static Hosting & CDN (Vercel):** Inbound download of static HTML/JS/CSS assets via **HTTPS (port 443)**.
 - **PostgreSQL Database:** Catalog search and row reads, plus direct writes to personal `cart_items` and `profiles` contact fields via **PostgREST over HTTPS** under Row Level Security.
 - **ShelfHelp API:** Invocation of business mutation commands over **HTTPS POST** with the caller's JWT bearer token.
-- **Supabase Auth, Storage and Realtime (one aggregated edge in the diagram):**
+- **Supabase Auth, Storage and Realtime** (one aggregated edge in the diagram, see §3):
   - **Supabase Auth:** Registration, OTP verification, and JWT session refresh over **HTTPS / PKCE**.
   - **Supabase Storage:** Upload of avatars and evidence photos and retrieval of book covers via **HTTPS** with signed URLs.
   - **Supabase Realtime:** Ingestion of live availability counters and personal loan notifications via persistent **WebSocket (WSS, port 443)**.
-
-  These three share one arrow in the diagram, drawn from the Web Application to the *Managed Platform Services* boundary and labelled **PKCE (auth), signed URLs (files), WSS + RLS (live)**. The arrow labels the boundary, not any single service: Auth, Storage and Realtime are separate platform services, and only the edge is aggregated. Each protocol above applies to its named service.
 
 ---
 

@@ -234,7 +234,16 @@ C4Context
 
 ![System context diagram: Student (Reader) and Librarian (Admin) are connected to ShelfHelp over HTTPS; ShelfHelp depends on the Supabase Platform, Email Delivery Provider, Payment Provider (simulator), AI Provider and Bibliographic Metadata Services, and Supabase sends its own verification and reset email](mermaid/system-context.png)
 
-Source: [`mermaid/system-context.mmd`](mermaid/system-context.mmd). §4.4 and §4.5 explain each element and relationship, so the document remains complete without the rendered image.
+Both people reach ShelfHelp over HTTPS: the Student through Reader Mode, the Librarian through Admin
+Mode. ShelfHelp itself is a single system box, while everything it depends on sits outside the boundary —
+the Supabase Platform, which supplies all backend capability (database, Auth, Storage, Realtime, Edge
+Functions and scheduled jobs), and four providers reached through adapters in the API: email delivery,
+payment simulation, AI inference, and bibliographic metadata. One dependency bypasses the API: Supabase
+Auth sends its own verification and reset mail through the same email provider.
+
+§4.3 describes the actors, §4.4 the external systems, and §4.5 explains each relationship in turn.
+
+Source: [`mermaid/system-context.mmd`](mermaid/system-context.mmd).
 
 ### 4.3 People (actors)
 
