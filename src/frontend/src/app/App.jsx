@@ -11,6 +11,7 @@ import { AuthSuccessModal, AuthErrorModal, AuthConfirmModal } from '../features/
 import { supabase } from '../lib/supabase'
 import { AdminLayout } from '../features/admin/components/AdminLayout.jsx'
 import { CirculationPage } from '../features/admin/circulation/CirculationPage.jsx'
+import { BooksPage } from '../features/admin/books/BooksPage.jsx'
 import { QueuesPage } from '../features/admin/queues/QueuesPage.jsx'
 import { FinancialLedgerPage } from '../features/admin/ledger/FinancialLedgerPage.jsx'
 import { ReaderLayout } from '../features/reader/components/ReaderLayout.jsx'
@@ -98,9 +99,10 @@ function App() {
             onLogout={() => setShowLogoutConfirm(true)}
           >
             {adminPage === 'circulation' && <CirculationPage />}
+            {adminPage === 'books' && <BooksPage />}
             {adminPage === 'queues' && <QueuesPage />}
             {adminPage === 'money' && <FinancialLedgerPage />}
-            {adminPage !== 'circulation' && adminPage !== 'queues' && adminPage !== 'money' && (
+            {adminPage !== 'circulation' && adminPage !== 'books' && adminPage !== 'queues' && adminPage !== 'money' && (
               <div style={{ textAlign: 'center', padding: '60px 0', color: '#72685e' }}>
                 <h2 style={{ color: '#241e19' }}>Màn hình {adminPage.toUpperCase()} đang được phát triển</h2>
                 <p>Vui lòng chọn <strong>Circulation</strong>, <strong>Queues & Holds</strong> hoặc <strong>Money</strong> ở menu bên trái.</p>
