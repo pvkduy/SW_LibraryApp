@@ -9,15 +9,20 @@
 | 24/Nov/2026 | 1.0 | Initial component views for the Web Application and ShelfHelp API | Nguyễn Anh Khôi |
 | 24/Nov/2026 | 1.1 | Split reader components, merged transaction and persistence, aligned external containers | Nguyễn Anh Khôi |
 | 24/Nov/2026 | 1.2 | Aligned container types, removed L3 Sentry, documented TypeScript/SQL rule parity and test strategy, and clarified atomic audit logging | Nguyễn Anh Khôi |
+| 24/Nov/2026 | 1.3 | Component diagrams rendered as two panels each (Web Application by mode; ShelfHelp API by entry path) so the C4 layout stays readable | Nguyễn Anh Khôi |
 
 ### Table of contents
 
 - [1. Introduction](#1-introduction)
 - [2. Why these two containers](#2-why-these-two-containers)
 - [3. Web Application — component diagram](#3-web-application--component-diagram)
+  - [3.1 Reader Mode](#31-reader-mode)
+  - [3.2 Admin Mode](#32-admin-mode)
 - [4. Web Application — component catalogue](#4-web-application--component-catalogue)
 - [5. Web Application — design notes](#5-web-application--design-notes)
 - [6. ShelfHelp API — component diagram](#6-shelfhelp-api--component-diagram)
+  - [6.1 Request path (business commands)](#61-request-path-business-commands)
+  - [6.2 Scheduled-job path (pg_cron)](#62-scheduled-job-path-pg_cron)
 - [7. ShelfHelp API — component catalogue](#7-shelfhelp-api--component-catalogue)
 - [8. ShelfHelp API — business command map](#8-shelfhelp-api--business-command-map)
 - [9. ShelfHelp API — interactions and design notes](#9-shelfhelp-api--interactions-and-design-notes)
@@ -61,35 +66,43 @@ Realtime are managed services with no team-owned internal modules.
 
 ## 3. Web Application — component diagram
 
+The view is drawn as two panels, one per operating mode. Reader Mode and Admin Mode share the same
+App Shell, the same Data Access & Realtime Client, and the same backend services, so each panel shows
+only the feature components that mode actually mounts. Read together, the two panels cover every
+component and relationship of the container.
+
+### 3.1 Reader Mode
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 C4Component
-    title Component diagram — ShelfHelp Web Application (React SPA)
+    title Component diagram — ShelfHelp Web Application (Reader Mode)
 
     Person(student, "Student (Reader)", "Uses Reader Mode on a phone or laptop.")
-    Person(librarian, "Librarian (Admin)", "Uses Admin Mode on a desktop.")
 
     Container_Boundary(spa, "ShelfHelp Web Application") {
-        Component(appShell, "App Shell & Access Guard", "React Router", "Bootstraps the application, selects the Reader or Admin shell and enforces session, role and account-status guards.")
         Component(authProfile, "Authentication & Profile", "React", "Registration, OTP verification, login/logout, password reset, profile editing and avatar cropping.")
+        Component(appShell, "App Shell & Access Guard", "React Router", "Bootstraps the application, selects the Reader or Admin shell and enforces session, role and account-status guards.")
         Component(catalogDiscovery, "Catalog & Discovery", "React, TanStack Query", "Home, search with filters and sorting, book detail, barcode scan, reviews and wishlist.")
+
         Component(cartCheckout, "Cart & Checkout", "React, TanStack Query", "Borrowing cart, checkout, pickup window and simulated payment.")
-        Component(myLibrary, "My Library", "React, TanStack Query", "Loans, renewals, reservations, charges and membership.")
-        Component(notificationsAssistant, "Notifications & Assistant", "React, Realtime", "Notifications, suggestions and the grounded AI assistant.")
-        Component(adminCirculation, "Admin Circulation & Queues", "React, TanStack Query", "Desk handover, returns, due/overdue groups, reservation queues and reminders.")
-        Component(adminCatalog, "Admin Catalog & Inventory", "React", "Books, copies, ISBN lookup, bulk import, inventory history and write-off slips.")
-        Component(adminMoney, "Admin Money & Reporting", "React, Recharts", "Receipts and reversals, dashboard KPIs and report exports.")
-        Component(adminAcquisitions, "Admin Acquisitions & Students", "React", "Suggestion review, acquisition batches, shipment receipt and student accounts.")
         Component(dataAccess, "Data Access & Realtime Client", "supabase-js, TanStack Query", "PostgREST reads, Realtime subscriptions, Storage uploads and Edge Function invocation with the JWT and standard error envelope.")
+        Component(myLibrary, "My Library", "React, TanStack Query", "Loans, renewals, reservations, charges and membership.")
+
+        Component(notificationsAssistant, "Notifications & Assistant", "React, Realtime", "Notifications, suggestions and the grounded AI assistant.")
     }
 
-    ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "Catalog and own-row data exposed through PostgREST under RLS.")
-    Container(api, "ShelfHelp API", "Supabase Edge Functions", "Business commands and scheduled jobs.")
-    Container_Ext(auth, "Supabase Auth", "Managed identity service", "Sessions, JWT and credential recovery.")
-    Container_Ext(storage, "Supabase Storage", "Managed object storage", "Covers, avatars, evidence and imports.")
-    Container_Ext(realtime, "Supabase Realtime", "Managed change-data service", "Live counters, notifications and own loan changes.")
+    Boundary(backend, "Backend services", "SUPABASE") {
+        Container(api, "ShelfHelp API", "Supabase Edge Functions", "Business commands and scheduled jobs.")
+        ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "Catalog and own-row data exposed through PostgREST under RLS.")
+        Container_Ext(auth, "Supabase Auth", "Managed identity service", "Sessions, JWT and credential recovery.")
+        Container_Ext(storage, "Supabase Storage", "Managed object storage", "Covers, avatars, evidence and imports.")
+        Container_Ext(realtime, "Supabase Realtime", "Managed change-data service", "Live counters, notifications and own loan changes.")
+    }
 
     Rel(student, appShell, "Uses Reader Mode", "HTTPS")
-    Rel(librarian, appShell, "Uses Admin Mode", "HTTPS")
 
     Rel(appShell, dataAccess, "Session state")
     Rel(appShell, authProfile, "Routes auth flows")
@@ -97,33 +110,125 @@ C4Component
     Rel(appShell, cartCheckout, "Renders")
     Rel(appShell, myLibrary, "Renders")
     Rel(appShell, notificationsAssistant, "Renders")
-    Rel(appShell, adminCirculation, "Renders")
-    Rel(appShell, adminCatalog, "Renders")
-    Rel(appShell, adminMoney, "Renders")
-    Rel(appShell, adminAcquisitions, "Renders")
 
     Rel(catalogDiscovery, dataAccess, "Queries/commands")
     Rel(cartCheckout, dataAccess, "Queries/commands")
     Rel(myLibrary, dataAccess, "Queries/commands")
     Rel(notificationsAssistant, dataAccess, "Queries/commands")
-    Rel(adminCirculation, dataAccess, "Queries/commands")
-    Rel(adminCatalog, dataAccess, "Queries/commands")
-    Rel(adminMoney, dataAccess, "Queries/commands")
-    Rel(adminAcquisitions, dataAccess, "Queries/commands")
     Rel(authProfile, dataAccess, "Authenticates")
 
     Rel(dataAccess, auth, "Signs in/verifies OTP", "HTTPS, PKCE")
-    Rel(dataAccess, db, "Reads; writes own profile/cart", "PostgREST, RLS")
+    Rel(dataAccess, db, "(Data → DB) <br/> Reads; writes own profile/cart", "PostgREST, RLS")
     Rel(dataAccess, api, "Invokes commands", "HTTPS, JWT")
-    Rel(dataAccess, storage, "Files", "HTTPS, signed URLs")
+    Rel(dataAccess, storage, "(Data → Supabase Storage) <br/>Files", "HTTPS, signed URLs")
     Rel(dataAccess, realtime, "Subscribes", "WebSocket, RLS")
+
+    UpdateRelStyle(student, appShell, $offsetX="-30", $offsetY="-50")
+
+    UpdateRelStyle(appShell, dataAccess, $offsetX="10", $offsetY="0")
+    UpdateRelStyle(appShell, authProfile, $offsetX="-40", $offsetY="10")
+    UpdateRelStyle(appShell, catalogDiscovery, $offsetX="-30", $offsetY="10")
+    UpdateRelStyle(appShell, cartCheckout, $offsetX="-80", $offsetY="20")
+    UpdateRelStyle(appShell, myLibrary, $offsetX="30", $offsetY="15")
+    UpdateRelStyle(appShell, notificationsAssistant, $offsetX="-70", $offsetY="50")
+
+    UpdateRelStyle(catalogDiscovery, dataAccess, $offsetX="50", $offsetY="-20")
+    UpdateRelStyle(cartCheckout, dataAccess, $offsetX="-40", $offsetY="-15")
+    UpdateRelStyle(myLibrary, dataAccess, $offsetX="-40", $offsetY="-20")
+    UpdateRelStyle(notificationsAssistant, dataAccess, $offsetX="0", $offsetY="0")
+    UpdateRelStyle(authProfile, dataAccess, $offsetX="-45", $offsetY="-40")
+
+    UpdateRelStyle(dataAccess, auth, $offsetX="-90", $offsetY="300")
+    UpdateRelStyle(dataAccess, db, $offsetX="20", $offsetY="-30")
+    UpdateRelStyle(dataAccess, api, $offsetX="-200", $offsetY="160")
+    UpdateRelStyle(dataAccess, storage, $offsetX="20", $offsetY="300")
+    UpdateRelStyle(dataAccess, realtime, $offsetX="60", $offsetY="150")
 
     UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
 ```
 
-Source: [`mermaid/component-web-app.mmd`](mermaid/component-web-app.mmd).
+</details>
+
+![Component diagram, Reader Mode: the App Shell rendering Authentication & Profile, Catalog & Discovery, Cart & Checkout, My Library and Notifications & Assistant, all reaching the backend through the Data Access & Realtime Client](mermaid/component-webapp-reader.png)
+
+### 3.2 Admin Mode
+
+<details>
+<summary>Mermaid source</summary>
+
+```mermaid
+C4Component
+    title Component diagram — ShelfHelp Web Application (Admin Mode)
+
+    Person(librarian, "Librarian (Admin)", "Uses Admin Mode on a desktop.")
+
+    Container_Boundary(spa, "ShelfHelp Web Application") {
+        Component(adminCirculation, "Admin Circulation & Queues", "React, TanStack Query", "Desk handover, returns, due/overdue groups, reservation queues and reminders.")
+        Component(appShell, "App Shell & Access Guard", "React Router", "Bootstraps the application, selects the Reader or Admin shell and enforces session, role and account-status guards.")
+        Component(adminCatalog, "Admin Catalog & Inventory", "React", "Books, copies, ISBN lookup, bulk import, inventory history and write-off slips.")
+
+        Component(adminMoney, "Admin Money & Reporting", "React, Recharts", "Receipts and reversals, dashboard KPIs and report exports.")
+        Component(dataAccess, "Data Access & Realtime Client", "supabase-js, TanStack Query", "PostgREST reads, Realtime subscriptions, Storage uploads and Edge Function invocation with the JWT and standard error envelope.")
+        Component(adminAcquisitions, "Admin Acquisitions & Students", "React", "Suggestion review, acquisition batches, shipment receipt and student accounts.")
+    }
+
+    Boundary(backend, "Backend services", "SUPABASE") {
+        Container(api, "ShelfHelp API", "Supabase Edge Functions", "Business commands and scheduled jobs.")
+        ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "Catalog and own-row data exposed through PostgREST under RLS.")
+        Container_Ext(auth, "Supabase Auth", "Managed identity service", "Sessions, JWT and credential recovery.")
+        Container_Ext(storage, "Supabase Storage", "Managed object storage", "Covers, avatars, evidence and imports.")
+        Container_Ext(realtime, "Supabase Realtime", "Managed change-data service", "Live counters, notifications and own loan changes.")
+    }
+
+    Rel(librarian, appShell, "Uses Admin Mode", "HTTPS")
+
+    Rel(appShell, dataAccess, "Session state")
+    Rel(appShell, adminCirculation, "Renders")
+    Rel(appShell, adminCatalog, "Renders")
+    Rel(appShell, adminMoney, "Renders")
+    Rel(appShell, adminAcquisitions, "Renders")
+
+    Rel(adminCirculation, dataAccess, "Queries/commands")
+    Rel(adminCatalog, dataAccess, "Queries/commands")
+    Rel(adminMoney, dataAccess, "Queries/commands")
+    Rel(adminAcquisitions, dataAccess, "Queries/commands")
+
+    Rel(dataAccess, auth, "Verifies session", "HTTPS, PKCE")
+    Rel(dataAccess, db, "(Data → DB) <br/>Reads; writes own profile", "PostgREST, RLS")
+    Rel(dataAccess, api, "Invokes commands", "HTTPS, JWT")
+    Rel(dataAccess, storage, "Files", "HTTPS, signed URLs")
+    Rel(dataAccess, realtime, "(Data → Realtime) <br/>Subscribes", "WebSocket, RLS")
+
+    UpdateRelStyle(librarian, appShell, $offsetX="-20", $offsetY="-50")
+
+    UpdateRelStyle(appShell, dataAccess, $offsetX="10", $offsetY="0")
+    UpdateRelStyle(appShell, adminCirculation, $offsetX="-20", $offsetY="10")
+    UpdateRelStyle(appShell, adminCatalog, $offsetX="-20", $offsetY="10")
+    UpdateRelStyle(appShell, adminMoney, $offsetX="-80", $offsetY="20")
+    UpdateRelStyle(appShell, adminAcquisitions, $offsetX="-30", $offsetY="-20")
+
+    UpdateRelStyle(adminCirculation, dataAccess, $offsetX="-35", $offsetY="-30")
+    UpdateRelStyle(adminCatalog, dataAccess, $offsetX="60", $offsetY="-20")
+    UpdateRelStyle(adminMoney, dataAccess, $offsetX="-50", $offsetY="10")
+    UpdateRelStyle(adminAcquisitions, dataAccess, $offsetX="-50", $offsetY="10")
+
+    UpdateRelStyle(dataAccess, auth, $offsetX="0", $offsetY="-10")
+    UpdateRelStyle(dataAccess, db, $offsetX="10", $offsetY="-20")
+    UpdateRelStyle(dataAccess, api, $offsetX="-90", $offsetY="-20")
+    UpdateRelStyle(dataAccess, storage, $offsetX="-60", $offsetY="180")
+    UpdateRelStyle(dataAccess, realtime, $offsetX="10", $offsetY="200")
+
+    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
+```
+
+</details>
+
+![Component diagram, Admin Mode: the App Shell rendering Admin Circulation & Queues, Admin Catalog & Inventory, Admin Money & Reporting and Admin Acquisitions & Students, all reaching the backend through the Data Access & Realtime Client](mermaid/component-webapp-admin.png)
 
 All feature components use the shared presentation kit and the shared validation contracts. These are cross-cutting libraries rather than collaborating components, so they are omitted from the diagram.
+
+Source: [`mermaid/component-webapp-reader.mmd`](mermaid/component-webapp-reader.mmd) and
+[`mermaid/component-webapp-admin.mmd`](mermaid/component-webapp-admin.mmd).
 
 ---
 
@@ -172,64 +277,149 @@ Route guards improve the experience; RLS and Edge Functions enforce the actual r
 
 ## 6. ShelfHelp API — component diagram
 
+The view is drawn as two panels, one per entry path. Business commands arrive from the Web Application
+over HTTPS; scheduled jobs arrive from `pg_cron` inside PostgreSQL through `pg_net`. Both paths enter
+the same handlers and commit through the same RPC gateway, so the two panels share the rule engine, the
+gateway, and the job tracker.
+
+### 6.1 Request path (business commands)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 C4Component
-    title Component diagram — ShelfHelp API (Supabase Edge Functions)
-
+    title Component diagram — ShelfHelp API: request path (business commands)
+    Container_Ext(auth, "Supabase Auth", "Managed identity service", "JWT verification and user identity.")
     Container(webapp, "ShelfHelp Web Application", "React SPA", "Calls business commands.")
     ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "System of record, RLS, triggers, atomic RPC transactions and audit logging.")
-    Container_Ext(auth, "Supabase Auth", "Managed identity service", "JWT verification and user identity.")
-    System_Ext(email, "Email Delivery Provider", "SMTP or transactional email API")
-    System_Ext(payment, "Payment Provider (simulator)", "Payment and refund API")
-    System_Ext(ai, "AI Provider", "Embedding and LLM APIs")
-    System_Ext(isbn, "Bibliographic Metadata Services", "Google Books and Open Library")
 
     Container_Boundary(api, "ShelfHelp API") {
-        Component(httpHelpers, "HTTP & CORS Helpers", "_shared/http.ts", "Accept POST requests, handle CORS and OPTIONS, and map results to JSON or the standard error envelope.")
         Component(authGuard, "Auth & Access Guard", "_shared/auth.ts", "Verifies the JWT, reads app_metadata.role and reloads profile status; enforces role, account status, debt hold, membership and reservation ban.")
+        Component(commandGateway, "Command Execution & RPC Gateway", "SQL RPCs, idempotency keys", "Executes each command as one PostgreSQL RPC/transaction (writing state changes and audit_logs atomically), retries deadlocks, and returns cached idempotency responses.")
+        Component(jobLogger, "Job Tracking & Error Logger", "job_runs, logger", "Captures unhandled exceptions for operational monitoring.")
+
         Component(validation, "Request Validation", "Zod schemas", "Parses and validates every request body before any database work begins.")
         Component(commandHandlers, "Business Command Handlers", "One function folder per command", "Account, catalog, inventory, borrowing, money, circulation, write-off, acquisition, notification and assistant commands; thin orchestration only.")
-        Component(jobHandlers, "Scheduled Job Handlers", "pg_net-invoked functions", "Nightly loans and fines, hold expiry, payment expiry, reminders, email outbox and embedding queue.")
+        Component(httpHelpers, "HTTP & CORS Helpers", "_shared/http.ts", "Accept POST requests, handle CORS and OPTIONS, and map results to JSON or the standard error envelope.")
+
         Component(domainRules, "Shared Domain Rules", "@shelfhelp/shared", "Pure entitlements, gating, fines, reservation promotion, lost-book and charge rules.")
-        Component(commandGateway, "Command Execution & RPC Gateway", "SQL RPCs, idempotency keys", "Executes each command as one PostgreSQL RPC/transaction (writing state changes and audit_logs atomically), retries deadlocks, and returns cached idempotency responses.")
         Component(adapters, "Integration Adapters", "Email, payment, embedding, LLM and ISBN adapters", "Isolates third-party protocols and applies fallbacks such as manual ISBN entry and keyword assistant results.")
-        Component(jobLogger, "Job Tracking & Error Logger", "job_runs, logger", "Records background job execution outcomes into job_runs and captures unhandled exceptions for operational monitoring.")
+    }
+
+    Boundary(providers, "Third-party providers", "EXTERNAL") {
+        System_Ext(email, "Email Delivery Provider", "SMTP or transactional email API")
+        System_Ext(payment, "Payment Provider (simulator)", "Payment and refund API")
+        System_Ext(ai, "AI Provider", "Embedding and LLM APIs")
+        System_Ext(isbn, "Bibliographic Metadata Services", "Google Books and Open Library")
     }
 
     Rel(webapp, commandHandlers, "Calls command", "HTTPS, JWT")
-    Rel(db, jobHandlers, "pg_cron calls job", "HTTPS via pg_net")
 
-    Rel(commandHandlers, httpHelpers, "Uses")
     Rel(commandHandlers, authGuard, "Uses")
     Rel(commandHandlers, validation, "Uses")
-    Rel(commandHandlers, jobLogger, "Logs unhandled errors")
-    Rel(jobHandlers, httpHelpers, "Uses")
-
+    Rel(commandHandlers, httpHelpers, "Uses")
     Rel(commandHandlers, domainRules, "Business rules")
-    Rel(jobHandlers, domainRules, "Business rules")
     Rel(commandHandlers, commandGateway, "One RPC transaction")
-    Rel(jobHandlers, commandGateway, "One RPC transaction")
     Rel(commandHandlers, adapters, "Provider calls")
-    Rel(jobHandlers, adapters, "Email/embeddings")
+    Rel(commandHandlers, jobLogger, "Logs unhandled errors")
 
-    Rel(commandGateway, db, "Executes RPC (commits state & audit)", "PostgREST HTTPS, service role")
     Rel(authGuard, auth, "Verifies JWT", "HTTPS")
     Rel(authGuard, db, "Reloads profiles.status", "PostgREST HTTPS, service role")
+    Rel(commandGateway, db, "Executes RPC (commits state & audit)", "PostgREST HTTPS, service role")
+    Rel(jobLogger, db, "Writes error records", "PostgREST HTTPS, service role")
+
     Rel(adapters, email, "Email", "HTTPS/SMTP")
     Rel(adapters, payment, "Payments", "HTTPS")
     Rel(adapters, ai, "AI", "HTTPS")
     Rel(adapters, isbn, "ISBN", "HTTPS")
 
+    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
+    UpdateRelStyle(commandHandlers, authGuard, $offsetX="0", $offsetY="-30")
+    UpdateRelStyle(commandHandlers, validation, $offsetX="-10", $offsetY="-15")
+    UpdateRelStyle(commandHandlers, httpHelpers, $offsetX="-10", $offsetY="-15")
+    UpdateRelStyle(commandHandlers, domainRules, $offsetX="-60", $offsetY="-10")
+    UpdateRelStyle(commandHandlers, commandGateway, $offsetX="10", $offsetY="0")
+    UpdateRelStyle(commandHandlers, adapters, $offsetX="10", $offsetY="0")
+
+    UpdateRelStyle(authGuard, auth, $offsetX="10", $offsetY="0")
+    UpdateRelStyle(authGuard, db, $offsetX="10", $offsetY="-25")
+    UpdateRelStyle(commandGateway, db, $offsetX="-40", $offsetY="50")
+    UpdateRelStyle(jobLogger, db, $offsetX="20", $offsetY="-30")
+
+    UpdateRelStyle(webapp, commandHandlers, $offsetX="0", $offsetY="-250")
+    
+    UpdateRelStyle(adapters, email, $offsetX="-140", $offsetY="50")
+    UpdateRelStyle(adapters, payment, $offsetX="40", $offsetY="0")
+    UpdateRelStyle(adapters, ai, $offsetX="10", $offsetY="0")
+    UpdateRelStyle(adapters, isbn, $offsetX="0", $offsetY="0")
+```
+
+</details>
+
+![Component diagram, request path: the Web Application calling Business Command Handlers, which use the Auth & Access Guard, Request Validation, HTTP & CORS Helpers, Shared Domain Rules, the Command Execution & RPC Gateway and the Integration Adapters](mermaid/component-api-request.png)
+
+### 6.2 Scheduled-job path (pg_cron)
+
+<details>
+<summary>Mermaid source</summary>
+
+```mermaid
+C4Component
+    title Component diagram — ShelfHelp API: scheduled-job path (pg_cron)
+    ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "System of record, RLS, triggers, atomic RPC transactions and audit logging.")
+
+    Container_Boundary(api, "ShelfHelp API") {
+        Component(commandGateway, "Command Execution & RPC Gateway", "SQL RPCs, idempotency keys", "Executes each job step as one PostgreSQL RPC/transaction (writing state changes and audit_logs atomically), retries deadlocks, and returns cached idempotency responses.")
+        Component(jobHandlers, "Scheduled Job Handlers", "pg_net-invoked functions", "Nightly loans and fines, hold expiry, payment expiry, reminders, email outbox and embedding queue.")
+        Component(jobLogger, "Job Tracking & Error Logger", "job_runs, logger", "Records background job execution outcomes into job_runs and captures unhandled exceptions for operational monitoring.")
+
+        Component(httpHelpers, "HTTP & CORS Helpers", "_shared/http.ts", "Accept POST requests, handle CORS and OPTIONS, and map results to JSON or the standard error envelope.")
+        Component(domainRules, "Shared Domain Rules", "@shelfhelp/shared", "Pure entitlements, gating, fines, reservation promotion, lost-book and charge rules.")
+        Component(adapters, "Integration Adapters", "Email, payment, embedding, LLM and ISBN adapters", "Isolates third-party protocols; the job path uses the email and embedding adapters.")
+    }
+
+    Boundary(providers, "Third-party providers", "EXTERNAL") {
+        System_Ext(email, "Email Delivery Provider", "SMTP or transactional email API")
+        System_Ext(ai, "AI Provider", "Embedding and LLM APIs")
+    }
+
+    Rel(db, jobHandlers, "pg_cron calls job", "HTTPS via pg_net")
+
+    Rel(jobHandlers, commandGateway, "One RPC transaction")
     Rel(jobHandlers, jobLogger, "Records run")
+    Rel(jobHandlers, httpHelpers, "Uses")
+    Rel(jobHandlers, domainRules, "Business rules")
+    Rel(jobHandlers, adapters, "Email/embeddings")
+
+    Rel(commandGateway, db, "Executes RPC (commits state & audit)", "PostgREST HTTPS, service role")
     Rel(jobLogger, db, "Writes job_runs", "PostgREST HTTPS, service role")
+
+    Rel(adapters, email, "Email", "HTTPS/SMTP")
+    Rel(adapters, ai, "AI", "HTTPS")
+
+    UpdateRelStyle(db, jobHandlers, $offsetX="-15", $offsetY="-50")
+    UpdateRelStyle(jobHandlers, commandGateway, $offsetX="-45", $offsetY="-15")
+    UpdateRelStyle(jobHandlers, jobLogger, $offsetX="-40", $offsetY="-15")
+    UpdateRelStyle(jobHandlers, httpHelpers, $offsetX="-10", $offsetY="-10")
+    UpdateRelStyle(jobHandlers, domainRules, $offsetX="10", $offsetY="0")
+    UpdateRelStyle(jobHandlers, adapters, $offsetX="0", $offsetY="0")
+    UpdateRelStyle(commandGateway, db, $offsetX="15", $offsetY="40")
+    UpdateRelStyle(jobLogger, db, $offsetX="0", $offsetY="-60")
+    UpdateRelStyle(adapters, email, $offsetX="85", $offsetY="-10")
+    UpdateRelStyle(adapters, ai, $offsetX="40", $offsetY="0")
 
     UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
 ```
 
-Source: [`mermaid/component-api.mmd`](mermaid/component-api.mmd).
+</details>
 
-HTTP, auth, validation, and error logging are shared `_shared/` helpers called by each function, not a central router. The arrows show that use. `pg_cron` inside PostgreSQL calls the job handlers through
-`pg_net` with a secret header.
+![Component diagram, scheduled-job path: pg_cron calling the Scheduled Job Handlers through pg_net, which use the RPC Gateway, Shared Domain Rules, HTTP helpers and the email and embedding adapters](mermaid/component-api-scheduled-job.png)
+
+HTTP, auth, validation, and error logging are shared `_shared/` helpers called by each function, not a central router. The arrows show that use. `pg_cron` inside PostgreSQL calls the job handlers through `pg_net` with a secret header.
+
+Source: [`mermaid/component-api-request.mmd`](mermaid/component-api-request.mmd) and
+[`mermaid/component-api-scheduled-job.mmd`](mermaid/component-api-scheduled-job.mmd).
 
 ---
 
@@ -364,5 +554,7 @@ Target map. Implemented so far: the five functions listed in [System-Context §2
 - **Shared UI and validation libraries.** They are used by every feature component and are noted in §3
   and §10 rather than drawn as collaborating components.
 
-Source diagrams: [`mermaid/component-web-app.mmd`](mermaid/component-web-app.mmd),
-[`mermaid/component-api.mmd`](mermaid/component-api.mmd).
+Source diagrams: [`mermaid/component-webapp-reader.mmd`](mermaid/component-webapp-reader.mmd),
+[`mermaid/component-webapp-admin.mmd`](mermaid/component-webapp-admin.mmd),
+[`mermaid/component-api-request.mmd`](mermaid/component-api-request.mmd),
+[`mermaid/component-api-scheduled-job.mmd`](mermaid/component-api-scheduled-job.mmd).

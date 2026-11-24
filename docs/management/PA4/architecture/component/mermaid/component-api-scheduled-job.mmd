@@ -1,0 +1,45 @@
+C4Component
+    title Component diagram — ShelfHelp API: scheduled-job path (pg_cron)
+    ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "System of record, RLS, triggers, atomic RPC transactions and audit logging.")
+
+    Container_Boundary(api, "ShelfHelp API") {
+        Component(commandGateway, "Command Execution & RPC Gateway", "SQL RPCs, idempotency keys", "Executes each job step as one PostgreSQL RPC/transaction (writing state changes and audit_logs atomically), retries deadlocks, and returns cached idempotency responses.")
+        Component(jobHandlers, "Scheduled Job Handlers", "pg_net-invoked functions", "Nightly loans and fines, hold expiry, payment expiry, reminders, email outbox and embedding queue.")
+        Component(jobLogger, "Job Tracking & Error Logger", "job_runs, logger", "Records background job execution outcomes into job_runs and captures unhandled exceptions for operational monitoring.")
+
+        Component(httpHelpers, "HTTP & CORS Helpers", "_shared/http.ts", "Accept POST requests, handle CORS and OPTIONS, and map results to JSON or the standard error envelope.")
+        Component(domainRules, "Shared Domain Rules", "@shelfhelp/shared", "Pure entitlements, gating, fines, reservation promotion, lost-book and charge rules.")
+        Component(adapters, "Integration Adapters", "Email, payment, embedding, LLM and ISBN adapters", "Isolates third-party protocols; the job path uses the email and embedding adapters.")
+    }
+
+    Boundary(providers, "Third-party providers", "EXTERNAL") {
+        System_Ext(email, "Email Delivery Provider", "SMTP or transactional email API")
+        System_Ext(ai, "AI Provider", "Embedding and LLM APIs")
+    }
+
+    Rel(db, jobHandlers, "pg_cron calls job", "HTTPS via pg_net")
+
+    Rel(jobHandlers, commandGateway, "One RPC transaction")
+    Rel(jobHandlers, jobLogger, "Records run")
+    Rel(jobHandlers, httpHelpers, "Uses")
+    Rel(jobHandlers, domainRules, "Business rules")
+    Rel(jobHandlers, adapters, "Email/embeddings")
+
+    Rel(commandGateway, db, "Executes RPC (commits state & audit)", "PostgREST HTTPS, service role")
+    Rel(jobLogger, db, "Writes job_runs", "PostgREST HTTPS, service role")
+
+    Rel(adapters, email, "Email", "HTTPS/SMTP")
+    Rel(adapters, ai, "AI", "HTTPS")
+
+    UpdateRelStyle(db, jobHandlers, $offsetX="-15", $offsetY="-50")
+    UpdateRelStyle(jobHandlers, commandGateway, $offsetX="-45", $offsetY="-15")
+    UpdateRelStyle(jobHandlers, jobLogger, $offsetX="-40", $offsetY="-15")
+    UpdateRelStyle(jobHandlers, httpHelpers, $offsetX="-10", $offsetY="-10")
+    UpdateRelStyle(jobHandlers, domainRules, $offsetX="10", $offsetY="0")
+    UpdateRelStyle(jobHandlers, adapters, $offsetX="0", $offsetY="0")
+    UpdateRelStyle(commandGateway, db, $offsetX="15", $offsetY="40")
+    UpdateRelStyle(jobLogger, db, $offsetX="0", $offsetY="-60")
+    UpdateRelStyle(adapters, email, $offsetX="85", $offsetY="-10")
+    UpdateRelStyle(adapters, ai, $offsetX="40", $offsetY="0")
+
+    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

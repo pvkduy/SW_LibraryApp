@@ -1,0 +1,68 @@
+C4Component
+    title Component diagram — ShelfHelp Web Application (Reader Mode)
+
+    Person(student, "Student (Reader)", "Uses Reader Mode on a phone or laptop.")
+
+    Container_Boundary(spa, "ShelfHelp Web Application") {
+        Component(authProfile, "Authentication & Profile", "React", "Registration, OTP verification, login/logout, password reset, profile editing and avatar cropping.")
+        Component(appShell, "App Shell & Access Guard", "React Router", "Bootstraps the application, selects the Reader or Admin shell and enforces session, role and account-status guards.")
+        Component(catalogDiscovery, "Catalog & Discovery", "React, TanStack Query", "Home, search with filters and sorting, book detail, barcode scan, reviews and wishlist.")
+
+        Component(cartCheckout, "Cart & Checkout", "React, TanStack Query", "Borrowing cart, checkout, pickup window and simulated payment.")
+        Component(dataAccess, "Data Access & Realtime Client", "supabase-js, TanStack Query", "PostgREST reads, Realtime subscriptions, Storage uploads and Edge Function invocation with the JWT and standard error envelope.")
+        Component(myLibrary, "My Library", "React, TanStack Query", "Loans, renewals, reservations, charges and membership.")
+
+        Component(notificationsAssistant, "Notifications & Assistant", "React, Realtime", "Notifications, suggestions and the grounded AI assistant.")
+    }
+
+    Boundary(backend, "Backend services", "SUPABASE") {
+        Container(api, "ShelfHelp API", "Supabase Edge Functions", "Business commands and scheduled jobs.")
+        ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "Catalog and own-row data exposed through PostgREST under RLS.")
+        Container_Ext(auth, "Supabase Auth", "Managed identity service", "Sessions, JWT and credential recovery.")
+        Container_Ext(storage, "Supabase Storage", "Managed object storage", "Covers, avatars, evidence and imports.")
+        Container_Ext(realtime, "Supabase Realtime", "Managed change-data service", "Live counters, notifications and own loan changes.")
+    }
+
+    Rel(student, appShell, "Uses Reader Mode", "HTTPS")
+
+    Rel(appShell, dataAccess, "Session state")
+    Rel(appShell, authProfile, "Routes auth flows")
+    Rel(appShell, catalogDiscovery, "Renders")
+    Rel(appShell, cartCheckout, "Renders")
+    Rel(appShell, myLibrary, "Renders")
+    Rel(appShell, notificationsAssistant, "Renders")
+
+    Rel(catalogDiscovery, dataAccess, "Queries/commands")
+    Rel(cartCheckout, dataAccess, "Queries/commands")
+    Rel(myLibrary, dataAccess, "Queries/commands")
+    Rel(notificationsAssistant, dataAccess, "Queries/commands")
+    Rel(authProfile, dataAccess, "Authenticates")
+
+    Rel(dataAccess, auth, "Signs in/verifies OTP", "HTTPS, PKCE")
+    Rel(dataAccess, db, "(Data → DB) <br/> Reads; writes own profile/cart", "PostgREST, RLS")
+    Rel(dataAccess, api, "Invokes commands", "HTTPS, JWT")
+    Rel(dataAccess, storage, "(Data → Supabase Storage) <br/>Files", "HTTPS, signed URLs")
+    Rel(dataAccess, realtime, "Subscribes", "WebSocket, RLS")
+
+    UpdateRelStyle(student, appShell, $offsetX="-30", $offsetY="-50")
+
+    UpdateRelStyle(appShell, dataAccess, $offsetX="10", $offsetY="0")
+    UpdateRelStyle(appShell, authProfile, $offsetX="-40", $offsetY="10")
+    UpdateRelStyle(appShell, catalogDiscovery, $offsetX="-30", $offsetY="10")
+    UpdateRelStyle(appShell, cartCheckout, $offsetX="-80", $offsetY="20")
+    UpdateRelStyle(appShell, myLibrary, $offsetX="30", $offsetY="15")
+    UpdateRelStyle(appShell, notificationsAssistant, $offsetX="-70", $offsetY="50")
+
+    UpdateRelStyle(catalogDiscovery, dataAccess, $offsetX="50", $offsetY="-20")
+    UpdateRelStyle(cartCheckout, dataAccess, $offsetX="-40", $offsetY="-15")
+    UpdateRelStyle(myLibrary, dataAccess, $offsetX="-40", $offsetY="-20")
+    UpdateRelStyle(notificationsAssistant, dataAccess, $offsetX="0", $offsetY="0")
+    UpdateRelStyle(authProfile, dataAccess, $offsetX="-45", $offsetY="-40")
+
+    UpdateRelStyle(dataAccess, auth, $offsetX="-90", $offsetY="300")
+    UpdateRelStyle(dataAccess, db, $offsetX="20", $offsetY="-30")
+    UpdateRelStyle(dataAccess, api, $offsetX="-200", $offsetY="160")
+    UpdateRelStyle(dataAccess, storage, $offsetX="20", $offsetY="300")
+    UpdateRelStyle(dataAccess, realtime, $offsetX="60", $offsetY="150")
+
+    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

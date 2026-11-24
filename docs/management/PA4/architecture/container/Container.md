@@ -86,6 +86,62 @@ together, the two panels cover the same elements and relationships.
 
 ### 3.1 Core containers and managed services
 
+<details>
+<summary>Mermaid source</summary>
+
+```mermaid
+%%{init: {"c4": {"c4ShapeMargin": 90, "width": 200, "c4ShapePadding": 12}}}%%
+%%internal + supabase%%
+C4Container
+    title Container diagram — ShelfHelp: Smart Library Management System (internal)
+    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
+
+    Person(student, "Student (Reader)", "Searches, borrows, reserves and pays for library material from a phone or laptop.")
+    Person(librarian, "Librarian (Admin)", "Runs catalog, circulation, money, acquisitions and reporting from a desktop.")
+
+    System_Boundary(shelfhelp, "ShelfHelp") {
+        Container(webapp, "ShelfHelp Web Application", "React 19.3.1, Vite 8.3.5", "Reader Mode and Admin Mode single-page application. Renders catalog, cart, checkout, loans, circulation, money and reporting screens; guards routes by session, role and account status.")
+        Container(api, "ShelfHelp API", "Supabase Edge Functions, Deno, TypeScript", "One stateless function per business command. Validates input, authenticates and authorizes the caller, runs shared domain rules and commits the command in one PostgreSQL transaction.")
+        ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15, managed; team-owned schema, RLS and RPCs", "System of record for accounts, catalog, loans, reservations, charges, receipts, audit and settings. Hosts full-text and vector search, and pg_cron schedules that call job functions.")
+    }
+
+    System_Boundary(supabase, "Supabase Platform (managed services)") {
+        Container_Ext(storage, "Supabase Storage", "Managed object storage with bucket policies", "Covers, avatars, write-off evidence and CSV imports; access controlled by storage policies and signed URLs.")
+        Container_Ext(auth, "Supabase Auth", "Managed identity service, JWT, PKCE", "Registration, email verification, sign-in/out, password reset and JWT issuance with app_metadata.role.")
+        Container_Ext(realtime, "Supabase Realtime", "Managed change-data service", "Pushes live availability counters, notifications and own loan-item changes to subscribed browsers under RLS.")
+    }
+
+    Rel(student, webapp, "Uses Reader Mode", "HTTPS")
+    Rel(librarian, webapp, "Uses Admin Mode", "HTTPS")
+
+    Rel(webapp, api, "Invokes commands", "HTTPS, JWT")
+    Rel(webapp, db, "Reads/writes own data", "PostgREST, RLS")
+    Rel(api, db, "(API → db) Calls RPCs", "PostgREST, service role")
+    Rel(db, api, "(db → API) Runs cron jobs", "pg_net")
+
+    Rel(webapp, storage, "Uploads/downloads files", "HTTPS, signed URLs")
+    Rel(webapp, auth, "Signs up/in, resets password", "HTTPS, PKCE")
+    Rel(webapp, realtime, "Subscribes to changes", "WebSocket, RLS")
+    Rel(api, auth, "Verifies JWT, creates users", "HTTPS")
+    Rel(realtime, db, "Reads change stream", "logical replication")
+
+    UpdateRelStyle(student, webapp, $offsetX="10", $offsetY="-60")
+    UpdateRelStyle(librarian, webapp, $offsetX="80", $offsetY="-60")
+
+    UpdateRelStyle(webapp, api, $offsetX="-45", $offsetY="-35")
+    UpdateRelStyle(webapp, db, $offsetX="130", $offsetY="20")
+    UpdateRelStyle(api, db, $offsetX="-55", $offsetY="-75")
+    UpdateRelStyle(db, api, $offsetX="-65", $offsetY="-35")
+
+    UpdateRelStyle(webapp, storage, $offsetX="-150")
+    UpdateRelStyle(webapp, auth, $offsetX="-15", $offsetY="20")
+    UpdateRelStyle(webapp, realtime, $offsetX="-200", $offsetY="-150")
+    UpdateRelStyle(api, auth, $offsetX="10", $offsetY="-30")
+    UpdateRelStyle(realtime, db, $offsetX="10", $offsetY="-40")
+```
+
+</details>
+
 ![Container diagram, panel 1: the Web Application, ShelfHelp API and PostgreSQL database inside the ShelfHelp boundary, the managed Auth, Storage and Realtime services on the Supabase Platform, and the relationships between them](mermaid/container-part1.png)
 
 Panel 1 contains:
@@ -99,6 +155,40 @@ Panel 1 contains:
   API to Auth; and Realtime reading the database change stream.
 
 ### 3.2 ShelfHelp API outbound integrations
+
+<details>
+<summary>Mermaid source</summary>
+
+```mermaid
+%%{init: {"c4": {"c4ShapeMargin": 45, "diagramMarginX": 20, "diagramMarginY": 20}}}%%
+C4Container
+    title Container diagram — ShelfHelp API Integrations
+    UpdateLayoutConfig($c4ShapeInRow="4", $c4BoundaryInRow="1")
+
+    Container_Ext(auth, "Supabase Auth", "Managed identity service, JWT, PKCE", "Registration, email verification, sign-in/out, password reset and JWT issuance with app_metadata.role.")
+    Container(api, "ShelfHelp API", "Supabase Edge Functions, Deno, TypeScript", "One stateless function per business command. Validates input, authenticates and authorizes the caller, runs shared domain rules and commits the command in one PostgreSQL transaction.")
+
+    System_Boundary(external, "External services") {
+        System_Ext(email, "Email Delivery Provider", "SMTP relay or transactional email API")
+        System_Ext(payment, "Payment Provider (simulator)", "Payment and refund API behind the PaymentProvider adapter")
+        System_Ext(ai, "AI Provider", "Embedding and LLM APIs for grounded recommendations")
+        System_Ext(isbn, "Bibliographic Metadata Services", "Google Books and Open Library ISBN APIs")
+    }
+
+    Rel(auth, email, "Verification/reset email", "SMTP")
+    Rel(api, email, "Notification email", "HTTPS/SMTP")
+    Rel(api, payment, "Payments/refunds", "HTTPS")
+    Rel(api, ai, "Embeddings/answers", "HTTPS")
+    Rel(api, isbn, "ISBN lookup", "HTTPS")
+
+    UpdateRelStyle(auth, email, $offsetX="5", $offsetY="-10")
+    UpdateRelStyle(api, email, $offsetX="5", $offsetY="30")
+    UpdateRelStyle(api, payment, $offsetX="5", $offsetY="-25")
+    UpdateRelStyle(api, ai, $offsetX="40", $offsetY="40")
+    UpdateRelStyle(api, isbn, $offsetX="-30", $offsetY="-30")
+```
+
+</details>
 
 ![Container diagram, panel 2: the ShelfHelp API calling the Email Delivery Provider, Payment Provider simulator, AI Provider and Bibliographic Metadata Services, plus Supabase Auth sending verification and reset email](mermaid/container-part2.png)
 

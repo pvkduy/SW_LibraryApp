@@ -10,6 +10,7 @@
 | 24/Nov/2026 | 1.1 | Unified Vercel hosting, edge execution vs ap-southeast-1 database topology, HTTPS protocols, Node.js storage, and Supabase Pro backup SLA | Nguyễn Anh Khôi |
 | 24/Nov/2026 | 1.2 | Edge Functions pinned to `ap-southeast-1`; platform services separated from team-owned containers; Dev/Staging environment added; supporting-service rows (Turnstile, Sentry); plan-assumption note; browser version floor removed | Nguyễn Anh Khôi |
 | 24/Nov/2026 | 1.3 | §1.2 topology sentence rewritten; Turnstile removed from the diagram so supporting services are diagrammed consistently; rate-limit sentence removed from §6.2 | Nguyễn Anh Khôi |
+| 24/Nov/2026 | 1.4 | Deployment diagram presented as a rendered image with the client-to-platform edges aggregated; node catalogue rounded out with the Edge Functions and managed-services rows | Nguyễn Anh Khôi |
 
 ### Table of contents
 
@@ -73,78 +74,91 @@ The table below maps every runtime element of the production topology to the inf
 
 ## 3. Deployment diagram
 
-The diagram below illustrates the production deployment environment following the C4 Model Deployment specification:
+<details>
+<summary>Mermaid source</summary>
 
 ```mermaid
+%%{init: {"c4": {"c4ShapeMargin": 70, "width": 200, "c4ShapePadding": 12, "diagramMarginX": 20, "diagramMarginY": 20}}}%%
 C4Deployment
     title Deployment diagram — ShelfHelp: Smart Library Management System (Production)
+    UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="2")
 
-    Deployment_Node(user_device, "User Workstation / Mobile Device", "Laptop, Desktop, Smartphone") {
-        Deployment_Node(browser, "Web Browser", "Modern evergreen browser") {
-            Container(webapp, "ShelfHelp Web Application", "React 19.3.1, Vite 8.3.5", "Client-side SPA loaded into browser memory; renders Reader Mode and Admin Mode")
+    Deployment_Node(cdn, "Static Hosting & Edge CDN", "Vercel, global Anycast CDN") {
+        Container(spa_assets, "Static Web Assets", "HTML, JS, CSS, WebP", "Pre-built, minified SPA bundle")
+    }
+
+    Deployment_Node(browser, "Web Browser", "Laptop, desktop or smartphone; evergreen browser") {
+        Container(webapp, "ShelfHelp Web Application", "React 19.3.1, Vite 8.3.5", "Client-side SPA; renders Reader Mode and Admin Mode")
+    }
+
+    Deployment_Node(supabase_platform, "Supabase Managed Platform", "AWS ap-southeast-1") {
+        Deployment_Node(db_node, "Managed Database Server", "PostgreSQL 15 on Linux") {
+            ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "System of record: tables, RLS, triggers, immutable ledgers, atomic RPCs, pg_cron")
+        }
+        Deployment_Node(edge_cluster, "Edge Functions Runtime", "Deno V8 isolates, ap-southeast-1") {
+            Container(api, "ShelfHelp API", "Deno, TypeScript", "Stateless business command handlers and scheduled job runners")
+        }
+        Deployment_Node(managed_node, "Managed Platform Services", "Not team-owned") {
+            Container_Ext(realtime, "Supabase Realtime", "Elixir / Phoenix Channels, WebSocket", "Live availability counters, notifications and loan updates under RLS")
+            Container_Ext(auth, "Supabase Auth", "GoTrue, JWT, PKCE", "Identity, OTP email verification, sessions and role-bearing JWTs")
+            Container_Ext(storage, "Supabase Storage", "Node.js, S3-compatible, bucket policies", "Covers, avatars, write-off evidence and CSV imports")
         }
     }
 
-    Deployment_Node(cdn, "Static Hosting & Edge CDN", "Vercel") {
-        Deployment_Node(edge_cdn, "Edge Points of Presence (PoPs)", "Global Anycast CDN") {
-            Container(spa_assets, "Static Web Assets", "HTML, JS, CSS, WebP", "Pre-built, minified single-page application distribution bundle")
-        }
-    }
-
-    Deployment_Node(supabase_platform, "Supabase Managed Platform", "AWS ap-southeast-1 (Singapore)") {
-        Deployment_Node(edge_cluster, "Edge Functions Runtime Node", "Deno V8 isolates, region-pinned to ap-southeast-1") {
-            Container(api, "ShelfHelp API", "Deno, TypeScript", "Stateless business command handlers and scheduled background job runners")
-        }
-        Deployment_Node(db_node, "Managed Database Server Node", "PostgreSQL 15 on Linux") {
-            ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "System of record: tables, RLS policies, triggers, immutable ledgers, atomic RPCs, pg_cron")
-        }
-        Deployment_Node(auth_node, "Auth Service Node", "GoTrue managed service") {
-            Container_Ext(auth, "Supabase Auth", "GoTrue, JWT, PKCE", "Managed platform service (not team-owned): identity, OTP email verification, sessions and role-bearing JWT issuance")
-        }
-        Deployment_Node(storage_node, "Storage Service Node", "Node.js service, S3-compatible") {
-            Container_Ext(storage, "Supabase Storage", "Bucket access policies", "Managed platform service (not team-owned): book covers, user avatars, write-off damage evidence, and import CSV files")
-        }
-        Deployment_Node(realtime_node, "Realtime Cluster Node", "Elixir / Phoenix Channels") {
-            Container_Ext(realtime, "Supabase Realtime", "WebSockets engine", "Managed platform service (not team-owned): live availability counters, notifications, and loan updates under RLS")
-        }
-    }
-
-    Deployment_Node(ext_email, "Email Service Infrastructure", "Cloud SMTP / Transactional API") {
-        System_Ext(email, "Email Delivery Provider", "SMTP relay / transactional email API (Resend, Brevo, or SendGrid)")
-    }
-
-    Deployment_Node(ext_payment, "Payment Simulation Gateway", "Cloud Web Service") {
-        System_Ext(payment, "Payment Provider Simulator", "HTTPS payment gateway simulator behind PaymentProvider adapter")
-    }
-
-    Deployment_Node(ext_ai, "AI Platform Infrastructure", "Cloud AI APIs") {
+    Deployment_Node(external, "External Services", "Third-party cloud APIs") {
+        System_Ext(payment, "Payment Provider Simulator", "HTTPS gateway behind the PaymentProvider adapter")
         System_Ext(ai, "AI Provider", "Cloud embedding and LLM APIs for grounded research assistant recommendations")
+        System_Ext(isbn, "Bibliographic Metadata Services", "Google Books and Open Library ISBN APIs")
+        System_Ext(email, "Email Delivery Provider", "SMTP relay / API (Resend, Brevo or SendGrid)")
     }
 
-    Deployment_Node(ext_isbn, "Bibliographic Repositories", "Public REST APIs") {
-        System_Ext(isbn, "Bibliographic Metadata Services", "Google Books and Open Library ISBN metadata services")
-    }
+    Rel(browser, cdn, "Fetches static SPA bundle", "HTTPS")
 
-    Rel(browser, spa_assets, "Fetches static SPA bundle", "HTTPS")
-    Rel(webapp, auth, "Authenticates, signs in, verifies OTP", "HTTPS, PKCE")
-    Rel(webapp, db, "Reads; writes own profile & cart", "PostgREST HTTPS, RLS")
     Rel(webapp, api, "Invokes transactional commands", "HTTPS, JWT")
-    Rel(webapp, storage, "Uploads/downloads media files", "HTTPS, signed URLs")
-    Rel(webapp, realtime, "Subscribes to live change streams", "WebSocket WSS, RLS")
+    Rel(webapp, db, "Reads; writes own profile & cart", "PostgREST HTTPS, RLS")
+    Rel(webapp, managed_node, "Auth, files, live updates", "PKCE (auth), signed URLs (files), WSS + RLS (live)")
 
-    Rel(api, auth, "Verifies JWT, creates users", "HTTPS")
     Rel(api, db, "Calls transactional RPCs", "PostgREST HTTPS, service role")
-    Rel(api, email, "Dispatches notification emails", "HTTPS/SMTP")
+    Rel(db, api, "pg_cron triggers <br/> scheduled jobs <br/>", "HTTPS via pg_net")
+    Rel(api, auth, "Verifies JWT, creates users", "HTTPS")
+    Rel(realtime, db, "Reads change stream", "logical replication")
+
     Rel(api, payment, "Processes simulated payments & refunds", "HTTPS")
     Rel(api, ai, "Generates embeddings & RAG synthesis", "HTTPS")
-    Rel(api, isbn, "Retrieves ISBN book metadata", "HTTPS")
+    Rel(api, isbn, "ISBN lookup", "HTTPS")
+    Rel(api, email, "Notification email", "HTTPS/SMTP")
+    Rel(auth, email, "Verification/reset email", "SMTP")
 
-    Rel(auth, email, "Dispatches verification & reset emails", "SMTP")
-    Rel(realtime, db, "Reads database change streams", "logical replication")
-    Rel(db, api, "pg_cron triggers scheduled job functions", "HTTPS via pg_net")
+    UpdateRelStyle(browser, cdn, $offsetX="-70", $offsetY="-40")
 
-    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
+    UpdateRelStyle(webapp, api, $offsetX="0", $offsetY="-100")
+    UpdateRelStyle(webapp, db, $offsetX="-90", $offsetY="-100")
+    UpdateRelStyle(webapp, managed_node, $offsetX="-70", $offsetY="300")
+
+    UpdateRelStyle(api, db, $offsetX="-70", $offsetY="-40")
+    UpdateRelStyle(db, api, $offsetX="-40", $offsetY="25")
+    UpdateRelStyle(api, auth, $offsetX="50")
+    UpdateRelStyle(realtime, db, $offsetX="-125", $offsetY="-20")
+
+    UpdateRelStyle(api, payment, $offsetX="-125", $offsetY="-40")
+    UpdateRelStyle(api, ai, $offsetX="-10", $offsetY="-20")
+    UpdateRelStyle(api, isbn, $offsetX="70", $offsetY="60")
+    UpdateRelStyle(api, email, $offsetX="-20")
+    UpdateRelStyle(auth, email, $offsetY="10")
 ```
+
+</details>
+
+![Deployment diagram: the Web Browser and the Vercel CDN, the Supabase Managed Platform in AWS ap-southeast-1 holding the PostgreSQL database, the Edge Functions runtime and the managed Auth, Storage and Realtime services, and the external Payment, AI, Bibliographic and Email providers](mermaid/deployment.png)
+
+One relationship is drawn as a single aggregated edge to a platform boundary: the Web Application's
+traffic to Supabase Auth, Storage and Realtime, labelled **PKCE (auth), signed URLs (files), WSS + RLS
+(live)**. The arrow points at the *Managed Platform Services* boundary rather than at any one service.
+Drawing the three client-to-service edges individually produces a dense crossing cluster that makes the
+diagram unreadable at page width, so the aggregation is deliberate. The Web Application's edges to the
+database and to the ShelfHelp API remain separate arrows. Every individual relationship and protocol is
+enumerated in §4.1, §4.3.1, §4.3.2 and §4.3.3, so the diagram and the catalogue together are the
+complete statement of the topology.
 
 Source: [`mermaid/deployment.mmd`](mermaid/deployment.mmd).
 
@@ -165,11 +179,14 @@ The client hardware executes the compiled single-page application in browser mem
 
 **Communication protocols:**
 - **Static Hosting & CDN (Vercel):** Inbound download of static HTML/JS/CSS assets via **HTTPS (port 443)**.
-- **Supabase Auth:** Registration, OTP verification, and JWT session refresh over **HTTPS / PKCE**.
 - **PostgreSQL Database:** Catalog search and row reads, plus direct writes to personal `cart_items` and `profiles` contact fields via **PostgREST over HTTPS** under Row Level Security.
 - **ShelfHelp API:** Invocation of business mutation commands over **HTTPS POST** with the caller's JWT bearer token.
-- **Supabase Storage:** Upload of avatars and evidence photos and retrieval of book covers via **HTTPS** with signed URLs.
-- **Supabase Realtime:** Ingestion of live availability counters and personal loan notifications via persistent **WebSocket (WSS, port 443)**.
+- **Supabase Auth, Storage and Realtime (one aggregated edge in the diagram):**
+  - **Supabase Auth:** Registration, OTP verification, and JWT session refresh over **HTTPS / PKCE**.
+  - **Supabase Storage:** Upload of avatars and evidence photos and retrieval of book covers via **HTTPS** with signed URLs.
+  - **Supabase Realtime:** Ingestion of live availability counters and personal loan notifications via persistent **WebSocket (WSS, port 443)**.
+
+  These three share one arrow in the diagram, drawn from the Web Application to the *Managed Platform Services* boundary and labelled **PKCE (auth), signed URLs (files), WSS + RLS (live)**. The arrow labels the boundary, not any single service: Auth, Storage and Realtime are separate platform services, and only the edge is aggregated. Each protocol above applies to its named service.
 
 ---
 

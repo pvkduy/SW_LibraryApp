@@ -1,0 +1,62 @@
+C4Component
+    title Component diagram — ShelfHelp Web Application (Admin Mode)
+
+    Person(librarian, "Librarian (Admin)", "Uses Admin Mode on a desktop.")
+
+    Container_Boundary(spa, "ShelfHelp Web Application") {
+        Component(adminCirculation, "Admin Circulation & Queues", "React, TanStack Query", "Desk handover, returns, due/overdue groups, reservation queues and reminders.")
+        Component(appShell, "App Shell & Access Guard", "React Router", "Bootstraps the application, selects the Reader or Admin shell and enforces session, role and account-status guards.")
+        Component(adminCatalog, "Admin Catalog & Inventory", "React", "Books, copies, ISBN lookup, bulk import, inventory history and write-off slips.")
+
+        Component(adminMoney, "Admin Money & Reporting", "React, Recharts", "Receipts and reversals, dashboard KPIs and report exports.")
+        Component(dataAccess, "Data Access & Realtime Client", "supabase-js, TanStack Query", "PostgREST reads, Realtime subscriptions, Storage uploads and Edge Function invocation with the JWT and standard error envelope.")
+        Component(adminAcquisitions, "Admin Acquisitions & Students", "React", "Suggestion review, acquisition batches, shipment receipt and student accounts.")
+    }
+
+    Boundary(backend, "Backend services", "SUPABASE") {
+        Container(api, "ShelfHelp API", "Supabase Edge Functions", "Business commands and scheduled jobs.")
+        ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "Catalog and own-row data exposed through PostgREST under RLS.")
+        Container_Ext(auth, "Supabase Auth", "Managed identity service", "Sessions, JWT and credential recovery.")
+        Container_Ext(storage, "Supabase Storage", "Managed object storage", "Covers, avatars, evidence and imports.")
+        Container_Ext(realtime, "Supabase Realtime", "Managed change-data service", "Live counters, notifications and own loan changes.")
+    }
+
+    Rel(librarian, appShell, "Uses Admin Mode", "HTTPS")
+
+    Rel(appShell, dataAccess, "Session state")
+    Rel(appShell, adminCirculation, "Renders")
+    Rel(appShell, adminCatalog, "Renders")
+    Rel(appShell, adminMoney, "Renders")
+    Rel(appShell, adminAcquisitions, "Renders")
+
+    Rel(adminCirculation, dataAccess, "Queries/commands")
+    Rel(adminCatalog, dataAccess, "Queries/commands")
+    Rel(adminMoney, dataAccess, "Queries/commands")
+    Rel(adminAcquisitions, dataAccess, "Queries/commands")
+
+    Rel(dataAccess, auth, "Verifies session", "HTTPS, PKCE")
+    Rel(dataAccess, db, "(Data → DB) <br/>Reads; writes own profile", "PostgREST, RLS")
+    Rel(dataAccess, api, "Invokes commands", "HTTPS, JWT")
+    Rel(dataAccess, storage, "Files", "HTTPS, signed URLs")
+    Rel(dataAccess, realtime, "(Data → Realtime) <br/>Subscribes", "WebSocket, RLS")
+
+    UpdateRelStyle(librarian, appShell, $offsetX="-20", $offsetY="-50")
+
+    UpdateRelStyle(appShell, dataAccess, $offsetX="10", $offsetY="0")
+    UpdateRelStyle(appShell, adminCirculation, $offsetX="-20", $offsetY="10")
+    UpdateRelStyle(appShell, adminCatalog, $offsetX="-20", $offsetY="10")
+    UpdateRelStyle(appShell, adminMoney, $offsetX="-80", $offsetY="20")
+    UpdateRelStyle(appShell, adminAcquisitions, $offsetX="-30", $offsetY="-20")
+
+    UpdateRelStyle(adminCirculation, dataAccess, $offsetX="-35", $offsetY="-30")
+    UpdateRelStyle(adminCatalog, dataAccess, $offsetX="60", $offsetY="-20")
+    UpdateRelStyle(adminMoney, dataAccess, $offsetX="-50", $offsetY="10")
+    UpdateRelStyle(adminAcquisitions, dataAccess, $offsetX="-50", $offsetY="10")
+
+    UpdateRelStyle(dataAccess, auth, $offsetX="0", $offsetY="-10")
+    UpdateRelStyle(dataAccess, db, $offsetX="10", $offsetY="-20")
+    UpdateRelStyle(dataAccess, api, $offsetX="-90", $offsetY="-20")
+    UpdateRelStyle(dataAccess, storage, $offsetX="-60", $offsetY="180")
+    UpdateRelStyle(dataAccess, realtime, $offsetX="10", $offsetY="200")
+
+    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

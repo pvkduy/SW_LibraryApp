@@ -13,6 +13,7 @@
 | 24/Nov/2026 | 1.4 | Clarified client direct write scope, documented RPC EXECUTE restrictions, and trimmed redundant technology stack detail | Nguyễn Anh Khôi |
 | 24/Nov/2026 | 1.5 | Restated the frontend versions as the installed React 19.3.1 / Vite 8.3.5, aligning with the deployment view | Nguyễn Anh Khôi |
 | 24/Nov/2026 | 1.6 | Applied the locked React 19.3.1 / Vite 8.3.5 notation consistently in §3.1 and §3.2 | Nguyễn Anh Khôi |
+| 24/Nov/2026 | 1.7 | System Context diagram presented as a rendered image, matching the other C4 views | Nguyễn Anh Khôi |
 
 ### Table of contents
 
@@ -191,9 +192,13 @@ The System Context view shows ShelfHelp as a single system, the people who use i
 
 ### 4.2 System Context diagram
 
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 %%{init: {"c4": {"c4ShapeMargin": 70, "diagramMarginX": 40, "diagramMarginY": 20}}}%%
 C4Context
+    title System Context diagram — ShelfHelp: Smart Library Management System
     UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
 
     Person(student, "Student (Reader)", "Searches, borrows, reserves and pays for library material.")
@@ -225,9 +230,11 @@ C4Context
     UpdateRelStyle(shelfhelp, isbn, $offsetX="10", $offsetY="150")
 ```
 
-The source is also stored as [`mermaid/system-context.mmd`](mermaid/system-context.mmd). §4.4 and §4.5 explain each element and relationship, so the document remains complete even in a renderer without C4 support.
+</details>
 
-The next views refine this diagram: the [C4 Level 2 Container view](../container/Container.md) opens the ShelfHelp box into the Web Application, ShelfHelp API, and database containers, and decomposes the remaining platform services; the [C4 Level 3 Component view](../component/Component.md) then details the two core application containers.
+![System context diagram: Student (Reader) and Librarian (Admin) are connected to ShelfHelp over HTTPS; ShelfHelp depends on the Supabase Platform, Email Delivery Provider, Payment Provider (simulator), AI Provider and Bibliographic Metadata Services, and Supabase sends its own verification and reset email](mermaid/system-context.png)
+
+Source: [`mermaid/system-context.mmd`](mermaid/system-context.mmd). §4.4 and §4.5 explain each element and relationship, so the document remains complete without the rendered image.
 
 ### 4.3 People (actors)
 
