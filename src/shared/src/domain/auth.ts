@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS } from '../settings-defaults/index'
+import { DEFAULT_SETTINGS } from '../settings-defaults/index.ts'
 
 export interface RegistrationInput {
   fullName: string
