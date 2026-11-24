@@ -192,28 +192,37 @@ The System Context view shows ShelfHelp as a single system, the people who use i
 ### 4.2 System Context diagram
 
 ```mermaid
+%%{init: {"c4": {"c4ShapeMargin": 70, "diagramMarginX": 40, "diagramMarginY": 20}}}%%
 C4Context
-    title System Context diagram — ShelfHelp: Smart Library Management System
+    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
 
     Person(student, "Student (Reader)", "Searches, borrows, reserves and pays for library material.")
+    System(shelfhelp, "ShelfHelp", "Reader and admin web applications plus the library logic and configuration deployed on the Supabase platform.")
     Person(librarian, "Librarian (Admin)", "Runs catalog, circulation, money, acquisitions and reporting.")
 
-    System(shelfhelp, "ShelfHelp", "Reader and admin web applications plus the library logic and configuration deployed on the Supabase platform.")
-
     System_Ext(supabase, "Supabase Platform", "Managed backend: Auth, PostgreSQL, Storage, Realtime, Edge Functions and scheduled jobs.")
-    System_Ext(email, "Email Delivery Provider", "SMTP relay or transactional email service for verification, reset and notification email.")
     System_Ext(payment, "Payment Provider (simulator)", "Online payment gateway behind the PaymentProvider adapter.")
     System_Ext(ai, "AI Provider", "Embedding and LLM APIs for grounded research recommendations.")
+
+    System_Ext(email, "Email Delivery Provider", "SMTP relay or transactional email service for verification, reset and notification email.")
     System_Ext(isbn, "Bibliographic Metadata Services", "Google Books and Open Library ISBN metadata.")
 
     Rel(student, shelfhelp, "Uses Reader Mode", "HTTPS")
     Rel(librarian, shelfhelp, "Uses Admin Mode", "HTTPS")
-    Rel(shelfhelp, supabase, "Stores data, authenticates users, hosts backend functions", "HTTPS")
+    Rel(shelfhelp, supabase, "Stores data, auth, functions", "HTTPS")
     Rel(shelfhelp, email, "Notification email", "SMTP/HTTPS")
-    Rel(supabase, email, "Verification and reset email", "SMTP")
-    Rel(shelfhelp, payment, "Payments and refunds", "HTTPS")
-    Rel(shelfhelp, ai, "Embeddings and grounded answers", "HTTPS")
+    Rel(supabase, email, "Verification/Reset email", "SMTP")
+    Rel(shelfhelp, payment, "Payments, refunds", "HTTPS")
+    Rel(shelfhelp, ai, "Embeddings, grounded answers", "HTTPS")
     Rel(shelfhelp, isbn, "ISBN metadata lookup", "HTTPS")
+
+    UpdateRelStyle(student, shelfhelp, $offsetX="-50", $offsetY="-40")
+    UpdateRelStyle(shelfhelp, payment, $offsetX="10")
+    UpdateRelStyle(librarian, shelfhelp, $offsetX="-30", $offsetY="-34")
+    UpdateRelStyle(shelfhelp, supabase, $offsetX="-90", $offsetY="-10")
+    UpdateRelStyle(shelfhelp, email, $offsetX="-40", $offsetY="130")
+    UpdateRelStyle(supabase, email, $offsetX="-135")
+    UpdateRelStyle(shelfhelp, isbn, $offsetX="10", $offsetY="150")
 ```
 
 The source is also stored as [`mermaid/system-context.mmd`](mermaid/system-context.mmd). §4.4 and §4.5 explain each element and relationship, so the document remains complete even in a renderer without C4 support.

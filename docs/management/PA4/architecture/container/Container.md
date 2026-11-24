@@ -11,12 +11,15 @@
 | 24/Nov/2026 | 1.2 | Explicit container communication protocols, services provided, and component collaborations | Nguyễn Anh Khôi |
 | 24/Nov/2026 | 1.3 | Aligned L2 container classification with L3, updated API-DB protocol to PostgREST HTTPS, and removed redundant technology relisting | Nguyễn Anh Khôi |
 | 24/Nov/2026 | 1.4 | Stated the locked frontend versions (React 19.3.1, Vite 8.3.5) consistently with the Level 1 and deployment views | Nguyễn Anh Khôi |
+| 24/Nov/2026 | 1.5 | Container diagram rendered as two panels (core containers; API outbound integrations) so the C4 layout stays readable | Nguyễn Anh Khôi |
 
 ### Table of contents
 
 - [1. Introduction](#1-introduction)
 - [2. Relationship to the Level 1 view](#2-relationship-to-the-level-1-view)
 - [3. Container diagram](#3-container-diagram)
+  - [3.1 Core containers and managed services](#31-core-containers-and-managed-services)
+  - [3.2 ShelfHelp API outbound integrations](#32-shelfhelp-api-outbound-integrations)
 - [4. Container catalogue](#4-container-catalogue)
 - [5. Runtime interactions](#5-runtime-interactions)
 - [6. Deployment and environments](#6-deployment-and-environments)
@@ -75,54 +78,42 @@ TypeScript library is not a container; it is compiled into the Web Application a
 
 ## 3. Container diagram
 
-```mermaid
-C4Container
-    title Container diagram — ShelfHelp: Smart Library Management System
+The view is drawn as two panels. Panel 1 shows the containers inside ShelfHelp and the managed
+services they call, with every internal and platform relationship. Panel 2 shows the edges that leave
+ShelfHelp towards external systems: the API's outbound integrations and the verification and reset
+email that Supabase Auth sends. Panel 1 omits those edges to keep the internal layout readable. Read
+together, the two panels cover the same elements and relationships.
 
-    Person(student, "Student (Reader)", "Searches, borrows, reserves and pays for library material from a phone or laptop.")
-    Person(librarian, "Librarian (Admin)", "Runs catalog, circulation, money, acquisitions and reporting from a desktop.")
+### 3.1 Core containers and managed services
 
-    System_Boundary(shelfhelp, "ShelfHelp") {
-        Container(webapp, "ShelfHelp Web Application", "React 19.3.1, Vite 8.3.5", "Reader Mode and Admin Mode single-page application. Renders catalog, cart, checkout, loans, circulation, money and reporting screens; guards routes by session, role and account status.")
-        Container(api, "ShelfHelp API", "Supabase Edge Functions, Deno, TypeScript", "One stateless function per business command. Validates input, authenticates and authorizes the caller, runs shared domain rules and commits the command in one PostgreSQL transaction.")
-        ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15, managed; team-owned schema, RLS and RPCs", "System of record for accounts, catalog, loans, reservations, charges, receipts, audit and settings. Hosts full-text and vector search, and pg_cron schedules that call job functions.")
-    }
+![Container diagram, panel 1: the Web Application, ShelfHelp API and PostgreSQL database inside the ShelfHelp boundary, the managed Auth, Storage and Realtime services on the Supabase Platform, and the relationships between them](mermaid/container-part1.png)
 
-    System_Boundary(supabase, "Supabase Platform (managed services)") {
-        Container_Ext(auth, "Supabase Auth", "Managed identity service, JWT, PKCE", "Registration, email verification, sign-in/out, password reset and JWT issuance with app_metadata.role.")
-        Container_Ext(storage, "Supabase Storage", "Managed object storage with bucket policies", "Covers, avatars, write-off evidence and CSV imports; access controlled by storage policies and signed URLs.")
-        Container_Ext(realtime, "Supabase Realtime", "Managed change-data service", "Pushes live availability counters, notifications and own loan-item changes to subscribed browsers under RLS.")
-    }
+Panel 1 contains:
 
-    System_Ext(email, "Email Delivery Provider", "SMTP relay or transactional email API")
-    System_Ext(payment, "Payment Provider (simulator)", "Payment and refund API behind the PaymentProvider adapter")
-    System_Ext(ai, "AI Provider", "Embedding and LLM APIs for grounded recommendations")
-    System_Ext(isbn, "Bibliographic Metadata Services", "Google Books and Open Library ISBN APIs")
+- **People:** Student (Reader) and Librarian (Admin), both using the Web Application over HTTPS.
+- **Containers inside ShelfHelp:** the Web Application, the ShelfHelp API, and the PostgreSQL database.
+- **Managed platform services:** Supabase Storage, Supabase Auth, and Supabase Realtime, in reading order.
+- **Relationships:** both people to the Web Application; the Web Application to the API (commands), to
+  the database (reads and own profile/cart writes under RLS), to Storage, Auth, and Realtime; the API
+  to the database in both directions (transactional RPCs, and `pg_cron` job triggers via `pg_net`); the
+  API to Auth; and Realtime reading the database change stream.
 
-    Rel(student, webapp, "Uses Reader Mode", "HTTPS")
-    Rel(librarian, webapp, "Uses Admin Mode", "HTTPS")
+### 3.2 ShelfHelp API outbound integrations
 
-    Rel(webapp, auth, "Signs up/in, resets password", "HTTPS, PKCE")
-    Rel(webapp, db, "Reads; writes own profile/cart", "PostgREST, RLS")
-    Rel(webapp, api, "Invokes commands", "HTTPS, JWT")
-    Rel(webapp, storage, "Uploads/downloads files", "HTTPS, signed URLs")
-    Rel(webapp, realtime, "Subscribes to changes", "WebSocket, RLS")
+![Container diagram, panel 2: the ShelfHelp API calling the Email Delivery Provider, Payment Provider simulator, AI Provider and Bibliographic Metadata Services, plus Supabase Auth sending verification and reset email](mermaid/container-part2.png)
 
-    Rel(api, auth, "Verifies JWT, creates users", "HTTPS")
-    Rel(api, db, "Calls transactional RPCs", "PostgREST HTTPS, service role")
-    Rel(api, payment, "Payments/refunds", "HTTPS")
-    Rel(api, ai, "Embeddings/answers", "HTTPS")
-    Rel(api, isbn, "ISBN lookup", "HTTPS")
-    Rel(api, email, "Notification email", "HTTPS/SMTP")
+Panel 2 contains every edge from ShelfHelp to an external system:
 
-    Rel(auth, email, "Verification/reset email", "SMTP")
-    Rel(realtime, db, "Reads change stream", "logical replication")
-    Rel(db, api, "pg_cron calls job functions", "HTTPS via pg_net")
+| Relationship | Protocol | Purpose |
+| :--- | :--- | :--- |
+| Supabase Auth → Email Delivery Provider | SMTP | Verification and password-reset email. |
+| ShelfHelp API → Email Delivery Provider | HTTPS/SMTP | Notification email dispatched from the application email outbox. |
+| ShelfHelp API → Payment Provider (simulator) | HTTPS | Simulated payments and refunds behind the `PaymentProvider` adapter. |
+| ShelfHelp API → AI Provider | HTTPS | Query embeddings and grounded answer generation. |
+| ShelfHelp API → Bibliographic Metadata Services | HTTPS | ISBN metadata lookup during cataloguing and import. |
 
-    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
-```
-
-The source is also stored as [`mermaid/container.mmd`](mermaid/container.mmd).
+Source: [`mermaid/container-part1.mmd`](mermaid/container-part1.mmd) and
+[`mermaid/container-part2.mmd`](mermaid/container-part2.mmd).
 
 ---
 
@@ -334,4 +325,4 @@ If the Supabase project is unavailable, reads, writes, auth, and storage fail; t
 - **Up:** [System Context (C4 Level 1)](../system-context/System-Context.md)
 - **Down:** [Component Diagrams (C4 Level 3)](../component/Component.md)
 - **Deployment:** [Deployment View (C4 Level 4)](../../deployment/Deployment.md)
-- **Source:** [`mermaid/container.mmd`](mermaid/container.mmd)
+- **Source:** [`mermaid/container-part1.mmd`](mermaid/container-part1.mmd), [`mermaid/container-part2.mmd`](mermaid/container-part2.mmd)
