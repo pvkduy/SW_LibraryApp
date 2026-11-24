@@ -1,0 +1,25 @@
+%%{init: {"c4": {"c4ShapeMargin": 45, "diagramMarginX": 20, "diagramMarginY": 20}}}%%
+C4Container
+    UpdateLayoutConfig($c4ShapeInRow="4", $c4BoundaryInRow="1")
+
+    Container_Ext(auth, "Supabase Auth", "Managed identity service, JWT, PKCE", "Registration, email verification, sign-in/out, password reset and JWT issuance with app_metadata.role.")
+    Container(api, "ShelfHelp API", "Supabase Edge Functions, Deno, TypeScript", "One stateless function per business command. Validates input, authenticates and authorizes the caller, runs shared domain rules and commits the command in one PostgreSQL transaction.")
+
+    System_Boundary(external, "External services") {
+        System_Ext(email, "Email Delivery Provider", "SMTP relay or transactional email API")
+        System_Ext(payment, "Payment Provider (simulator)", "Payment and refund API behind the PaymentProvider adapter")
+        System_Ext(ai, "AI Provider", "Embedding and LLM APIs for grounded recommendations")
+        System_Ext(isbn, "Bibliographic Metadata Services", "Google Books and Open Library ISBN APIs")
+    }
+
+    Rel(auth, email, "Verification/reset email", "SMTP")
+    Rel(api, email, "Notification email", "HTTPS/SMTP")
+    Rel(api, payment, "Payments/refunds", "HTTPS")
+    Rel(api, ai, "Embeddings/answers", "HTTPS")
+    Rel(api, isbn, "ISBN lookup", "HTTPS")
+
+    UpdateRelStyle(auth, email, $offsetX="5", $offsetY="-10")
+    UpdateRelStyle(api, email, $offsetX="5", $offsetY="30")
+    UpdateRelStyle(api, payment, $offsetX="5", $offsetY="-25")
+    UpdateRelStyle(api, ai, $offsetX="40", $offsetY="40")
+    UpdateRelStyle(api, isbn, $offsetX="-30", $offsetY="-30")
