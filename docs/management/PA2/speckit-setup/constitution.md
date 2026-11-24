@@ -190,7 +190,7 @@ MUST be recorded per Principle VIII.
 - **Secrets**: service-role key, database URL, LLM/embedding/email keys, and cron secret MUST exist
   only as Edge Function secrets or in CI — never in the client bundle. The client holds only the
   project URL and the anon key.
-- **Regional/runtime**: Postgres region `ap-southeast-1`; business "day" is computed in
+- **Regional/runtime**: Postgres region `ap-northeast-2`; business "day" is computed in
   `Asia/Ho_Chi_Minh`; `pg_cron` schedules are declared in UTC with the local time in a comment
   (DEC-55).
 

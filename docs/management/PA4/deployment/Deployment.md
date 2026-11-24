@@ -7,10 +7,11 @@
 | Date | Version | Description | Author |
 | :--- | :--- | :--- | :--- |
 | 24/Nov/2026 | 1.0 | Initial deployment architecture: container-to-infrastructure mapping, production C4 deployment diagram, node catalogue, and environment topologies | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.1 | Unified Vercel hosting, edge execution vs ap-southeast-1 database topology, HTTPS protocols, Node.js storage, and Supabase Pro backup SLA | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.2 | Edge Functions pinned to `ap-southeast-1`; platform services separated from team-owned containers; Dev/Staging environment added; supporting-service rows (Turnstile, Sentry); plan-assumption note; browser version floor removed | Nguyễn Anh Khôi |
+| 24/Nov/2026 | 1.1 | Unified Vercel hosting, edge execution vs ap-northeast-2 database topology, HTTPS protocols, Node.js storage, and Supabase Pro backup SLA | Nguyễn Anh Khôi |
+| 24/Nov/2026 | 1.2 | Edge Functions pinned to `ap-northeast-2`; platform services separated from team-owned containers; Dev/Staging environment added; supporting-service rows (Turnstile, Sentry); plan-assumption note; browser version floor removed | Nguyễn Anh Khôi |
 | 24/Nov/2026 | 1.3 | §1.2 topology sentence rewritten; Turnstile removed from the diagram so supporting services are diagrammed consistently; rate-limit sentence removed from §6.2 | Nguyễn Anh Khôi |
 | 24/Nov/2026 | 1.4 | Deployment diagram presented as a rendered image with the client-to-platform edges aggregated; node catalogue rounded out with the Edge Functions and managed-services rows | Nguyễn Anh Khôi |
+| 24/Nov/2026 | 1.5 | Region corrected to AWS `ap-northeast-2` (Seoul) to match the provisioned Supabase project | Nguyễn Anh Khôi |
 
 ### Table of contents
 
@@ -34,7 +35,7 @@ This document specifies the **Deployment Architecture** for ShelfHelp. It satisf
 
 The deployment architecture covers the complete product lifecycle from PA1 through PA4 and planned PA5 features:
 
-1. **Production cloud topology:** Vercel serves the static SPA from its global CDN; Supabase Edge Functions, database, Auth, Storage and Realtime all run in AWS `ap-southeast-1` (Singapore).
+1. **Production cloud topology:** Vercel serves the static SPA from its global CDN; Supabase Edge Functions, database, Auth, Storage and Realtime all run in AWS `ap-northeast-2` (Seoul).
 2. **Local development topology:** Containerized local development stack orchestrated via Docker Desktop and the Supabase CLI.
 3. **Continuous Integration (CI) topology:** Automated ephemeral test runners managed by GitHub Actions.
 
@@ -58,11 +59,11 @@ The table below maps every runtime element of the production topology to the inf
 | Runtime element | Element type | Target infrastructure node | Cloud / Hardware platform |
 | :--- | :--- | :--- | :--- |
 | **ShelfHelp Web Application** | Team-owned container (client-side SPA bundle) | **User Web Browser**, loaded from the global asset CDN | Client device (mobile/laptop) via the Vercel Edge Network |
-| **ShelfHelp API** | Team-owned container (stateless serverless functions) | **Edge Functions Runtime Node** | Supabase Edge Runtime, Deno V8 isolates pinned to the project region `ap-southeast-1` alongside the database (see §4.3.1) |
-| **PostgreSQL Database** | Team-owned container (schema, RLS, RPCs) on managed infrastructure | **Managed Database Server Node** | Supabase Managed PostgreSQL 15 on Linux, AWS `ap-southeast-1`, paid plan assumed for production (§6.3) |
-| **Supabase Auth** | Managed platform service (not team-owned) | **Auth Service Node** | GoTrue microservice, Supabase Cloud, AWS `ap-southeast-1` |
-| **Supabase Storage** | Managed platform service (not team-owned) | **Storage Service Node** | Supabase Storage, Node.js service backed by an S3-compatible object store, AWS `ap-southeast-1` |
-| **Supabase Realtime** | Managed platform service (not team-owned) | **Realtime Cluster Node** | Supabase Realtime, Elixir / Phoenix Channels cluster, AWS `ap-southeast-1` |
+| **ShelfHelp API** | Team-owned container (stateless serverless functions) | **Edge Functions Runtime Node** | Supabase Edge Runtime, Deno V8 isolates pinned to the project region `ap-northeast-2` alongside the database (see §4.3.1) |
+| **PostgreSQL Database** | Team-owned container (schema, RLS, RPCs) on managed infrastructure | **Managed Database Server Node** | Supabase Managed PostgreSQL 15 on Linux, AWS `ap-northeast-2`, paid plan assumed for production (§6.3) |
+| **Supabase Auth** | Managed platform service (not team-owned) | **Auth Service Node** | GoTrue microservice, Supabase Cloud, AWS `ap-northeast-2` |
+| **Supabase Storage** | Managed platform service (not team-owned) | **Storage Service Node** | Supabase Storage, Node.js service backed by an S3-compatible object store, AWS `ap-northeast-2` |
+| **Supabase Realtime** | Managed platform service (not team-owned) | **Realtime Cluster Node** | Supabase Realtime, Elixir / Phoenix Channels cluster, AWS `ap-northeast-2` |
 | **Cloudflare Turnstile** | Supporting service (operational, not a business system) | **Bot Protection Edge Service** | Cloudflare Turnstile, configured as the Supabase Auth CAPTCHA |
 | **Sentry** | Supporting service (operational, not a business system) | **Monitoring Cloud Service** | Sentry cloud, receiving browser and Edge Function error and performance events |
 | **Email Delivery Provider** | External system | **Email Cloud Service** | Transactional SMTP / API (Resend, Brevo, or SendGrid) |
@@ -91,11 +92,11 @@ C4Deployment
         Container(webapp, "ShelfHelp Web Application", "React 19.3.1, Vite 8.3.5", "Client-side SPA; renders Reader Mode and Admin Mode")
     }
 
-    Deployment_Node(supabase_platform, "Supabase Managed Platform", "AWS ap-southeast-1") {
+    Deployment_Node(supabase_platform, "Supabase Managed Platform", "AWS ap-northeast-2") {
         Deployment_Node(db_node, "Managed Database Server", "PostgreSQL 15 on Linux") {
             ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "System of record: tables, RLS, triggers, immutable ledgers, atomic RPCs, pg_cron")
         }
-        Deployment_Node(edge_cluster, "Edge Functions Runtime", "Deno V8 isolates, ap-southeast-1") {
+        Deployment_Node(edge_cluster, "Edge Functions Runtime", "Deno V8 isolates, ap-northeast-2") {
             Container(api, "ShelfHelp API", "Deno, TypeScript", "Stateless business command handlers and scheduled job runners")
         }
         Deployment_Node(managed_node, "Managed Platform Services", "Not team-owned") {
@@ -149,7 +150,7 @@ C4Deployment
 
 </details>
 
-![Deployment diagram: the Web Browser and the Vercel CDN, the Supabase Managed Platform in AWS ap-southeast-1 holding the PostgreSQL database, the Edge Functions runtime and the managed Auth, Storage and Realtime services, and the external Payment, AI, Bibliographic and Email providers](mermaid/deployment.png)
+![Deployment diagram: the Web Browser and the Vercel CDN, the Supabase Managed Platform in AWS ap-northeast-2 holding the PostgreSQL database, the Edge Functions runtime and the managed Auth, Storage and Realtime services, and the external Payment, AI, Bibliographic and Email providers](mermaid/deployment.png)
 
 One relationship is drawn as a single aggregated edge to a platform boundary: the Web Application's
 traffic to Supabase Auth, Storage and Realtime, labelled **PKCE (auth), signed URLs (files), WSS + RLS
@@ -205,18 +206,18 @@ Hosts the immutable build output produced by Vite. Deployed automatically via Gi
 
 ### 4.3 Supabase Managed Platform
 
-The Supabase project and every persistent backend service (database, storage, auth, and realtime) are provisioned in the **AWS Singapore region (`ap-southeast-1`)** to maintain minimal network latency for Vietnamese university users. The Edge Functions runtime is **region-pinned to the same region**: every ShelfHelp command executes as a single PostgreSQL transaction, so a function running at a distant edge PoP would add a round trip to Singapore on every request without reducing the dominant cost.
+The Supabase project and every persistent backend service (database, storage, auth, and realtime) are provisioned in the **AWS Seoul region (`ap-northeast-2`)**. The Edge Functions runtime is **region-pinned to the same region**, because every ShelfHelp command executes as a single PostgreSQL transaction and therefore gains nothing from running at a distant edge PoP.
 
 #### 4.3.1 Edge Functions Runtime Node
 
 | Property | Value |
 | :--- | :--- |
 | **Node type** | Serverless function runtime node, colocated with the database region |
-| **Cloud service** | Supabase Edge Runtime (isolated Deno V8 workers pinned to `ap-southeast-1`) |
+| **Cloud service** | Supabase Edge Runtime (isolated Deno V8 workers pinned to `ap-northeast-2`) |
 | **Containers running** | **ShelfHelp API** (stateless business command handlers and scheduled background job functions) |
 
 **Description and responsibilities:**
-Executes stateless TypeScript functions on Deno V8 isolates that run in the same region as the database. Validates incoming JSON payloads against Zod schemas, extracts and verifies caller identity from JWT tokens, reloads profile status to enforce debt holds and suspension policies, applies `@shelfhelp/shared` domain logic, and routes commands to PostgreSQL stored procedures in `ap-southeast-1`.
+Executes stateless TypeScript functions on Deno V8 isolates that run in the same region as the database. Validates incoming JSON payloads against Zod schemas, extracts and verifies caller identity from JWT tokens, reloads profile status to enforce debt holds and suspension policies, applies `@shelfhelp/shared` domain logic, and routes commands to PostgreSQL stored procedures in `ap-northeast-2`.
 
 **Communication protocols:**
 - **Web Application:** Receives command requests over **HTTPS POST** with JWT bearer authentication.
@@ -273,9 +274,9 @@ ShelfHelp defines four formal deployment environments, matching [Container.md §
 
 | Aspect | Local Development | Continuous Integration (CI) | Dev / Staging | Production |
 | :--- | :--- | :--- | :--- | :--- |
-| **Target Host** | Local developer workstation (macOS / Linux / Windows) | GitHub Actions virtual runner (`ubuntu-latest`) | Vercel preview deployment plus a separate hosted Supabase project (`staging`) | Vercel Edge Network plus Supabase Cloud (`ap-southeast-1`) |
+| **Target Host** | Local developer workstation (macOS / Linux / Windows) | GitHub Actions virtual runner (`ubuntu-latest`) | Vercel preview deployment plus a separate hosted Supabase project (`staging`) | Vercel Edge Network plus Supabase Cloud (`ap-northeast-2`) |
 | **Frontend Serving** | Vite Dev Server (`localhost:5173`) with HMR | Vite production build verification (`npm run build`) | Vercel preview URL per pull request, via HTTPS | Vercel global PoPs via HTTPS |
-| **Edge Functions** | Local Deno runtime (`supabase functions serve`) | Deno smoke and integration tests against the local stack | Deployed to the staging Supabase project | Supabase Edge Runtime, region-pinned to `ap-southeast-1` |
+| **Edge Functions** | Local Deno runtime (`supabase functions serve`) | Deno smoke and integration tests against the local stack | Deployed to the staging Supabase project | Supabase Edge Runtime, region-pinned to `ap-northeast-2` |
 | **Database** | Docker container (`supabase/postgres:15`) on port 54322 | Ephemeral Docker container initialized via Supabase CLI | Separate Supabase project; migrations applied by CI | Managed PostgreSQL 15 on a paid plan for automated daily backups and PITR; schema reproducible from migrations |
 | **Auth & Storage** | Local GoTrue and Storage containers with in-memory mailer | Local Docker stack with test seed data | Staging Supabase project services | Supabase Auth and S3-compatible cloud storage |
 | **Mail Handling** | Inbucket local webmail catcher (`localhost:54324`) | Null / mock mail transporter | Staging SMTP credentials, test recipients only | Production SMTP relay (Resend / Brevo) |

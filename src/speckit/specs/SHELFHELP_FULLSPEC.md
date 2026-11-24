@@ -776,7 +776,7 @@ Browser (React SPA on a static host: Vercel, Netlify, or Cloudflare Pages)
   |-- Edge Functions (TypeScript on Deno) ---> one Postgres transaction per mutation
   '-- Storage (buckets with policies; upload and download under the caller's own identity)
 
-Supabase project (region ap-southeast-1, Singapore)
+Supabase project (region ap-northeast-2, Seoul)
   |-- Postgres: tables, constraints, triggers, RLS, pg_cron, pg_net, pgvector, pg_trgm, unaccent
   |-- Edge Functions --> email provider, embedding API, LLM API, ISBN metadata APIs
   '-- pg_cron --> SQL jobs, or Edge Functions through pg_net
