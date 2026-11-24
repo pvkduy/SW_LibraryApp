@@ -11,7 +11,7 @@ tách theo tính năng nằm trong [`src/speckit/specs/`](src/speckit/specs).
 
 | Thành phần | Công nghệ | Thư mục |
 | --- | --- | --- |
-| Frontend | React 19 + Vite + JavaScript | [`src/frontend/`](src/frontend) |
+| Frontend | React 19.3.1 + Vite 8.3.5 + JavaScript | [`src/frontend/`](src/frontend) |
 | Backend (logic nghiệp vụ) | Supabase Edge Functions (Deno, TypeScript) | [`src/supabase/functions/`](src/supabase/functions) |
 | Database | Supabase Postgres (RLS, triggers, `pg_cron`, `pgvector`, `pg_trgm`) | [`src/supabase/migrations/`](src/supabase/migrations) |
 | Auth | Supabase Auth (`app_metadata.role`) | `src/frontend/src/features/auth/` |

@@ -1,0 +1,57 @@
+C4Component
+    title Component diagram — ShelfHelp Web Application (React SPA)
+
+    Person(student, "Student (Reader)", "Uses Reader Mode on a phone or laptop.")
+    Person(librarian, "Librarian (Admin)", "Uses Admin Mode on a desktop.")
+
+    Container_Boundary(spa, "ShelfHelp Web Application") {
+        Component(appShell, "App Shell & Access Guard", "React Router", "Bootstraps the application, selects the Reader or Admin shell and enforces session, role and account-status guards.")
+        Component(authProfile, "Authentication & Profile", "React", "Registration, OTP verification, login/logout, password reset, profile editing and avatar cropping.")
+        Component(catalogDiscovery, "Catalog & Discovery", "React, TanStack Query", "Home, search with filters and sorting, book detail, barcode scan, reviews and wishlist.")
+        Component(cartCheckout, "Cart & Checkout", "React, TanStack Query", "Borrowing cart, checkout, pickup window and simulated payment.")
+        Component(myLibrary, "My Library", "React, TanStack Query", "Loans, renewals, reservations, charges and membership.")
+        Component(notificationsAssistant, "Notifications & Assistant", "React, Realtime", "Notifications, suggestions and the grounded AI assistant.")
+        Component(adminCirculation, "Admin Circulation & Queues", "React, TanStack Query", "Desk handover, returns, due/overdue groups, reservation queues and reminders.")
+        Component(adminCatalog, "Admin Catalog & Inventory", "React", "Books, copies, ISBN lookup, bulk import, inventory history and write-off slips.")
+        Component(adminMoney, "Admin Money & Reporting", "React, Recharts", "Receipts and reversals, dashboard KPIs and report exports.")
+        Component(adminAcquisitions, "Admin Acquisitions & Students", "React", "Suggestion review, acquisition batches, shipment receipt and student accounts.")
+        Component(dataAccess, "Data Access & Realtime Client", "supabase-js, TanStack Query", "PostgREST reads, Realtime subscriptions, Storage uploads and Edge Function invocation with the JWT and standard error envelope.")
+    }
+
+    ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "Catalog and own-row data exposed through PostgREST under RLS.")
+    Container(api, "ShelfHelp API", "Supabase Edge Functions", "Business commands and scheduled jobs.")
+    Container_Ext(auth, "Supabase Auth", "Managed identity service", "Sessions, JWT and credential recovery.")
+    Container_Ext(storage, "Supabase Storage", "Managed object storage", "Covers, avatars, evidence and imports.")
+    Container_Ext(realtime, "Supabase Realtime", "Managed change-data service", "Live counters, notifications and own loan changes.")
+
+    Rel(student, appShell, "Uses Reader Mode", "HTTPS")
+    Rel(librarian, appShell, "Uses Admin Mode", "HTTPS")
+
+    Rel(appShell, dataAccess, "Session state")
+    Rel(appShell, authProfile, "Routes auth flows")
+    Rel(appShell, catalogDiscovery, "Renders")
+    Rel(appShell, cartCheckout, "Renders")
+    Rel(appShell, myLibrary, "Renders")
+    Rel(appShell, notificationsAssistant, "Renders")
+    Rel(appShell, adminCirculation, "Renders")
+    Rel(appShell, adminCatalog, "Renders")
+    Rel(appShell, adminMoney, "Renders")
+    Rel(appShell, adminAcquisitions, "Renders")
+
+    Rel(catalogDiscovery, dataAccess, "Queries/commands")
+    Rel(cartCheckout, dataAccess, "Queries/commands")
+    Rel(myLibrary, dataAccess, "Queries/commands")
+    Rel(notificationsAssistant, dataAccess, "Queries/commands")
+    Rel(adminCirculation, dataAccess, "Queries/commands")
+    Rel(adminCatalog, dataAccess, "Queries/commands")
+    Rel(adminMoney, dataAccess, "Queries/commands")
+    Rel(adminAcquisitions, dataAccess, "Queries/commands")
+    Rel(authProfile, dataAccess, "Authenticates")
+
+    Rel(dataAccess, auth, "Signs in/verifies OTP", "HTTPS, PKCE")
+    Rel(dataAccess, db, "Reads; writes own profile/cart", "PostgREST, RLS")
+    Rel(dataAccess, api, "Invokes commands", "HTTPS, JWT")
+    Rel(dataAccess, storage, "Files", "HTTPS, signed URLs")
+    Rel(dataAccess, realtime, "Subscribes", "WebSocket, RLS")
+
+    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

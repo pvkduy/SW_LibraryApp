@@ -1,4 +1,4 @@
-# ShelfHelp Use-Case Catalogue
+# ShelfHelp Use-Case Catalogue (OUTDATED)
 
 **Status:** Diagram-oriented draft
 **Sources:** [ShelfHelp Vision Document](./Vision-Document.md) and [ShelfHelp Full Specification](../../../../src/speckit/specs/SHELFHELP_FULLSPEC.md)

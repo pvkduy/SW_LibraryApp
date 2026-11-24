@@ -1,0 +1,22 @@
+C4Context
+    title System Context diagram — ShelfHelp: Smart Library Management System
+
+    Person(student, "Student (Reader)", "Searches, borrows, reserves and pays for library material.")
+    Person(librarian, "Librarian (Admin)", "Runs catalog, circulation, money, acquisitions and reporting.")
+
+    System(shelfhelp, "ShelfHelp", "Reader and admin web applications plus the library logic and configuration deployed on the Supabase platform.")
+
+    System_Ext(supabase, "Supabase Platform", "Managed backend: Auth, PostgreSQL, Storage, Realtime, Edge Functions and scheduled jobs.")
+    System_Ext(email, "Email Delivery Provider", "SMTP relay or transactional email service for verification, reset and notification email.")
+    System_Ext(payment, "Payment Provider (simulator)", "Online payment gateway behind the PaymentProvider adapter.")
+    System_Ext(ai, "AI Provider", "Embedding and LLM APIs for grounded research recommendations.")
+    System_Ext(isbn, "Bibliographic Metadata Services", "Google Books and Open Library ISBN metadata.")
+
+    Rel(student, shelfhelp, "Uses Reader Mode", "HTTPS")
+    Rel(librarian, shelfhelp, "Uses Admin Mode", "HTTPS")
+    Rel(shelfhelp, supabase, "Stores data, authenticates users, hosts backend functions", "HTTPS")
+    Rel(shelfhelp, email, "Notification email", "SMTP/HTTPS")
+    Rel(supabase, email, "Verification and reset email", "SMTP")
+    Rel(shelfhelp, payment, "Payments and refunds", "HTTPS")
+    Rel(shelfhelp, ai, "Embeddings and grounded answers", "HTTPS")
+    Rel(shelfhelp, isbn, "ISBN metadata lookup", "HTTPS")

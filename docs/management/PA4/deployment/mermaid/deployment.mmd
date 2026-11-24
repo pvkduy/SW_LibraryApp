@@ -1,0 +1,68 @@
+C4Deployment
+    title Deployment diagram — ShelfHelp: Smart Library Management System (Production)
+
+    Deployment_Node(user_device, "User Workstation / Mobile Device", "Laptop, Desktop, Smartphone") {
+        Deployment_Node(browser, "Web Browser", "Modern evergreen browser") {
+            Container(webapp, "ShelfHelp Web Application", "React 19.3.1, Vite 8.3.5", "Client-side SPA loaded into browser memory; renders Reader Mode and Admin Mode")
+        }
+    }
+
+    Deployment_Node(cdn, "Static Hosting & Edge CDN", "Vercel") {
+        Deployment_Node(edge_cdn, "Edge Points of Presence (PoPs)", "Global Anycast CDN") {
+            Container(spa_assets, "Static Web Assets", "HTML, JS, CSS, WebP", "Pre-built, minified single-page application distribution bundle")
+        }
+    }
+
+    Deployment_Node(supabase_platform, "Supabase Managed Platform", "AWS ap-southeast-1 (Singapore)") {
+        Deployment_Node(edge_cluster, "Edge Functions Runtime Node", "Deno V8 isolates, region-pinned to ap-southeast-1") {
+            Container(api, "ShelfHelp API", "Deno, TypeScript", "Stateless business command handlers and scheduled background job runners")
+        }
+        Deployment_Node(db_node, "Managed Database Server Node", "PostgreSQL 15 on Linux") {
+            ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "System of record: tables, RLS policies, triggers, immutable ledgers, atomic RPCs, pg_cron")
+        }
+        Deployment_Node(auth_node, "Auth Service Node", "GoTrue managed service") {
+            Container_Ext(auth, "Supabase Auth", "GoTrue, JWT, PKCE", "Managed platform service (not team-owned): identity, OTP email verification, sessions and role-bearing JWT issuance")
+        }
+        Deployment_Node(storage_node, "Storage Service Node", "Node.js service, S3-compatible") {
+            Container_Ext(storage, "Supabase Storage", "Bucket access policies", "Managed platform service (not team-owned): book covers, user avatars, write-off damage evidence, and import CSV files")
+        }
+        Deployment_Node(realtime_node, "Realtime Cluster Node", "Elixir / Phoenix Channels") {
+            Container_Ext(realtime, "Supabase Realtime", "WebSockets engine", "Managed platform service (not team-owned): live availability counters, notifications, and loan updates under RLS")
+        }
+    }
+
+    Deployment_Node(ext_email, "Email Service Infrastructure", "Cloud SMTP / Transactional API") {
+        System_Ext(email, "Email Delivery Provider", "SMTP relay / transactional email API (Resend, Brevo, or SendGrid)")
+    }
+
+    Deployment_Node(ext_payment, "Payment Simulation Gateway", "Cloud Web Service") {
+        System_Ext(payment, "Payment Provider Simulator", "HTTPS payment gateway simulator behind PaymentProvider adapter")
+    }
+
+    Deployment_Node(ext_ai, "AI Platform Infrastructure", "Cloud AI APIs") {
+        System_Ext(ai, "AI Provider", "Cloud embedding and LLM APIs for grounded research assistant recommendations")
+    }
+
+    Deployment_Node(ext_isbn, "Bibliographic Repositories", "Public REST APIs") {
+        System_Ext(isbn, "Bibliographic Metadata Services", "Google Books and Open Library ISBN metadata services")
+    }
+
+    Rel(browser, spa_assets, "Fetches static SPA bundle", "HTTPS")
+    Rel(webapp, auth, "Authenticates, signs in, verifies OTP", "HTTPS, PKCE")
+    Rel(webapp, db, "Reads; writes own profile & cart", "PostgREST HTTPS, RLS")
+    Rel(webapp, api, "Invokes transactional commands", "HTTPS, JWT")
+    Rel(webapp, storage, "Uploads/downloads media files", "HTTPS, signed URLs")
+    Rel(webapp, realtime, "Subscribes to live change streams", "WebSocket WSS, RLS")
+
+    Rel(api, auth, "Verifies JWT, creates users", "HTTPS")
+    Rel(api, db, "Calls transactional RPCs", "PostgREST HTTPS, service role")
+    Rel(api, email, "Dispatches notification emails", "HTTPS/SMTP")
+    Rel(api, payment, "Processes simulated payments & refunds", "HTTPS")
+    Rel(api, ai, "Generates embeddings & RAG synthesis", "HTTPS")
+    Rel(api, isbn, "Retrieves ISBN book metadata", "HTTPS")
+
+    Rel(auth, email, "Dispatches verification & reset emails", "SMTP")
+    Rel(realtime, db, "Reads database change streams", "logical replication")
+    Rel(db, api, "pg_cron triggers scheduled job functions", "HTTPS via pg_net")
+
+    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
