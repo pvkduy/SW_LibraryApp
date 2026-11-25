@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import '../App.css'
 import '../features/auth/auth.css'
 import { useAuth } from '../features/auth/AuthContext.jsx'
@@ -8,15 +8,21 @@ import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage.jsx'
 import { VerifyOtpPage } from '../features/auth/VerifyOtpPage.jsx'
 import { ResetPasswordPage } from '../features/auth/ResetPasswordPage.jsx'
 import { AuthSuccessModal, AuthErrorModal, AuthConfirmModal } from '../features/auth/components/AuthModals.jsx'
-import { supabase } from '../lib/supabase'
 import { AdminLayout } from '../features/admin/components/AdminLayout.jsx'
 import { CirculationPage } from '../features/admin/circulation/CirculationPage.jsx'
 import { QueuesPage } from '../features/admin/queues/QueuesPage.jsx'
 import { FinancialLedgerPage } from '../features/admin/ledger/FinancialLedgerPage.jsx'
+import { AdminBooksPage } from '../features/admin/books/AdminBooksPage.jsx'
 import { ReaderLayout } from '../features/reader/components/ReaderLayout.jsx'
 import { LoansPage } from '../features/reader/loans/LoansPage.jsx'
 import { FinesPage } from '../features/reader/fines/FinesPage.jsx'
 import { ReservationsPage } from '../features/reader/reservations/ReservationsPage.jsx'
+import { CartProvider } from '../features/reader/catalog/CartProvider.jsx'
+import { useCart } from '../features/reader/catalog/useCart.js'
+import { CataloguePage } from '../features/reader/catalog/CataloguePage.jsx'
+import { ScanIsbnPage } from '../features/reader/catalog/ScanIsbnPage.jsx'
+import { BookDetailPage } from '../features/reader/catalog/BookDetailPage.jsx'
+import { CheckoutFlowPage } from '../features/reader/catalog/CheckoutFlowPage.jsx'
 
 function getInitialRoute() {
   if (typeof window === 'undefined') return 'login'
@@ -27,43 +33,170 @@ function getInitialRoute() {
   return 'login'
 }
 
+function ReaderWorkspace({ user, profile, onRequestLogout }) {
+  const { cartCount, wishlistIds, activeLoansCount, maxItems } = useCart()
+  const [readerTab, setReaderTab] = useState('books')
+  const [readerScreen, setReaderScreen] = useState('main') // 'main' | 'scan' | 'book-detail' | 'checkout'
+  const [selectedBookId, setSelectedBookId] = useState(null)
+
+  const openBook = (bookId) => {
+    setSelectedBookId(bookId)
+    setReaderScreen('book-detail')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const openMainTab = (tab) => {
+    setReaderTab(tab)
+    setReaderScreen('main')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  if (readerScreen === 'scan') {
+    return (
+      <ScanIsbnPage
+        onBack={() => setReaderScreen('main')}
+        onBookFound={(bookId) => openBook(bookId)}
+      />
+    )
+  }
+
+  if (readerScreen === 'book-detail' && selectedBookId) {
+    return (
+      <BookDetailPage
+        bookId={selectedBookId}
+        profile={profile}
+        onBack={() => setReaderScreen('main')}
+        onOpenCart={() => setReaderScreen('checkout')}
+        onNavigateLoans={() => openMainTab('loans')}
+      />
+    )
+  }
+
+  if (readerScreen === 'checkout') {
+    return (
+      <CheckoutFlowPage
+        profile={profile}
+        user={user}
+        onBackToCatalog={() => openMainTab('books')}
+        onGoToLoans={() => openMainTab('loans')}
+      />
+    )
+  }
+
+  return (
+    <ReaderLayout
+      activeTab={readerTab}
+      onSelectTab={openMainTab}
+      profile={profile}
+      cartCount={cartCount}
+      wishlistCount={wishlistIds.length}
+      onOpenCart={() => setReaderScreen('checkout')}
+    >
+      {readerTab === 'books' && (
+        <CataloguePage
+          profile={profile}
+          mode="discover"
+          onOpenBook={openBook}
+          onOpenScan={() => setReaderScreen('scan')}
+        />
+      )}
+
+      {readerTab === 'wishlist' && (
+        <CataloguePage
+          profile={profile}
+          mode="wishlist"
+          onOpenBook={openBook}
+          onOpenScan={() => setReaderScreen('scan')}
+        />
+      )}
+
+      {readerTab === 'loans' && (
+        <div className="sh-container">
+          <LoansPage />
+        </div>
+      )}
+
+      {readerTab === 'fines' && (
+        <div className="sh-container">
+          <FinesPage onProfileRefresh={() => window.location.reload()} />
+        </div>
+      )}
+
+      {readerTab === 'reservations' && (
+        <div className="sh-container">
+          <ReservationsPage />
+        </div>
+      )}
+
+      {readerTab === 'profile' && (
+        <div className="sh-container sh-container-narrow">
+          <div className="sh-card">
+            <h2 style={{ margin: '0 0 14px', fontSize: '19px', color: '#241e19' }}>Patron Profile</h2>
+            <div className="sh-pub-grid" style={{ marginBottom: '16px' }}>
+              <div className="sh-pub-item">
+                <small>Full Name</small>
+                <strong>{profile?.full_name || 'Student Reader'}</strong>
+              </div>
+              <div className="sh-pub-item">
+                <small>Student ID</small>
+                <strong>{profile?.student_id || 'N/A'}</strong>
+              </div>
+              <div className="sh-pub-item">
+                <small>Email</small>
+                <strong>{profile?.email || user?.email}</strong>
+              </div>
+              <div className="sh-pub-item">
+                <small>Faculty</small>
+                <strong>{profile?.faculty || 'VNUHCM-US'}</strong>
+              </div>
+              <div className="sh-pub-item">
+                <small>Borrowing Quota</small>
+                <strong>
+                  {activeLoansCount} / {maxItems} Active Items
+                </strong>
+              </div>
+              <div className="sh-pub-item">
+                <small>Outstanding Debt</small>
+                <strong style={{ color: (profile?.debt_outstanding || 0) > 0 ? '#c5221f' : '#2e6930' }}>
+                  {(profile?.debt_outstanding || 0).toLocaleString('vi-VN')}₫
+                </strong>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button type="button" className="sh-btn-outline" style={{ flex: 1 }} onClick={() => openMainTab('reservations')}>
+                Reservations
+              </button>
+              <button type="button" className="sh-btn-outline" style={{ flex: 1 }} onClick={() => openMainTab('fines')}>
+                Payment History &amp; Fines
+              </button>
+              <button
+                type="button"
+                className="sh-btn-primary"
+                style={{ width: '100%', background: '#c85a3e' }}
+                onClick={onRequestLogout}
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </ReaderLayout>
+  )
+}
+
 function App() {
   const { user, profile, loading, logout } = useAuth()
   const [currentRoute, setCurrentRoute] = useState(getInitialRoute)
   const [registeredEmail, setRegisteredEmail] = useState('')
-  const [books, setBooks] = useState([])
-  const [error, setError] = useState(null)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [adminPage, setAdminPage] = useState('circulation')
-  const [readerTab, setReaderTab] = useState('books')
 
   const navigate = (route, params = {}) => {
     if (params.email) setRegisteredEmail(params.email)
     setCurrentRoute(route)
     window.history.pushState({}, '', `/${route}`)
   }
-
-  // Load books when authenticated
-  useEffect(() => {
-    if (!user) return
-
-    let active = true
-    supabase
-      .from('books')
-      .select('id, title, authors, collection, available_copies')
-      .eq('status', 'active')
-      .order('added_at', { ascending: false })
-      .limit(20)
-      .then(({ data, error: err }) => {
-        if (!active) return
-        if (err) setError(err.message)
-        else setBooks(data ?? [])
-      })
-
-    return () => {
-      active = false
-    }
-  }, [user])
 
   if (loading) {
     return (
@@ -86,7 +219,7 @@ function App() {
       )
     }
 
-    // 1A. Admin Experience (Circulation & Queues)
+    // 1A. Admin Experience (Books, Circulation, Queues, Money)
     if (profile?.role === 'admin') {
       return (
         <>
@@ -97,13 +230,17 @@ function App() {
             profile={profile}
             onLogout={() => setShowLogoutConfirm(true)}
           >
+            {adminPage === 'books' && <AdminBooksPage />}
             {adminPage === 'circulation' && <CirculationPage />}
             {adminPage === 'queues' && <QueuesPage />}
             {adminPage === 'money' && <FinancialLedgerPage />}
-            {adminPage !== 'circulation' && adminPage !== 'queues' && adminPage !== 'money' && (
+            {!['books', 'circulation', 'queues', 'money'].includes(adminPage) && (
               <div style={{ textAlign: 'center', padding: '60px 0', color: '#72685e' }}>
                 <h2 style={{ color: '#241e19' }}>Màn hình {adminPage.toUpperCase()} đang được phát triển</h2>
-                <p>Vui lòng chọn <strong>Circulation</strong>, <strong>Queues & Holds</strong> hoặc <strong>Money</strong> ở menu bên trái.</p>
+                <p>
+                  Vui lòng chọn <strong>Books</strong>, <strong>Circulation</strong>, <strong>Queues &amp; Holds</strong> hoặc{' '}
+                  <strong>Money</strong> ở menu bên trái.
+                </p>
               </div>
             )}
           </AdminLayout>
@@ -125,55 +262,14 @@ function App() {
       )
     }
 
-    // 1B. Student / Reader Experience (Matching Figma Reader Mockups)
+    // 1B. Student / Reader Experience (Figma 002 Catalog/Detail/Scan + 004 Cart/Checkout)
     return (
-      <ReaderLayout
-        activeTab={readerTab}
-        onSelectTab={(tab) => setReaderTab(tab)}
-        user={user}
-        profile={profile}
-        onLogout={() => setShowLogoutConfirm(true)}
-      >
-        {readerTab === 'loans' && <LoansPage />}
-        {readerTab === 'fines' && <FinesPage onProfileRefresh={() => window.location.reload()} />}
-        {readerTab === 'reservations' && <ReservationsPage />}
-        {readerTab === 'books' && (
-          <section>
-            <h2 style={{ fontSize: '20px', color: '#221c18', marginBottom: '16px' }}>Danh sách sách trong thư viện</h2>
-            {error && <p className="error">{error}</p>}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-              {books.map((book) => (
-                <div key={book.id} style={{ padding: '16px', backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #ede6db', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <div>
-                    <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', color: '#2a2421' }}>
-                      {book.title}
-                      {book.collection === 'premium' && (
-                        <span style={{ marginLeft: '8px', color: '#6e472a', fontWeight: 600, fontSize: '11px', background: '#f5eee6', padding: '2px 6px', borderRadius: '4px' }}>
-                          Premium
-                        </span>
-                      )}
-                    </h3>
-                    <p style={{ margin: 0, fontSize: '13px', color: '#6e665e' }}>{book.authors?.join(', ')}</p>
-                  </div>
-                  <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12px', color: '#8c827a' }}>
-                      Bản có sẵn: <strong>{book.available_copies}</strong>
-                    </span>
-                    <button
-                      type="button"
-                      className="auth-btn-primary"
-                      style={{ width: 'auto', padding: '0 12px', height: '30px', fontSize: '12px', marginTop: 0 }}
-                      onClick={() => setReaderTab('loans')}
-                    >
-                      Mượn / Đặt trước
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {!error && books.length === 0 && <p style={{ color: '#6e665e' }}>Chưa có sách nào trong thư viện.</p>}
-          </section>
-        )}
+      <CartProvider user={user}>
+        <ReaderWorkspace
+          user={user}
+          profile={profile}
+          onRequestLogout={() => setShowLogoutConfirm(true)}
+        />
 
         {showLogoutConfirm && (
           <AuthConfirmModal
@@ -188,7 +284,7 @@ function App() {
             onCancel={() => setShowLogoutConfirm(false)}
           />
         )}
-      </ReaderLayout>
+      </CartProvider>
     )
   }
 

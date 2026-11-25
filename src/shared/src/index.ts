@@ -16,3 +16,4 @@ export { resolveSettings, nonMemberEntitlements } from './settings-defaults/load
 export type { Clock } from './domain/clock'
 export { systemClock, fixedClock } from './domain/clock'
 export * from './domain/auth'
+export * from './domain/catalog'

@@ -1,77 +1,140 @@
 import './reader.css'
+import '../catalog/catalog.css'
+import {
+  BellIcon,
+  CartIcon,
+  HeartIcon,
+  LoansNavIcon,
+  SearchIcon,
+  ShelfBookLogo,
+  UserNavIcon,
+} from '../catalog/CatalogIcons'
 
-export function ReaderLayout({ activeTab, onSelectTab, user, profile, onLogout, children }) {
+export function ReaderLayout({
+  activeTab,
+  onSelectTab,
+  profile,
+  cartCount = 0,
+  wishlistCount = 0,
+  onOpenCart,
+  children,
+}) {
   const debt = profile?.debt_outstanding || 0
 
   return (
-    <div className="reader-layout">
+    <div className="sh-app-shell">
       {/* Debt hold notice banner if user has outstanding debt */}
       {debt > 0 && (
-        <div style={{ backgroundColor: '#ffebee', color: '#c62828', padding: '10px 20px', textAlign: 'center', fontSize: '13px', fontWeight: 600, borderBottom: '1px solid #ffcdd2' }}>
-          ⚠️ Bạn đang có khoản phí chưa thanh toán ({debt.toLocaleString('vi-VN')} đ). Vui lòng vào mục Tiền phạt để thanh toán.
+        <div
+          style={{
+            backgroundColor: '#ffebee',
+            color: '#c62828',
+            padding: '9px 18px',
+            textAlign: 'center',
+            fontSize: '12.5px',
+            fontWeight: 600,
+            borderBottom: '1px solid #ffcdd2',
+          }}
+        >
+          ⚠️ Outstanding fees ({debt.toLocaleString('vi-VN')}₫). Please settle in{' '}
+          <button
+            type="button"
+            onClick={() => onSelectTab('fines')}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              color: '#8f1d1d',
+              fontWeight: 800,
+              textDecoration: 'underline',
+              cursor: 'pointer',
+            }}
+          >
+            Fines
+          </button>
+          .
         </div>
       )}
 
-      <header className="reader-header">
-        <div className="reader-header-inner">
-          <div className="reader-brand" onClick={() => onSelectTab('books')}>
-            <div className="reader-brand-logo">S</div>
-            <div>
-              <h1 className="reader-brand-title">ShelfHelp</h1>
-            </div>
+      {/* Figma Brown Top Bar (#6E472A): Centered ShelfHelp logo + Right Bell & Cart icons */}
+      <header className="sh-topbar">
+        <div className="sh-topbar-inner">
+          <div className="sh-topbar-left" />
+
+          <div className="sh-topbar-center" onClick={() => onSelectTab('books')}>
+            <ShelfBookLogo size={24} />
+            <span>ShelfHelp</span>
           </div>
 
-          <nav className="reader-nav">
+          <div className="sh-topbar-right">
             <button
               type="button"
-              className={`reader-nav-item ${activeTab === 'books' ? 'active' : ''}`}
-              onClick={() => onSelectTab('books')}
-            >
-              📖 Khám phá sách
-            </button>
-            <button
-              type="button"
-              className={`reader-nav-item ${activeTab === 'loans' ? 'active' : ''}`}
-              onClick={() => onSelectTab('loans')}
-            >
-              📚 Sách của tôi
-            </button>
-            <button
-              type="button"
-              className={`reader-nav-item ${activeTab === 'fines' ? 'active' : ''}`}
-              onClick={() => onSelectTab('fines')}
-            >
-              💳 Tiền phạt
-              {debt > 0 && <span className="reader-nav-badge">Nợ</span>}
-            </button>
-            <button
-              type="button"
-              className={`reader-nav-item ${activeTab === 'reservations' ? 'active' : ''}`}
+              className="sh-icon-btn sh-icon-btn-ghost"
+              title="Notifications & Reservations"
+              aria-label="Notifications"
               onClick={() => onSelectTab('reservations')}
             >
-              ⏳ Đặt trước
+              <BellIcon size={22} />
             </button>
-          </nav>
 
-          <div className="reader-user-controls">
-            <span className="reader-user-badge">
-              {profile?.full_name || user?.email}
-            </span>
             <button
               type="button"
-              className="auth-btn-primary"
-              style={{ width: 'auto', height: '34px', padding: '0 14px', marginTop: 0, fontSize: '13px', backgroundColor: '#efe6da', color: '#52473f', border: '1px solid #dcd3c6' }}
-              onClick={onLogout}
+              className="sh-icon-btn sh-icon-btn-ghost"
+              title="Borrowing Cart"
+              aria-label="Open borrowing cart"
+              onClick={onOpenCart}
             >
-              Đăng xuất
+              <CartIcon size={22} />
+              {cartCount > 0 && <span className="sh-cart-badge">{cartCount}</span>}
             </button>
           </div>
         </div>
       </header>
 
-      <main className="reader-body">
-        {children}
-      </main>
+      <main style={{ flex: 1 }}>{children}</main>
+
+      {/* Figma Bottom Navigation Bar (Discover, Wishlist, My Loans, Profile) */}
+      <nav className="sh-bottom-nav" aria-label="Primary reader navigation">
+        <div className="sh-bottom-nav-inner">
+          <button
+            type="button"
+            className={`sh-bottom-nav-btn ${activeTab === 'books' ? 'active' : ''}`}
+            onClick={() => onSelectTab('books')}
+          >
+            <SearchIcon size={22} />
+            <span>Discover</span>
+          </button>
+
+          <button
+            type="button"
+            className={`sh-bottom-nav-btn ${activeTab === 'wishlist' ? 'active' : ''}`}
+            onClick={() => onSelectTab('wishlist')}
+          >
+            <HeartIcon size={22} filled={activeTab === 'wishlist'} />
+            <span>Wishlist</span>
+            {wishlistCount > 0 && <span className="sh-bottom-nav-dot">{wishlistCount}</span>}
+          </button>
+
+          <button
+            type="button"
+            className={`sh-bottom-nav-btn ${activeTab === 'loans' ? 'active' : ''}`}
+            onClick={() => onSelectTab('loans')}
+          >
+            <LoansNavIcon size={22} />
+            <span>My Loans</span>
+          </button>
+
+          <button
+            type="button"
+            className={`sh-bottom-nav-btn ${activeTab === 'profile' ? 'active' : ''}`}
+            onClick={() => onSelectTab('profile')}
+          >
+            <UserNavIcon size={22} />
+            <span>Profile</span>
+            {debt > 0 && <span className="sh-bottom-nav-dot">!</span>}
+          </button>
+        </div>
+      </nav>
     </div>
   )
 }

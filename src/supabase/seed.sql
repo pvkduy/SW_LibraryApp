@@ -371,3 +371,185 @@ from public.books b
 where b.isbn13 = '9780132350884'
 on conflict (id) do nothing;
 
+
+-- -----------------------------------------------------------------------------
+-- Seed Showcase Books, Copies & Reviews for Catalog / Book Detail / Checkout (002 & 004)
+-- -----------------------------------------------------------------------------
+update public.profiles
+set phone = '0912-345-678'
+where id = '11111111-1111-1111-1111-111111111111' and phone is null;
+
+insert into public.books (
+  title, authors, isbn13, publisher, year, pages, language, category, field,
+  description, keywords, collection, replacement_price, shelf_location, status,
+  rating_avg, rating_count, popularity_score, borrow_count
+)
+values
+  (
+    'The Design of Everyday Things',
+    array['Don Norman'],
+    '9780465050659',
+    'Basic Books',
+    2013,
+    368,
+    'English',
+    'Non-Fiction',
+    'UX & Design',
+    'Even the smartest among us can feel inept as we fail to figure out which light switch or oven burner to turn on, or whether to push, pull, or slide a door. The fault, argues this ingenious—even liberating—book, lies not in ourselves, but in product design that ignores the needs of users and the principles of cognitive psychology.',
+    array['design', 'ux', 'usability', 'psychology', 'interaction'],
+    'premium',
+    240000,
+    'Floor 2 • Shelf B4 (West Wing)',
+    'active',
+    4.80,
+    342,
+    98.5,
+    124
+  ),
+  (
+    'Atomic Habits',
+    array['James Clear'],
+    '9780735211292',
+    'Avery',
+    2018,
+    320,
+    'English',
+    'Non-Fiction',
+    'Productivity',
+    'No matter your goals, Atomic Habits offers a proven framework for improving every day. James Clear reveals practical strategies that will teach you exactly how to form good habits, break bad ones, and master the tiny behaviors that lead to remarkable results.',
+    array['habits', 'productivity', 'psychology', 'self-improvement'],
+    'standard',
+    190000,
+    'Floor 1 • Shelf A2 (North Wing)',
+    'active',
+    4.90,
+    218,
+    95.0,
+    110
+  ),
+  (
+    'Dune',
+    array['Frank Herbert'],
+    '9780441172719',
+    'Ace Books',
+    1965,
+    688,
+    'English',
+    'Fiction',
+    'Sci-Fi',
+    'Set on the desert planet Arrakis, Dune is the story of the boy Paul Atreides, heir to a noble family tasked with ruling an inhospitable world where the only thing of value is the spice melange.',
+    array['sci-fi', 'classic', 'arrakis', 'novel', 'fiction'],
+    'premium',
+    210000,
+    'Floor 3 • Shelf F1 (South Wing)',
+    'active',
+    4.75,
+    410,
+    92.0,
+    96
+  ),
+  (
+    'A Brief History of Time',
+    array['Stephen Hawking'],
+    '9780553380163',
+    'Bantam Books',
+    1988,
+    256,
+    'English',
+    'Science',
+    'Physics',
+    'A landmark volume in science writing by one of the great minds of our time, exploring the origins of the universe, black holes, wormholes, and the nature of time itself.',
+    array['physics', 'cosmology', 'universe', 'science'],
+    'standard',
+    165000,
+    'Floor 2 • Shelf S3 (East Wing)',
+    'active',
+    4.65,
+    185,
+    88.0,
+    82
+  ),
+  (
+    'Introduction to Algorithms',
+    array['Thomas H. Cormen', 'Charles E. Leiserson'],
+    '9780262046305',
+    'MIT Press',
+    2022,
+    1312,
+    'English',
+    'Science',
+    'Computer Science',
+    'The comprehensive textbook covering a broad range of algorithms in depth, yet making their design and analysis accessible to all levels of readers.',
+    array['algorithms', 'clrs', 'computer science', 'data structures'],
+    'premium',
+    450000,
+    'Floor 2 • Shelf CS-01 (West Wing)',
+    'active',
+    4.85,
+    276,
+    90.5,
+    89
+  )
+on conflict (isbn13) do update set
+  pages = excluded.pages,
+  description = excluded.description,
+  shelf_location = excluded.shelf_location;
+
+-- Update pages on existing 4 books as well
+update public.books set pages = 464, language = 'English', rating_avg = 4.70, rating_count = 156, popularity_score = 94.0 where isbn13 = '9780132350884';
+update public.books set pages = 310, language = 'Vietnamese', rating_avg = 4.50, rating_count = 42, popularity_score = 78.0 where isbn13 = '9786040000001';
+update public.books set pages = 220, language = 'Vietnamese', rating_avg = 4.60, rating_count = 29, popularity_score = 72.0 where isbn13 = '9786040000002';
+update public.books set pages = 248, language = 'Vietnamese', rating_avg = 4.45, rating_count = 19, popularity_score = 70.0 where isbn13 = '9786040000003';
+
+-- Copies matching Figma Book Detail ("The Design of Everyday Things": BK-10019, BK-10020 available; BK-10021 borrowed)
+insert into public.copies (book_id, barcode, status, shelf_location, condition)
+select b.id, v.barcode, v.status, b.shelf_location, 'good'
+from public.books b
+cross join (values
+  ('BK-10019', 'available'),
+  ('BK-10020', 'available'),
+  ('BK-10021', 'borrowed')
+) as v(barcode, status)
+where b.isbn13 = '9780465050659'
+on conflict (barcode) do nothing;
+
+insert into public.copies (book_id, barcode, status, shelf_location, condition)
+select b.id, v.barcode, v.status, b.shelf_location, 'good'
+from public.books b
+cross join (values ('BK-10030', 'available'), ('BK-10031', 'available')) as v(barcode, status)
+where b.isbn13 = '9780735211292'
+on conflict (barcode) do nothing;
+
+insert into public.copies (book_id, barcode, status, shelf_location, condition)
+select b.id, v.barcode, v.status, b.shelf_location, 'good'
+from public.books b
+cross join (values ('BK-10040', 'available'), ('BK-10041', 'available')) as v(barcode, status)
+where b.isbn13 = '9780441172719'
+on conflict (barcode) do nothing;
+
+insert into public.copies (book_id, barcode, status, shelf_location, condition)
+select b.id, v.barcode, v.status, b.shelf_location, 'good'
+from public.books b
+cross join (values ('BK-10050', 'available'), ('BK-10051', 'available')) as v(barcode, status)
+where b.isbn13 = '9780553380163'
+on conflict (barcode) do nothing;
+
+insert into public.copies (book_id, barcode, status, shelf_location, condition)
+select b.id, 'BK-10060', 'borrowed', b.shelf_location, 'good'
+from public.books b
+where b.isbn13 = '9780262046305'
+on conflict (barcode) do nothing;
+
+-- Seed sample review matching Figma ("Essential reading for anyone in UX, architecture, or product design.")
+insert into public.book_reviews (id, book_id, uid, rating, comment, created_at, updated_at)
+select
+  'eeee1111-1111-1111-1111-111111111111',
+  b.id,
+  '33333333-3333-3333-3333-333333333333',
+  5,
+  'Essential reading for anyone in UX, architecture, or product design.',
+  now() - interval '14 days',
+  now() - interval '14 days'
+from public.books b
+where b.isbn13 = '9780465050659'
+on conflict (id) do nothing;
