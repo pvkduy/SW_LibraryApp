@@ -10,9 +10,9 @@ import { ResetPasswordPage } from '../features/auth/ResetPasswordPage.jsx'
 import { AuthSuccessModal, AuthErrorModal, AuthConfirmModal } from '../features/auth/components/AuthModals.jsx'
 import { AdminLayout } from '../features/admin/components/AdminLayout.jsx'
 import { CirculationPage } from '../features/admin/circulation/CirculationPage.jsx'
+import { BooksPage } from '../features/admin/books/BooksPage.jsx'
 import { QueuesPage } from '../features/admin/queues/QueuesPage.jsx'
 import { FinancialLedgerPage } from '../features/admin/ledger/FinancialLedgerPage.jsx'
-import { AdminBooksPage } from '../features/admin/books/AdminBooksPage.jsx'
 import { ReaderLayout } from '../features/reader/components/ReaderLayout.jsx'
 import { LoansPage } from '../features/reader/loans/LoansPage.jsx'
 import { FinesPage } from '../features/reader/fines/FinesPage.jsx'
@@ -234,8 +234,8 @@ function App() {
             profile={profile}
             onLogout={() => setShowLogoutConfirm(true)}
           >
-            {adminPage === 'books' && <AdminBooksPage />}
             {adminPage === 'circulation' && <CirculationPage />}
+            {adminPage === 'books' && <BooksPage />}
             {adminPage === 'queues' && <QueuesPage />}
             {adminPage === 'money' && <FinancialLedgerPage />}
             {!['books', 'circulation', 'queues', 'money'].includes(adminPage) && (
