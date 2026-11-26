@@ -35,9 +35,23 @@ Deno.serve(async (req: Request) => {
   const loanItemId = body.loan_item_id || body.loanItemId
   const conditionOut = body.condition_out || body.conditionOut || 'good'
   const notes = body.notes || null
+  const conditionOutMedia = body.condition_out_media ?? []
 
   if (!loanItemId) {
     return fail('VALIDATION_FAILED', 'Missing required parameter: loan_item_id')
+  }
+
+  const mediaPrefix = `handover/${loanItemId}/`
+  if (
+    !Array.isArray(conditionOutMedia) ||
+    conditionOutMedia.length > 3 ||
+    conditionOutMedia.some((path: unknown) =>
+      typeof path !== 'string' ||
+      !path.startsWith(mediaPrefix) ||
+      !/^[0-9a-f-]+\.(jpg|png|webp)$/i.test(path.slice(mediaPrefix.length))
+    )
+  ) {
+    return fail('VALIDATION_FAILED', 'Handover media must contain up to three valid evidence paths')
   }
 
   // 1. Fetch item and standing
@@ -80,6 +94,7 @@ Deno.serve(async (req: Request) => {
     p_loan_item_id: loanItemId,
     p_condition_out: conditionOut,
     p_notes: notes,
+    p_condition_out_media: conditionOutMedia,
   })
 
   if (rpcErr || (rpcRes && !rpcRes.success)) {

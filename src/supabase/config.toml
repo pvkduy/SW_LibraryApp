@@ -8,14 +8,14 @@ project_id = "shelfhelp"
 
 [api]
 enabled = true
-port = 54321
+port = 60021
 schemas = ["public", "storage", "graphql_public"]
 extra_search_path = ["public", "extensions"]
 max_rows = 1000
 
 [db]
-port = 54322
-shadow_port = 54320
+port = 60022
+shadow_port = 60020
 major_version = 15
 
 [db.pooler]
@@ -23,15 +23,15 @@ enabled = false
 
 [studio]
 enabled = true
-port = 54323
+port = 60023
 
 [inbucket]
 enabled = true
-port = 54324
+port = 60024
 
 [storage]
 enabled = true
-file_size_limit = "5MiB"
+file_size_limit = "10MiB"
 
 [auth]
 enabled = true
@@ -60,7 +60,7 @@ allowed_mime_types = ["image/jpeg"]
 
 [storage.buckets.evidence]
 public = false
-file_size_limit = "2MiB"
+file_size_limit = "10MiB"
 allowed_mime_types = ["image/jpeg", "image/png", "image/webp"]
 
 [storage.buckets.imports]

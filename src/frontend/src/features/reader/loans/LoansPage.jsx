@@ -1,14 +1,41 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
-import { BookReviewModal } from './BookReviewModal.jsx'
+import { FinesPage } from '../fines/FinesPage.jsx'
+import { BookReviewPage } from './BookReviewPage.jsx'
 
-export function LoansPage() {
+const ACTIVE_STATUSES = ['borrowed', 'overdue']
+const QUOTA_STATUSES = ['awaiting_payment', 'payment_failed', 'ready_for_pickup', 'borrowed', 'overdue']
+const HISTORY_STATUSES = ['returned', 'lost']
+const STATUS_LABELS = {
+  awaiting_payment: 'Payment due',
+  payment_failed: 'Payment failed',
+  ready_for_pickup: 'Ready for pickup',
+}
+
+function formatDate(value) {
+  if (!value) return '—'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function getDaysRemaining(dueDate, now) {
+  if (!dueDate) return null
+  const due = new Date(dueDate)
+  const today = new Date(now)
+  if (Number.isNaN(due.getTime())) return null
+  due.setHours(0, 0, 0, 0)
+  today.setHours(0, 0, 0, 0)
+  return Math.ceil((due.getTime() - today.getTime()) / 86400000)
+}
+
+export function LoansPage({ maxItems = 5, onProfileRefresh, profile }) {
   const [loans, setLoans] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('ongoing') // ongoing | history
-  const [reviewModalData, setReviewModalData] = useState(null)
+  const [activeTab, setActiveTab] = useState('active')
+  const [reviewLoan, setReviewLoan] = useState(null)
   const [message, setMessage] = useState(null)
   const [renewingId, setRenewingId] = useState(null)
+  const [now] = useState(() => new Date())
 
   const loadLoans = async () => {
     setLoading(true)
@@ -21,10 +48,13 @@ export function LoansPage() {
         .select(`
           id,
           status,
-          borrowed_at,
+          handover_at,
+          due_at,
           due_date,
           returned_at,
           renew_count,
+          payment_deadline,
+          pickup_deadline,
           copies (
             id,
             barcode,
@@ -32,36 +62,35 @@ export function LoansPage() {
               id,
               title,
               authors,
-              cover_url,
-              collection
+              collection,
+              cover_path
             )
           )
         `)
         .eq('uid', user.id)
-        .order('borrowed_at', { ascending: false })
+        .order('handover_at', { ascending: false })
 
       if (error) throw error
 
-      // Also fetch existing reviews for user to mark which returned items are reviewed
-      const { data: revData } = await supabase
+      const { data: reviewRows, error: reviewError } = await supabase
         .from('book_reviews')
-        .select('loan_item_id, rating')
+        .select('loan_item_id, rating, headline, comment')
         .eq('uid', user.id)
 
-      const reviewedMap = {}
-      ;(revData || []).forEach((r) => {
-        if (r.loan_item_id) reviewedMap[r.loan_item_id] = r.rating
-      })
+      if (reviewError) throw reviewError
 
-      const enriched = (data || []).map((item) => ({
+      const reviewsByLoan = Object.fromEntries(
+        (reviewRows || []).filter((review) => review.loan_item_id).map((review) => [review.loan_item_id, review]),
+      )
+
+      setLoans((data || []).map((item) => ({
         ...item,
-        isReviewed: !!reviewedMap[item.id],
-        userRating: reviewedMap[item.id] || null
-      }))
-
-      setLoans(enriched)
+        due_date: item.due_date || item.due_at,
+        review: reviewsByLoan[item.id] || null,
+      })))
     } catch (err) {
       console.error('Error loading loans:', err)
+      setMessage({ type: 'error', text: 'Could not load your loans. Please try again.' })
     } finally {
       setLoading(false)
     }
@@ -77,214 +106,261 @@ export function LoansPage() {
 
     try {
       const { data, error } = await supabase.rpc('rpc_renew_loan', {
-        p_loan_item_id: loanItemId
+        p_loan_item_id: loanItemId,
       })
 
       if (error) throw error
       if (data?.error) throw new Error(data.message || data.error)
 
-      setMessage({ type: 'success', text: data.message || 'Gia hạn thành công!' })
+      setMessage({ type: 'success', text: data.message || 'Renewal successful.' })
       await loadLoans()
     } catch (err) {
-      setMessage({ type: 'error', text: err.message || 'Gia hạn thất bại.' })
+      setMessage({ type: 'error', text: err.message || 'Renewal failed.' })
     } finally {
       setRenewingId(null)
     }
   }
 
-  const handleReviewSubmit = async (loanItemId, rating, comment) => {
+  const handleReviewSubmit = async (loanItemId, rating, headline, comment) => {
     const { data, error } = await supabase.rpc('rpc_submit_book_review', {
       p_loan_item_id: loanItemId,
       p_rating: rating,
-      p_comment: comment
+      p_comment: comment,
+      p_headline: headline,
     })
 
     if (error) throw error
     if (data?.error) throw new Error(data.message || data.error)
 
-    setMessage({ type: 'success', text: data.message || 'Cảm ơn đánh giá của bạn!' })
     await loadLoans()
   }
 
-  const ongoingLoans = loans.filter((l) => ['borrowed', 'overdue', 'pending'].includes(l.status))
-  const historyLoans = loans.filter((l) => ['returned', 'lost'].includes(l.status))
+  const activeLoans = loans.filter((loan) => ACTIVE_STATUSES.includes(loan.status))
+  const pendingLoans = loans.filter((loan) =>
+    ['awaiting_payment', 'payment_failed', 'ready_for_pickup'].includes(loan.status),
+  )
+  const quotaUsed = loans.filter((loan) => QUOTA_STATUSES.includes(loan.status)).length
+  const historyLoans = loans.filter((loan) => HISTORY_STATUSES.includes(loan.status))
+  const dueSoonCount = activeLoans.filter((loan) => {
+    const daysRemaining = getDaysRemaining(loan.due_date, now)
+    return daysRemaining !== null && daysRemaining >= 0 && daysRemaining <= 3
+  }).length
+
+  if (reviewLoan) {
+    return (
+      <BookReviewPage
+        loan={reviewLoan}
+        onBack={() => setReviewLoan(null)}
+        onSubmit={handleReviewSubmit}
+      />
+    )
+  }
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: '22px', color: '#241e19' }}>Sách của tôi (My Loans)</h2>
-          <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#6e665e' }}>
-            Theo dõi sách đang mượn, hạn trả, gia hạn thời gian và viết đánh giá sau khi hoàn thành.
-          </p>
-        </div>
-      </div>
-
+    <div className="my-loans-page">
       {message && (
-        <div style={{ padding: '12px 16px', background: message.type === 'success' ? '#e8f5e9' : '#ffebee', color: message.type === 'success' ? '#2e7d32' : '#c62828', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' }}>
+        <div className={`my-loans-message ${message.type}`} role="status">
           {message.text}
         </div>
       )}
 
-      <div className="reader-tabs">
+      <div className="my-loans-tabs" role="tablist" aria-label="My loans sections">
         <button
           type="button"
-          className={`reader-tab-btn ${activeTab === 'ongoing' ? 'active' : ''}`}
-          onClick={() => setActiveTab('ongoing')}
+          role="tab"
+          aria-selected={activeTab === 'active'}
+          className={activeTab === 'active' ? 'active' : ''}
+          onClick={() => setActiveTab('active')}
         >
-          Đang mượn ({ongoingLoans.length})
+          Active Loans <span>{activeLoans.length}</span>
         </button>
         <button
           type="button"
-          className={`reader-tab-btn ${activeTab === 'history' ? 'active' : ''}`}
+          role="tab"
+          aria-selected={activeTab === 'history'}
+          className={activeTab === 'history' ? 'active' : ''}
           onClick={() => setActiveTab('history')}
         >
-          Lịch sử mượn trả ({historyLoans.length})
+          History <span>{historyLoans.length}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'fines'}
+          className={activeTab === 'fines' ? 'active' : ''}
+          onClick={() => setActiveTab('fines')}
+        >
+          Fines
         </button>
       </div>
 
-      {loading ? (
-        <p style={{ color: '#6e665e' }}>Đang tải danh sách sách...</p>
-      ) : activeTab === 'ongoing' ? (
-        <div className="reader-card">
-          {ongoingLoans.length === 0 ? (
-            <p style={{ margin: 0, color: '#6e665e', textAlign: 'center', padding: '24px 0' }}>
-              Bạn hiện không mượn cuốn sách nào.
-            </p>
+      {activeTab === 'fines' ? (
+        <FinesPage embedded profile={profile} onProfileRefresh={onProfileRefresh} />
+      ) : loading ? (
+        <p className="my-loans-empty">Loading your loans…</p>
+      ) : activeTab === 'active' ? (
+        <>
+          <section className="my-loans-quota" aria-label="Borrowing quota">
+            <div className="my-loans-quota-icon" aria-hidden="true">▤</div>
+            <div className="my-loans-quota-copy">
+              <span>Borrowing Quota</span>
+              <strong>{quotaUsed} of {maxItems} items in use</strong>
+              <small>
+                {activeLoans.length} currently on loan
+                {pendingLoans.length > 0 && ` · ${pendingLoans.length} pending payment or pickup`}
+              </small>
+            </div>
+            <div className="my-loans-quota-meter" aria-hidden="true">
+              <span style={{ width: `${Math.min(100, maxItems > 0 ? (quotaUsed / maxItems) * 100 : 0)}%` }} />
+            </div>
+          </section>
+
+          {dueSoonCount > 0 && (
+            <div className="my-loans-due-alert" role="status">
+              <span aria-hidden="true">!</span>
+              <div><strong>Due soon</strong><small>{dueSoonCount} {dueSoonCount === 1 ? 'book is' : 'books are'} due within 3 days. Renew now to avoid fines.</small></div>
+            </div>
+          )}
+
+          {activeLoans.length === 0 ? (
+            <div className="my-loans-empty">You don’t have any active loans right now.</div>
           ) : (
-            <div>
-              {ongoingLoans.map((loan) => {
+            <div className="my-loans-list">
+              {activeLoans.map((loan) => {
                 const book = loan.copies?.books
-                const isOverdue = loan.status === 'overdue' || (loan.due_date && new Date(loan.due_date) < new Date())
+                const daysRemaining = getDaysRemaining(loan.due_date, now)
+                const isOverdue = loan.status === 'overdue' || (daysRemaining !== null && daysRemaining < 0)
                 const renewCount = loan.renew_count || 0
                 const canRenew = renewCount < 2 && !isOverdue && loan.status === 'borrowed'
+                const totalDays = loan.handover_at && loan.due_date
+                  ? Math.max(1, Math.ceil((new Date(loan.due_date) - new Date(loan.handover_at)) / 86400000))
+                  : 14
+                const elapsedDays = loan.handover_at
+                  ? Math.max(0, Math.floor((now.getTime() - new Date(loan.handover_at).getTime()) / 86400000))
+                  : 0
+                const progress = Math.min(100, Math.round((elapsedDays / totalDays) * 100))
 
                 return (
-                  <div key={loan.id} className="loan-item-card">
-                    <div className="loan-item-info">
-                      <h4>
-                        {book?.title || 'Sách thư viện'}
-                        {book?.collection === 'premium' && (
-                          <span style={{ marginLeft: '8px', fontSize: '11px', color: '#6e472a', fontWeight: 600 }}>
-                            (Premium)
-                          </span>
-                        )}
-                      </h4>
-                      <div className="loan-item-sub">
-                        <span>Tác giả: {book?.authors?.join(', ') || 'N/A'}</span>
-                        <span>Mã bản in: {loan.copies?.barcode}</span>
-                        <span>Ngày mượn: {new Date(loan.borrowed_at).toLocaleDateString('vi-VN')}</span>
-                      </div>
-                      <div style={{ marginTop: '8px', fontSize: '13px' }}>
-                        Hạn trả:{' '}
-                        <strong style={{ color: isOverdue ? '#b3261e' : '#241e19' }}>
-                          {loan.due_date ? new Date(loan.due_date).toLocaleDateString('vi-VN') : 'N/A'}
-                        </strong>
-                        <span style={{ marginLeft: '12px', color: '#8c827a' }}>
-                          (Đã gia hạn: {renewCount}/2 lần)
+                  <article key={loan.id} className={`my-loan-card ${isOverdue ? 'overdue' : ''}`}>
+                    <div className="my-loan-cover">
+                      {book?.cover_path
+                        ? <img src={book.cover_path} alt="" />
+                        : <span aria-hidden="true">{book?.title?.slice(0, 1) || 'B'}</span>}
+                    </div>
+                    <div className="my-loan-main">
+                      <div className="my-loan-heading">
+                        <div>
+                          <h2>{book?.title || 'Library book'}</h2>
+                          <p>{book?.authors?.join(', ') || 'Unknown author'}</p>
+                        </div>
+                        <span className={`my-loan-status ${isOverdue ? 'overdue' : loan.status === 'borrowed' ? 'borrowed' : 'pending'}`}>
+                          {isOverdue ? 'Overdue' : STATUS_LABELS[loan.status] || 'Borrowed'}
                         </span>
                       </div>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-                      <span className={`badge-status ${isOverdue ? 'badge-overdue' : 'badge-borrowed'}`}>
-                        {isOverdue ? 'Quá hạn' : 'Đang mượn'}
-                      </span>
-                      <button
-                        type="button"
-                        className="auth-btn-primary"
-                        style={{
-                          width: 'auto',
-                          padding: '0 14px',
-                          height: '32px',
-                          fontSize: '12px',
-                          marginTop: 0,
-                          backgroundColor: canRenew ? '#6e472a' : '#dcd3c6',
-                          cursor: canRenew ? 'pointer' : 'not-allowed'
-                        }}
-                        disabled={!canRenew || renewingId === loan.id}
-                        onClick={() => handleRenew(loan.id)}
-                        title={
-                          renewCount >= 2
-                            ? 'Đã đạt tối đa 2 lần gia hạn'
-                            : isOverdue
-                            ? 'Sách quá hạn không thể gia hạn'
-                            : 'Gia hạn thêm 14 ngày'
-                        }
-                      >
-                        {renewingId === loan.id ? 'Đang gia hạn...' : 'Gia hạn (+14 ngày)'}
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="reader-card">
-          {historyLoans.length === 0 ? (
-            <p style={{ margin: 0, color: '#6e665e', textAlign: 'center', padding: '24px 0' }}>
-              Chưa có lịch sử mượn trả nào.
-            </p>
-          ) : (
-            <div>
-              {historyLoans.map((loan) => {
-                const book = loan.copies?.books
-                return (
-                  <div key={loan.id} className="loan-item-card">
-                    <div className="loan-item-info">
-                      <h4>{book?.title || 'Sách thư viện'}</h4>
-                      <div className="loan-item-sub">
-                        <span>Tác giả: {book?.authors?.join(', ') || 'N/A'}</span>
-                        <span>Ngày trả: {loan.returned_at ? new Date(loan.returned_at).toLocaleDateString('vi-VN') : 'Đã hoàn tất'}</span>
+                      <div className="my-loan-due-row">
+                        <span>Due date <strong>{formatDate(loan.due_date)}</strong></span>
+                        <span className={isOverdue || (daysRemaining !== null && daysRemaining <= 3) ? 'urgent' : ''}>
+                          {isOverdue
+                            ? daysRemaining === null ? 'Overdue' : `${Math.abs(daysRemaining)} days overdue`
+                            : daysRemaining === null ? '—' : `${daysRemaining} days left`}
+                        </span>
                       </div>
-                      {loan.isReviewed && (
-                        <div style={{ marginTop: '6px', fontSize: '13px', color: '#f59e0b' }}>
-                          ★ Bạn đã đánh giá: {loan.userRating}/5 sao
-                        </div>
-                      )}
+                      <div className="my-loan-progress" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
+                        <span style={{ width: `${progress}%` }} />
+                      </div>
+                      <div className="my-loan-card-footer">
+                        {['borrowed', 'overdue'].includes(loan.status) && (
+                          <>
+                            <span>Renewals: {renewCount}/2</span>
+                            <button
+                              type="button"
+                              disabled={!canRenew || renewingId === loan.id}
+                              onClick={() => handleRenew(loan.id)}
+                            >
+                              {renewingId === loan.id ? 'Renewing…' : 'Renew loan'}
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-                      <span className="badge-status badge-returned">Đã trả</span>
-                      <button
-                        type="button"
-                        className="auth-btn-primary"
-                        style={{
-                          width: 'auto',
-                          padding: '0 14px',
-                          height: '32px',
-                          fontSize: '12px',
-                          marginTop: 0,
-                          backgroundColor: loan.isReviewed ? '#8c827a' : '#f59e0b',
-                          color: '#ffffff'
-                        }}
-                        onClick={() =>
-                          setReviewModalData({
-                            loanItemId: loan.id,
-                            bookTitle: book?.title || 'Sách'
-                          })
-                        }
-                      >
-                        {loan.isReviewed ? 'Sửa đánh giá' : '★ Viết đánh giá'}
-                      </button>
-                    </div>
-                  </div>
+                  </article>
                 )
               })}
             </div>
           )}
-        </div>
-      )}
 
-      {reviewModalData && (
-        <BookReviewModal
-          loanItemId={reviewModalData.loanItemId}
-          bookTitle={reviewModalData.bookTitle}
-          onClose={() => setReviewModalData(null)}
-          onSuccess={handleReviewSubmit}
-        />
+          {pendingLoans.length > 0 && (
+            <section className="my-loans-pending">
+              <h2>Pending checkout</h2>
+              <p>These items are not on loan yet, but they count toward your borrowing limit.</p>
+              {pendingLoans.map((loan) => {
+                const book = loan.copies?.books
+                const pendingUntil = loan.status === 'ready_for_pickup'
+                  ? loan.pickup_deadline
+                  : loan.payment_deadline
+
+                return (
+                  <div key={loan.id} className="my-loans-pending-item">
+                    <div>
+                      <strong>{book?.title || 'Library book'}</strong>
+                      <span>{book?.authors?.join(', ') || 'Unknown author'}</span>
+                    </div>
+                    <div className="my-loans-pending-status">
+                      <span>{STATUS_LABELS[loan.status]}</span>
+                      {pendingUntil && <small>Until {formatDate(pendingUntil)}</small>}
+                    </div>
+                  </div>
+                )
+              })}
+            </section>
+          )}
+        </>
+      ) : historyLoans.length === 0 ? (
+        <div className="my-loans-empty">Your returned books and reviews will appear here.</div>
+      ) : (
+        <div className="my-loans-list">
+          {historyLoans.map((loan) => {
+            const book = loan.copies?.books
+            return (
+              <article key={loan.id} className="my-loan-card history">
+                <div className="my-loan-cover">
+                  {book?.cover_path
+                    ? <img src={book.cover_path} alt="" />
+                    : <span aria-hidden="true">{book?.title?.slice(0, 1) || 'B'}</span>}
+                </div>
+                <div className="my-loan-main">
+                  <div className="my-loan-heading">
+                    <div>
+                      <h2>{book?.title || 'Library book'}</h2>
+                      <p>{book?.authors?.join(', ') || 'Unknown author'}</p>
+                    </div>
+                    <span className={`my-loan-status ${loan.status === 'lost' ? 'overdue' : 'returned'}`}>
+                      {loan.status === 'lost' ? 'Lost' : 'Returned'}
+                    </span>
+                  </div>
+                  <div className="my-loan-due-row">
+                    <span>Returned <strong>{formatDate(loan.returned_at)}</strong></span>
+                    <span>{loan.copies?.barcode || ''}</span>
+                  </div>
+                  <div className="my-loan-card-footer">
+                    {loan.review ? (
+                      <span className="my-loan-review-submitted">
+                        ★ Review submitted · {loan.review.rating}/5
+                      </span>
+                    ) : (
+                      <span className="my-loan-review-prompt">Enjoyed this book? Share your thoughts.</span>
+                    )}
+                    {!loan.review && loan.status === 'returned' && (
+                      <button type="button" onClick={() => setReviewLoan(loan)}>
+                        Write a review
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </article>
+            )
+          })}
+        </div>
       )}
     </div>
   )

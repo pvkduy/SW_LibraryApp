@@ -86,108 +86,73 @@ export function FinancialLedgerPage() {
   })
 
   return (
-    <div className="circ-page">
-      <div className="circ-header">
+    <div className="admin-ledger-page">
+      <div className="admin-page-title-row">
         <div>
-          <h2>Sổ cái tài chính (Financial Ledger)</h2>
-          <p>Báo cáo doanh thu, biên lai thanh toán và theo dõi nợ phí phạt sinh viên.</p>
+          <h1 className="admin-page-title">Financial Ledger</h1>
+          <div className="admin-page-desc">Revenue, payment receipts, and outstanding fines and fees.</div>
         </div>
         <button
           type="button"
-          className="circ-btn circ-btn-secondary"
+          className="admin-btn-outline"
           onClick={loadFinancialData}
         >
-          🔄 Làm mới dữ liệu
+          <span aria-hidden="true">↻</span> Refresh data
         </button>
       </div>
 
       {/* Summary KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <div style={{ background: '#ffffff', border: '1px solid #ede6db', borderRadius: '12px', padding: '18px' }}>
-          <div style={{ fontSize: '13px', color: '#6e665e', marginBottom: '4px' }}>Tổng doanh thu đã thu</div>
-          <div style={{ fontSize: '24px', fontWeight: 700, color: '#2e7d32' }}>
+      <div className="admin-ledger-summary">
+        <div className="admin-ledger-card">
+          <div className="admin-ledger-label">Total revenue collected</div>
+          <div className="admin-ledger-value" style={{ color: '#2e7d32' }}>
             {totalRevenue.toLocaleString('vi-VN')} đ
           </div>
-          <div style={{ fontSize: '12px', color: '#8c827a', marginTop: '4px' }}>
-            Từ {receipts.length} giao dịch biên lai
-          </div>
+          <div className="admin-ledger-caption">{receipts.length} receipt transactions</div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #ede6db', borderRadius: '12px', padding: '18px' }}>
-          <div style={{ fontSize: '13px', color: '#6e665e', marginBottom: '4px' }}>Nợ phạt chưa thu (Outstanding)</div>
-          <div style={{ fontSize: '24px', fontWeight: 700, color: '#b3261e' }}>
+        <div className="admin-ledger-card">
+          <div className="admin-ledger-label">Outstanding charges</div>
+          <div className="admin-ledger-value" style={{ color: '#b3261e' }}>
             {totalOutstanding.toLocaleString('vi-VN')} đ
           </div>
-          <div style={{ fontSize: '12px', color: '#8c827a', marginTop: '4px' }}>
-            Từ {charges.length} khoản phí quá hạn & bồi thường
-          </div>
+          <div className="admin-ledger-caption">{charges.length} unpaid fines and fees</div>
         </div>
       </div>
 
       {/* Tab Switcher */}
-      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #ede6db', marginBottom: '18px' }}>
+      <div className="admin-ledger-tabs">
         <button
           type="button"
-          style={{
-            padding: '10px 18px',
-            fontSize: '14px',
-            fontWeight: 600,
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'receipts' ? '2px solid #6e472a' : '2px solid transparent',
-            color: activeTab === 'receipts' ? '#6e472a' : '#6e665e',
-            cursor: 'pointer'
-          }}
+          className={`admin-ledger-tab ${activeTab === 'receipts' ? 'active' : ''}`}
           onClick={() => setActiveTab('receipts')}
         >
-          Biên lai đã thu ({receipts.length})
+          Receipts ({receipts.length})
         </button>
         <button
           type="button"
-          style={{
-            padding: '10px 18px',
-            fontSize: '14px',
-            fontWeight: 600,
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'outstanding' ? '2px solid #6e472a' : '2px solid transparent',
-            color: activeTab === 'outstanding' ? '#6e472a' : '#6e665e',
-            cursor: 'pointer'
-          }}
+          className={`admin-ledger-tab ${activeTab === 'outstanding' ? 'active' : ''}`}
           onClick={() => setActiveTab('outstanding')}
         >
-          Khoản nợ chưa thanh toán ({charges.length})
+          Outstanding ({charges.length})
         </button>
       </div>
 
       {loading ? (
-        <p style={{ color: '#6e665e' }}>Đang tải sổ cái...</p>
+        <p style={{ color: '#6e665e' }}>Loading ledger...</p>
       ) : activeTab === 'receipts' ? (
-        <div>
+        <div className="admin-ledger-receipts">
           {/* Filters */}
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+          <div className="admin-ledger-filters">
             <input
               type="text"
-              placeholder="Tìm theo số biên lai, tên sinh viên hoặc MSSV..."
+              placeholder="Search receipt number, student, or ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                flex: 1,
-                padding: '8px 12px',
-                borderRadius: '8px',
-                border: '1px solid #dcd3c6',
-                fontSize: '14px'
-              }}
             />
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '8px',
-                border: '1px solid #dcd3c6',
-                fontSize: '14px'
-              }}
             >
               <option value="all">Tất cả loại phí</option>
               <option value="fine">Phí phạt (Fine)</option>
@@ -196,10 +161,10 @@ export function FinancialLedgerPage() {
             </select>
           </div>
 
-          <div style={{ background: '#ffffff', border: '1px solid #ede6db', borderRadius: '12px', overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
+          <div className="admin-ledger-table-wrap">
+            <table className="admin-ledger-table">
               <thead>
-                <tr style={{ background: '#faf6f0', borderBottom: '1px solid #ede6db', color: '#52473f', fontSize: '13px' }}>
+                <tr style={{ background: '#faf6f0', borderBottom: '1px solid #ede6db', color: '#52473f', fontSize: '16px' }}>
                   <th style={{ padding: '12px 16px' }}>Số biên lai</th>
                   <th style={{ padding: '12px 16px' }}>Người nộp</th>
                   <th style={{ padding: '12px 16px' }}>Loại phí</th>
@@ -223,18 +188,18 @@ export function FinancialLedgerPage() {
                       </td>
                       <td style={{ padding: '12px 16px' }}>
                         <div>{rc.profiles?.full_name || 'N/A'}</div>
-                        <div style={{ fontSize: '12px', color: '#8c827a' }}>{rc.profiles?.student_id || rc.profiles?.email}</div>
+                        <div style={{ fontSize: '14px', color: '#8c827a' }}>{rc.profiles?.student_id || rc.profiles?.email}</div>
                       </td>
                       <td style={{ padding: '12px 16px' }}>
                         <span style={{ textTransform: 'capitalize' }}>{rc.type}</span>
                       </td>
                       <td style={{ padding: '12px 16px' }}>
-                        <span style={{ fontSize: '13px', color: '#6e665e' }}>{rc.method}</span>
+                        <span style={{ fontSize: '16px', color: '#6e665e' }}>{rc.method}</span>
                       </td>
                       <td style={{ padding: '12px 16px', fontWeight: 700, color: '#2e7d32' }}>
                         +{Number(rc.amount).toLocaleString('vi-VN')} đ
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6e665e' }}>
+                      <td style={{ padding: '12px 16px', fontSize: '16px', color: '#6e665e' }}>
                         {new Date(rc.created_at).toLocaleString('vi-VN')}
                       </td>
                     </tr>
@@ -245,10 +210,10 @@ export function FinancialLedgerPage() {
           </div>
         </div>
       ) : (
-        <div style={{ background: '#ffffff', border: '1px solid #ede6db', borderRadius: '12px', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
+        <div className="admin-ledger-table-wrap">
+        <table className="admin-ledger-table">
             <thead>
-              <tr style={{ background: '#faf6f0', borderBottom: '1px solid #ede6db', color: '#52473f', fontSize: '13px' }}>
+              <tr style={{ background: '#faf6f0', borderBottom: '1px solid #ede6db', color: '#52473f', fontSize: '16px' }}>
                 <th style={{ padding: '12px 16px' }}>Sinh viên</th>
                 <th style={{ padding: '12px 16px' }}>Loại nợ</th>
                 <th style={{ padding: '12px 16px' }}>Ghi chú</th>
@@ -268,18 +233,18 @@ export function FinancialLedgerPage() {
                   <tr key={ch.id} style={{ borderBottom: '1px solid #f3eee6' }}>
                     <td style={{ padding: '12px 16px' }}>
                       <div style={{ fontWeight: 600 }}>{ch.profiles?.full_name || 'N/A'}</div>
-                      <div style={{ fontSize: '12px', color: '#8c827a' }}>{ch.profiles?.student_id || ch.profiles?.email}</div>
+                      <div style={{ fontSize: '14px', color: '#8c827a' }}>{ch.profiles?.student_id || ch.profiles?.email}</div>
                     </td>
                     <td style={{ padding: '12px 16px', textTransform: 'capitalize' }}>
                       {ch.type}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '13px', color: '#52473f' }}>
+                    <td style={{ padding: '12px 16px', fontSize: '16px', color: '#52473f' }}>
                       {ch.notes || '—'}
                     </td>
                     <td style={{ padding: '12px 16px', fontWeight: 700, color: '#b3261e' }}>
                       {Number(ch.amount).toLocaleString('vi-VN')} đ
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6e665e' }}>
+                    <td style={{ padding: '12px 16px', fontSize: '16px', color: '#6e665e' }}>
                       {new Date(ch.created_at).toLocaleDateString('vi-VN')}
                     </td>
                   </tr>

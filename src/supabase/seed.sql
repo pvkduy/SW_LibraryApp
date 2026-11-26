@@ -262,7 +262,7 @@ where barcode = '9780132350884-01';
 
 -- Item 2: Borrowed (Hóa học đại cương - on loan)
 insert into public.loan_items (
-  id, uid, book_id, copy_id, source, status, is_premium, duration_days, handover_at, due_at, condition_out, created_at, updated_at
+  id, uid, book_id, copy_id, source, status, is_premium, duration_days, handover_at, due_at, due_date, condition_out, created_at, updated_at
 )
 select
   'bbbb2222-2222-2222-2222-222222222222',
@@ -274,6 +274,7 @@ select
   true,
   14,
   now() - interval '3 days',
+  (now() + interval '11 days')::date + time '23:59:59',
   (now() + interval '11 days')::date + time '23:59:59',
   'good',
   now() - interval '3 days', now()
@@ -288,7 +289,7 @@ where barcode = '9786040000001-01';
 
 -- Item 3: Overdue 3 days (Họa tiết dân tộc - overdue)
 insert into public.loan_items (
-  id, uid, book_id, copy_id, source, status, duration_days, handover_at, due_at, condition_out, created_at, updated_at
+  id, uid, book_id, copy_id, source, status, duration_days, handover_at, due_at, due_date, condition_out, created_at, updated_at
 )
 select
   'bbbb3333-3333-3333-3333-333333333333',
@@ -299,6 +300,7 @@ select
   'overdue',
   14,
   now() - interval '17 days',
+  (now() - interval '3 days')::date + time '23:59:59',
   (now() - interval '3 days')::date + time '23:59:59',
   'good',
   now() - interval '17 days', now()
@@ -490,7 +492,7 @@ values
     90.5,
     89
   )
-on conflict (isbn13) do update set
+on conflict (isbn13) where isbn13 is not null do update set
   pages = excluded.pages,
   description = excluded.description,
   shelf_location = excluded.shelf_location;

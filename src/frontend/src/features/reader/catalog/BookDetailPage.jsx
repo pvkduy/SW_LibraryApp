@@ -81,7 +81,7 @@ export function BookDetailPage({ bookId, profile, onBack, onOpenCart, onNavigate
           .order('barcode', { ascending: true }),
         supabase
           .from('book_reviews')
-          .select('id, rating, comment, created_at, profiles ( full_name )')
+          .select('id, rating, headline, comment, created_at, profiles ( full_name )')
           .eq('book_id', bookId)
           .order('created_at', { ascending: false })
           .limit(20),
@@ -572,6 +572,11 @@ export function BookDetailPage({ bookId, profile, onBack, onOpenCart, onNavigate
                           {'★'.repeat(rev.rating)}
                         </span>
                       </div>
+                      {rev.headline && (
+                        <strong style={{ display: 'block', margin: '2px 0 4px', fontSize: '13px', color: '#241e19' }}>
+                          {rev.headline}
+                        </strong>
+                      )}
                       {rev.comment && (
                         <p style={{ margin: 0, fontSize: '12.5px', color: '#5b524a', lineHeight: 1.45 }}>
                           &ldquo;{rev.comment}&rdquo;

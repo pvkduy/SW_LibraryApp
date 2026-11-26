@@ -111,14 +111,18 @@ function ReaderWorkspace({ user, profile, onRequestLogout }) {
       )}
 
       {readerTab === 'loans' && (
-        <div className="sh-container">
-          <LoansPage />
+        <div className="sh-container my-loans-container">
+          <LoansPage
+            maxItems={maxItems}
+            profile={profile}
+            onProfileRefresh={() => window.location.reload()}
+          />
         </div>
       )}
 
       {readerTab === 'fines' && (
         <div className="sh-container">
-          <FinesPage onProfileRefresh={() => window.location.reload()} />
+          <FinesPage profile={profile} onProfileRefresh={() => window.location.reload()} />
         </div>
       )}
 

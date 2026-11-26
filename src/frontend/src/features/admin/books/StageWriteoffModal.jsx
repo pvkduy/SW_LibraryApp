@@ -66,7 +66,7 @@ export function StageWriteoffModal({ copies, alreadyStagedIds = [], onClose, onS
             justifyContent: 'space-between',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', fontWeight: 800, color: '#241e19' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '19px', fontWeight: 800, color: '#241e19' }}>
             <span style={{ color: '#6e472a' }}>▣</span>
             Stage Copy for Write-off
           </div>
@@ -74,7 +74,7 @@ export function StageWriteoffModal({ copies, alreadyStagedIds = [], onClose, onS
             type="button"
             onClick={onClose}
             aria-label="Close modal"
-            style={{ background: 'none', border: 'none', fontSize: '20px', color: '#7c736a', cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', fontSize: '24px', color: '#7c736a', cursor: 'pointer' }}
           >
             ×
           </button>
@@ -111,10 +111,10 @@ export function StageWriteoffModal({ copies, alreadyStagedIds = [], onClose, onS
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
                     <div className="ab-thumb">BK</div>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#241e19' }}>
+                      <div style={{ fontSize: '16px', fontWeight: 700, color: '#241e19' }}>
                         {selectedCopy.books?.title || 'Untitled Book'}
                       </div>
-                      <div style={{ fontSize: '11.5px', color: '#6e665e', fontFamily: 'monospace' }}>
+                      <div style={{ fontSize: '14px', color: '#6e665e', fontFamily: 'monospace' }}>
                         {selectedCopy.barcode} • {selectedCopy.shelf_location || 'Main Shelf'}
                       </div>
                     </div>
@@ -136,14 +136,14 @@ export function StageWriteoffModal({ copies, alreadyStagedIds = [], onClose, onS
                   <button
                     type="button"
                     className="ab-btn-brown"
-                    style={{ width: '100%', height: '32px', fontSize: '12px' }}
+                    style={{ width: '100%', height: '32px', fontSize: '14px' }}
                     onClick={() => setSelectedCopyId(selectedCopy.id)}
                   >
                     ✓ Selected for Staging
                   </button>
                 </>
               ) : (
-                <p style={{ margin: 0, fontSize: '12px', color: '#6e665e' }}>
+                <p style={{ margin: 0, fontSize: '14px', color: '#6e665e' }}>
                   No eligible (available/damaged) copy matches this search.
                 </p>
               )}
@@ -163,10 +163,10 @@ export function StageWriteoffModal({ copies, alreadyStagedIds = [], onClose, onS
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
                     <div className="ab-thumb" style={{ background: '#7c5347' }}>BK</div>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#241e19' }}>
+                      <div style={{ fontSize: '16px', fontWeight: 700, color: '#241e19' }}>
                         {conflictSample.books?.title || 'Checked Out Copy'}
                       </div>
-                      <div style={{ fontSize: '11.5px', color: '#6e665e', fontFamily: 'monospace' }}>
+                      <div style={{ fontSize: '14px', color: '#6e665e', fontFamily: 'monospace' }}>
                         {conflictSample.barcode} • Active Circulation
                       </div>
                     </div>
@@ -177,7 +177,7 @@ export function StageWriteoffModal({ copies, alreadyStagedIds = [], onClose, onS
                       color: '#b91c1c',
                       borderRadius: '8px',
                       padding: '7px 10px',
-                      fontSize: '11.5px',
+                      fontSize: '14px',
                       fontWeight: 700,
                     }}
                   >
@@ -185,7 +185,7 @@ export function StageWriteoffModal({ copies, alreadyStagedIds = [], onClose, onS
                   </div>
                 </>
               ) : (
-                <p style={{ margin: 0, fontSize: '12px', color: '#7c736a' }}>
+                <p style={{ margin: 0, fontSize: '14px', color: '#7c736a' }}>
                   No conflicting active loans or holds matched your query.
                 </p>
               )}
@@ -206,7 +206,7 @@ export function StageWriteoffModal({ copies, alreadyStagedIds = [], onClose, onS
                 ● Staging Options &amp; Condition Assessment for Selected: {selectedCopy.barcode}
               </div>
 
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#6e665e', marginBottom: '6px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#6e665e', marginBottom: '6px' }}>
                 TARGET COPY STATE POST-WRITE-OFF
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
@@ -217,8 +217,8 @@ export function StageWriteoffModal({ copies, alreadyStagedIds = [], onClose, onS
                 >
                   <span className="ab-radio-dot" />
                   <div>
-                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#241e19' }}>Retired</div>
-                    <div style={{ fontSize: '11px', color: '#7c736a' }}>Permanently withdrawn from catalog</div>
+                    <div style={{ fontSize: '16px', fontWeight: 700, color: '#241e19' }}>Retired</div>
+                    <div style={{ fontSize: '13px', color: '#7c736a' }}>Permanently withdrawn from catalog</div>
                   </div>
                 </button>
                 <button
@@ -228,13 +228,13 @@ export function StageWriteoffModal({ copies, alreadyStagedIds = [], onClose, onS
                 >
                   <span className="ab-radio-dot" />
                   <div>
-                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#241e19' }}>Lost</div>
-                    <div style={{ fontSize: '11px', color: '#7c736a' }}>Unrecovered copy written off as lost</div>
+                    <div style={{ fontSize: '16px', fontWeight: 700, color: '#241e19' }}>Lost</div>
+                    <div style={{ fontSize: '13px', color: '#7c736a' }}>Unrecovered copy written off as lost</div>
                   </div>
                 </button>
               </div>
 
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#6e665e', marginBottom: '4px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#6e665e', marginBottom: '4px' }}>
                 PHYSICAL COPY ASSESSMENT NOTES (SAVED TO AUDIT LOG)
               </div>
               <input
@@ -247,7 +247,7 @@ export function StageWriteoffModal({ copies, alreadyStagedIds = [], onClose, onS
                   borderRadius: '8px',
                   border: '1px solid #dcd3c5',
                   padding: '0 10px',
-                  fontSize: '12.5px',
+                  fontSize: '15px',
                   marginBottom: '12px',
                   boxSizing: 'border-box',
                   background: '#ffffff',
@@ -255,8 +255,8 @@ export function StageWriteoffModal({ copies, alreadyStagedIds = [], onClose, onS
               />
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 700, color: '#6e665e' }}>EVIDENCE ATTACHMENT</span>
-                <span style={{ fontSize: '11px', color: '#8c8277' }}>Mandatory</span>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#6e665e' }}>EVIDENCE ATTACHMENT</span>
+                <span style={{ fontSize: '13px', color: '#8c8277' }}>Mandatory</span>
               </div>
               <div
                 style={{
@@ -276,12 +276,12 @@ export function StageWriteoffModal({ copies, alreadyStagedIds = [], onClose, onS
                     type="text"
                     value={evidenceFile}
                     onChange={(e) => setEvidenceFile(e.target.value)}
-                    style={{ border: 'none', outline: 'none', fontSize: '12.5px', fontWeight: 600, flex: 1 }}
+                    style={{ border: 'none', outline: 'none', fontSize: '15px', fontWeight: 600, flex: 1 }}
                   />
                 </div>
                 <label
                   style={{
-                    fontSize: '11px',
+                    fontSize: '13px',
                     fontWeight: 700,
                     color: '#1e7e34',
                     background: '#e6f4ea',
@@ -318,7 +318,7 @@ export function StageWriteoffModal({ copies, alreadyStagedIds = [], onClose, onS
             gap: '12px',
           }}
         >
-          <span style={{ fontSize: '11.5px', color: '#7c736a' }}>
+          <span style={{ fontSize: '14px', color: '#7c736a' }}>
             Staging does not immediately retire the copy. Stock is mutated only when slip is finalized.
           </span>
           <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>

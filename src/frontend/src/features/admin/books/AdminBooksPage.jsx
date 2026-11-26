@@ -560,7 +560,7 @@ export function AdminBooksPage() {
           style={{
             padding: '10px 14px',
             borderRadius: '10px',
-            fontSize: '13px',
+            fontSize: '16px',
             fontWeight: 600,
             background: notice.type === 'error' ? '#fee2e2' : '#dcfce7',
             color: notice.type === 'error' ? '#b91c1c' : '#15803d',
@@ -688,13 +688,13 @@ export function AdminBooksPage() {
                                     {book.title}
                                     {book.status === 'draft' && <span className="ab-pill ab-pill-draft">DRAFT</span>}
                                   </div>
-                                  <div style={{ fontSize: '11.5px', color: '#7c736a' }}>
+                                  <div style={{ fontSize: '14px', color: '#7c736a' }}>
                                     {book.authors?.join(', ') || 'Unknown Author'}
                                   </div>
                                 </div>
                               </div>
                             </td>
-                            <td style={{ fontFamily: 'monospace', fontSize: '11.5px', color: '#5b524a' }}>
+                            <td style={{ fontFamily: 'monospace', fontSize: '14px', color: '#5b524a' }}>
                               {book.isbn13 || '—'}
                             </td>
                             <td>
@@ -705,7 +705,7 @@ export function AdminBooksPage() {
                             <td style={{ fontWeight: 700 }}>
                               {book.available_copies} / {book.total_copies}
                             </td>
-                            <td style={{ fontSize: '11.5px', color: '#6e665e' }}>
+                            <td style={{ fontSize: '14px', color: '#6e665e' }}>
                               {book.shelf_location || '—'}
                             </td>
                           </tr>
@@ -728,7 +728,7 @@ export function AdminBooksPage() {
               <aside className="ab-panel ab-panel-pad">
                 {/* Book Top Summary */}
                 <div style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>
-                  <div className="ab-thumb" style={{ width: '58px', height: '78px', fontSize: '14px' }}>
+                  <div className="ab-thumb" style={{ width: '58px', height: '78px', fontSize: '17px' }}>
                     {(selectedBook.title || 'BK').slice(0, 2).toUpperCase()}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -742,16 +742,16 @@ export function AdminBooksPage() {
                         {(selectedBook.available_copies ?? 0) > 0 ? 'AVAILABLE' : 'ALL ON LOAN'}
                       </span>
                     </div>
-                    <h3 style={{ margin: '0 0 2px', fontSize: '15.5px', fontWeight: 800, color: '#241e19' }}>
+                    <h3 style={{ margin: '0 0 2px', fontSize: '19px', fontWeight: 800, color: '#241e19' }}>
                       {selectedBook.title}
                     </h3>
-                    <div style={{ fontSize: '12px', color: '#6e665e', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '14px', color: '#6e665e', marginBottom: '4px' }}>
                       {selectedBook.authors?.join(', ')}
                     </div>
                     <p
                       style={{
                         margin: 0,
-                        fontSize: '11.5px',
+                        fontSize: '14px',
                         color: '#8c8277',
                         display: '-webkit-box',
                         WebkitLineClamp: 2,
@@ -770,7 +770,7 @@ export function AdminBooksPage() {
                   <button
                     type="button"
                     onClick={() => openEditBook(selectedBook)}
-                    style={{ background: 'none', border: 'none', color: '#6e472a', fontWeight: 700, fontSize: '11.5px', cursor: 'pointer' }}
+                    style={{ background: 'none', border: 'none', color: '#6e472a', fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}
                   >
                     Edit ↗
                   </button>
@@ -817,8 +817,8 @@ export function AdminBooksPage() {
                   >
                     <span className="ab-radio-dot" />
                     <div>
-                      <div style={{ fontSize: '12.5px', fontWeight: 700 }}>Standard</div>
-                      <div style={{ fontSize: '10.5px', color: '#7c736a' }}>Free loan · 7–14d</div>
+                      <div style={{ fontSize: '15px', fontWeight: 700 }}>Standard</div>
+                      <div style={{ fontSize: '13px', color: '#7c736a' }}>Free loan · 7–14d</div>
                     </div>
                   </button>
                   <button
@@ -829,8 +829,8 @@ export function AdminBooksPage() {
                   >
                     <span className="ab-radio-dot" />
                     <div>
-                      <div style={{ fontSize: '12.5px', fontWeight: 700 }}>Premium Tier</div>
-                      <div style={{ fontSize: '10.5px', color: '#7c736a' }}>5.000₫ / 7d · Priority</div>
+                      <div style={{ fontSize: '15px', fontWeight: 700 }}>Premium Tier</div>
+                      <div style={{ fontSize: '13px', color: '#7c736a' }}>5.000₫ / 7d · Priority</div>
                     </div>
                   </button>
                 </div>
@@ -839,7 +839,7 @@ export function AdminBooksPage() {
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
-                    fontSize: '12px',
+                    fontSize: '14px',
                     padding: '8px 10px',
                     background: '#faf7f2',
                     borderRadius: '8px',
@@ -861,7 +861,7 @@ export function AdminBooksPage() {
                       setLookupQuery(selectedBook.title)
                       setActiveTab('copies')
                     }}
-                    style={{ background: 'none', border: 'none', color: '#6e472a', fontWeight: 700, fontSize: '11px', cursor: 'pointer' }}
+                    style={{ background: 'none', border: 'none', color: '#6e472a', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}
                   >
                     View All Copies →
                   </button>
@@ -869,7 +869,7 @@ export function AdminBooksPage() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
                   {selectedBookCopies.length === 0 ? (
-                    <div style={{ fontSize: '12px', color: '#8c8277' }}>No physical copies registered.</div>
+                    <div style={{ fontSize: '14px', color: '#8c8277' }}>No physical copies registered.</div>
                   ) : (
                     selectedBookCopies.slice(0, 4).map((c) => (
                       <div
@@ -882,12 +882,12 @@ export function AdminBooksPage() {
                           background: '#faf8f5',
                           border: '1px solid #ede6db',
                           borderRadius: '8px',
-                          fontSize: '12px',
+                          fontSize: '14px',
                         }}
                       >
                         <div>
                           <strong style={{ fontFamily: 'monospace' }}>{c.barcode}</strong>
-                          <div style={{ fontSize: '11px', color: '#7c736a' }}>{c.shelf_location || selectedBook.shelf_location}</div>
+                          <div style={{ fontSize: '13px', color: '#7c736a' }}>{c.shelf_location || selectedBook.shelf_location}</div>
                         </div>
                         <span className={`ab-pill ab-pill-${c.status}`}>{c.status}</span>
                       </div>
@@ -1025,7 +1025,7 @@ export function AdminBooksPage() {
                             </td>
                             <td>
                               <div style={{ fontWeight: 700, color: '#241e19' }}>{copy.books?.title || '—'}</div>
-                              <div style={{ fontSize: '11px', color: '#7c736a' }}>
+                              <div style={{ fontSize: '13px', color: '#7c736a' }}>
                                 {copy.books?.authors?.join(', ')}
                               </div>
                             </td>
@@ -1034,7 +1034,7 @@ export function AdminBooksPage() {
                                 {copy.status.replace('_', ' ')}
                               </span>
                             </td>
-                            <td style={{ fontSize: '11.5px', color: '#5b524a' }}>
+                            <td style={{ fontSize: '14px', color: '#5b524a' }}>
                               {copy.shelf_location || copy.books?.shelf_location || '—'}
                             </td>
                             <td style={{ textTransform: 'capitalize', fontWeight: 600, color: copy.condition === 'damaged' ? '#b91c1c' : '#4b423b' }}>
@@ -1052,7 +1052,7 @@ export function AdminBooksPage() {
                                   border: 'none',
                                   color: '#6e472a',
                                   fontWeight: 700,
-                                  fontSize: '11.5px',
+                                  fontSize: '14px',
                                   cursor: 'pointer',
                                 }}
                               >
@@ -1078,8 +1078,8 @@ export function AdminBooksPage() {
             {selectedCopy && (
               <aside className="ab-panel ab-panel-pad">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <h3 style={{ margin: 0, fontSize: '15.5px', fontWeight: 800 }}>Change Copy Status</h3>
-                  <span style={{ fontFamily: 'monospace', fontSize: '11.5px', background: '#f5efe6', color: '#6e472a', padding: '3px 8px', borderRadius: '6px', fontWeight: 700 }}>
+                  <h3 style={{ margin: 0, fontSize: '19px', fontWeight: 800 }}>Change Copy Status</h3>
+                  <span style={{ fontFamily: 'monospace', fontSize: '14px', background: '#f5efe6', color: '#6e472a', padding: '3px 8px', borderRadius: '6px', fontWeight: 700 }}>
                     {selectedCopy.barcode}
                   </span>
                 </div>
@@ -1095,10 +1095,10 @@ export function AdminBooksPage() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                    <strong style={{ fontSize: '13.5px', color: '#241e19' }}>{selectedCopy.books?.title}</strong>
+                    <strong style={{ fontSize: '16px', color: '#241e19' }}>{selectedCopy.books?.title}</strong>
                     <span className={`ab-pill ab-pill-${selectedCopy.status}`}>{selectedCopy.status.replace('_', ' ')}</span>
                   </div>
-                  <div style={{ fontSize: '11.5px', color: '#7c736a', marginTop: '4px' }}>
+                  <div style={{ fontSize: '14px', color: '#7c736a', marginTop: '4px' }}>
                     📍 Current Location: {selectedCopy.shelf_location || selectedCopy.books?.shelf_location || 'Main Shelf'}
                   </div>
                 </div>
@@ -1119,15 +1119,15 @@ export function AdminBooksPage() {
                     >
                       <span className="ab-radio-dot" />
                       <div>
-                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#241e19' }}>{opt.title}</div>
-                        <div style={{ fontSize: '11px', color: '#7c736a' }}>{opt.desc}</div>
+                        <div style={{ fontSize: '16px', fontWeight: 700, color: '#241e19' }}>{opt.title}</div>
+                        <div style={{ fontSize: '13px', color: '#7c736a' }}>{opt.desc}</div>
                       </div>
                     </button>
                   ))}
                 </div>
 
                 <div style={{ marginBottom: '12px' }}>
-                  <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#5b524a', marginBottom: '4px' }}>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: '#5b524a', marginBottom: '4px' }}>
                     Destination Shelf
                   </label>
                   <input
@@ -1141,14 +1141,14 @@ export function AdminBooksPage() {
                       borderRadius: '8px',
                       border: '1px solid #dcd3c5',
                       padding: '0 10px',
-                      fontSize: '12.5px',
+                      fontSize: '15px',
                       boxSizing: 'border-box',
                     }}
                   />
                 </div>
 
                 <div style={{ marginBottom: '14px' }}>
-                  <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#5b524a', marginBottom: '4px' }}>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: '#5b524a', marginBottom: '4px' }}>
                     Mandatory Reason for Status Change *
                   </label>
                   <textarea
@@ -1161,7 +1161,7 @@ export function AdminBooksPage() {
                       borderRadius: '8px',
                       border: '1px solid #dcd3c5',
                       padding: '8px 10px',
-                      fontSize: '12.5px',
+                      fontSize: '15px',
                       boxSizing: 'border-box',
                     }}
                   />
@@ -1226,7 +1226,7 @@ export function AdminBooksPage() {
                 ) : (
                   statusLogs.map((log) => (
                     <tr key={log.id}>
-                      <td style={{ fontSize: '11.5px', color: '#7c736a' }}>
+                      <td style={{ fontSize: '14px', color: '#7c736a' }}>
                         {new Date(log.created_at).toLocaleString()}
                       </td>
                       <td style={{ fontFamily: 'monospace', fontWeight: 700 }}>{log.copies?.barcode || '—'}</td>
@@ -1281,7 +1281,7 @@ export function AdminBooksPage() {
                 key={pill.id}
                 type="button"
                 className={slipFilter === pill.id ? 'ab-btn-brown' : 'ab-btn-outline'}
-                style={{ height: '32px', fontSize: '12px', borderRadius: '999px' }}
+                style={{ height: '32px', fontSize: '14px', borderRadius: '999px' }}
                 onClick={() => setSlipFilter(pill.id)}
               >
                 {pill.label}
@@ -1308,17 +1308,17 @@ export function AdminBooksPage() {
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <strong style={{ fontSize: '14.5px', fontFamily: 'monospace' }}>{slip.slip_number}</strong>
+                          <strong style={{ fontSize: '17px', fontFamily: 'monospace' }}>{slip.slip_number}</strong>
                           <span className={`ab-pill ${isDraft ? 'ab-pill-draft' : 'ab-pill-completed'}`}>
                             {isDraft ? 'DRAFT · IN PROGRESS' : '✓ COMPLETED'}
                           </span>
                         </div>
-                        <span style={{ fontSize: '11.5px', color: '#8c8277' }}>
+                        <span style={{ fontSize: '14px', color: '#8c8277' }}>
                           {new Date(slip.createdAt).toLocaleDateString()}
                         </span>
                       </div>
 
-                      <div style={{ fontSize: '12.5px', color: '#5b524a', marginBottom: '8px' }}>
+                      <div style={{ fontSize: '15px', color: '#5b524a', marginBottom: '8px' }}>
                         {slip.stagedCopies.length} {slip.stagedCopies.length === 1 ? 'copy' : 'copies'}{' '}
                         {isDraft ? 'staged' : 'retired'}
                         {isDraft && !slip.evidenceFilename && (
@@ -1329,12 +1329,12 @@ export function AdminBooksPage() {
                       </div>
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: '1px solid #f2ece3' }}>
-                        <span style={{ fontSize: '11.5px', color: '#7c736a' }}>
+                        <span style={{ fontSize: '14px', color: '#7c736a' }}>
                           {isDraft ? `Created by ${slip.createdBy}` : `Signed off by ${slip.createdBy}`}
                         </span>
                         <span
                           className={isDraft ? 'ab-btn-brown' : 'ab-btn-outline'}
-                          style={{ height: '28px', padding: '0 10px', fontSize: '11.5px' }}
+                          style={{ height: '28px', padding: '0 10px', fontSize: '14px' }}
                         >
                           {isDraft ? '✎ Edit Draft' : 'View Slip & History'}
                         </span>
@@ -1350,10 +1350,10 @@ export function AdminBooksPage() {
               <aside className="ab-panel ab-panel-pad">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, fontFamily: 'monospace' }}>
+                    <h3 style={{ margin: 0, fontSize: '19px', fontWeight: 800, fontFamily: 'monospace' }}>
                       {selectedSlip.slip_number}
                     </h3>
-                    <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#8c8277', letterSpacing: '0.5px', marginTop: '2px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#8c8277', letterSpacing: '0.5px', marginTop: '2px' }}>
                       {selectedSlip.status === 'draft' ? 'DRAFT INSPECTION & EXECUTION' : 'FINALIZED ARCHIVAL RECORD'}
                     </div>
                   </div>
@@ -1374,7 +1374,7 @@ export function AdminBooksPage() {
                       onClick={() => updateActiveDraft({ reason: r.id })}
                     >
                       <span className="ab-radio-dot" />
-                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#241e19' }}>{r.label}</span>
+                      <span style={{ fontSize: '14px', fontWeight: 600, color: '#241e19' }}>{r.label}</span>
                     </button>
                   ))}
                 </div>
@@ -1386,7 +1386,7 @@ export function AdminBooksPage() {
                     <button
                       type="button"
                       onClick={() => setShowStageModal(true)}
-                      style={{ background: 'none', border: 'none', color: '#6e472a', fontWeight: 700, fontSize: '11.5px', cursor: 'pointer' }}
+                      style={{ background: 'none', border: 'none', color: '#6e472a', fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}
                     >
                       + Stage Another Copy
                     </button>
@@ -1401,7 +1401,7 @@ export function AdminBooksPage() {
                         borderRadius: '10px',
                         padding: '14px',
                         textAlign: 'center',
-                        fontSize: '12px',
+                        fontSize: '14px',
                         color: '#7c736a',
                       }}
                     >
@@ -1430,11 +1430,11 @@ export function AdminBooksPage() {
                         }}
                       >
                         <div>
-                          <div style={{ fontSize: '13px', fontWeight: 700 }}>
+                          <div style={{ fontSize: '16px', fontWeight: 700 }}>
                             {sc.copy.books?.title || 'Book Copy'} •{' '}
                             <span style={{ fontFamily: 'monospace', color: '#6e472a' }}>{sc.copy.barcode}</span>
                           </div>
-                          <div style={{ fontSize: '11px', color: '#7c736a', marginTop: '2px' }}>
+                          <div style={{ fontSize: '13px', color: '#7c736a', marginTop: '2px' }}>
                             Condition: <strong style={{ textTransform: 'capitalize' }}>{sc.copy.condition}</strong> • Target:{' '}
                             <strong style={{ textTransform: 'uppercase' }}>{sc.targetState}</strong>
                           </div>
@@ -1447,7 +1447,7 @@ export function AdminBooksPage() {
                                 stagedCopies: selectedSlip.stagedCopies.filter((x) => x.copy.id !== sc.copy.id),
                               })
                             }
-                            style={{ background: 'none', border: 'none', fontSize: '16px', color: '#8c8277', cursor: 'pointer' }}
+                            style={{ background: 'none', border: 'none', fontSize: '19px', color: '#8c8277', cursor: 'pointer' }}
                           >
                             ×
                           </button>
@@ -1473,17 +1473,17 @@ export function AdminBooksPage() {
                   }}
                 >
                   <div>
-                    <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#241e19' }}>
+                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#241e19' }}>
                       📷 {selectedSlip.evidenceFilename || 'No photo attached'}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#7c736a' }}>
+                    <div style={{ fontSize: '13px', color: '#7c736a' }}>
                       Verified Evidence Attachment (Archival Log)
                     </div>
                   </div>
                   {selectedSlip.status === 'draft' && (
                     <label
                       style={{
-                        fontSize: '11.5px',
+                        fontSize: '14px',
                         fontWeight: 700,
                         color: '#6e472a',
                         cursor: 'pointer',
@@ -1505,7 +1505,7 @@ export function AdminBooksPage() {
                 </div>
 
                 <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#6e665e', marginBottom: '4px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#6e665e', marginBottom: '4px' }}>
                     Detailed Assessment Notes
                   </label>
                   <textarea
@@ -1519,7 +1519,7 @@ export function AdminBooksPage() {
                       borderRadius: '8px',
                       border: '1px solid #dcd3c5',
                       padding: '8px 10px',
-                      fontSize: '12.5px',
+                      fontSize: '15px',
                       boxSizing: 'border-box',
                     }}
                   />
@@ -1573,7 +1573,7 @@ export function AdminBooksPage() {
             <h3 style={{ margin: '0 0 14px' }}>{bookForm.id ? 'Edit Book Metadata' : 'Add New Catalog Title'}</h3>
             <form onSubmit={handleSaveBook} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ fontSize: '11.5px', fontWeight: 700 }}>Title *</label>
+                <label style={{ fontSize: '14px', fontWeight: 700 }}>Title *</label>
                 <input
                   required
                   value={bookForm.title}
@@ -1582,7 +1582,7 @@ export function AdminBooksPage() {
                 />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ fontSize: '11.5px', fontWeight: 700 }}>Authors (comma separated)</label>
+                <label style={{ fontSize: '14px', fontWeight: 700 }}>Authors (comma separated)</label>
                 <input
                   value={bookForm.authors}
                   onChange={(e) => setBookForm({ ...bookForm, authors: e.target.value })}
@@ -1590,7 +1590,7 @@ export function AdminBooksPage() {
                 />
               </div>
               <div>
-                <label style={{ fontSize: '11.5px', fontWeight: 700 }}>ISBN-13</label>
+                <label style={{ fontSize: '14px', fontWeight: 700 }}>ISBN-13</label>
                 <input
                   value={bookForm.isbn13}
                   onChange={(e) => setBookForm({ ...bookForm, isbn13: e.target.value })}
@@ -1598,7 +1598,7 @@ export function AdminBooksPage() {
                 />
               </div>
               <div>
-                <label style={{ fontSize: '11.5px', fontWeight: 700 }}>Publisher</label>
+                <label style={{ fontSize: '14px', fontWeight: 700 }}>Publisher</label>
                 <input
                   value={bookForm.publisher}
                   onChange={(e) => setBookForm({ ...bookForm, publisher: e.target.value })}
@@ -1606,7 +1606,7 @@ export function AdminBooksPage() {
                 />
               </div>
               <div>
-                <label style={{ fontSize: '11.5px', fontWeight: 700 }}>Category</label>
+                <label style={{ fontSize: '14px', fontWeight: 700 }}>Category</label>
                 <select
                   value={bookForm.category}
                   onChange={(e) => setBookForm({ ...bookForm, category: e.target.value })}
@@ -1621,7 +1621,7 @@ export function AdminBooksPage() {
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: '11.5px', fontWeight: 700 }}>Collection Tier</label>
+                <label style={{ fontSize: '14px', fontWeight: 700 }}>Collection Tier</label>
                 <select
                   value={bookForm.collection}
                   onChange={(e) => setBookForm({ ...bookForm, collection: e.target.value })}
@@ -1632,7 +1632,7 @@ export function AdminBooksPage() {
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: '11.5px', fontWeight: 700 }}>Shelf Location</label>
+                <label style={{ fontSize: '14px', fontWeight: 700 }}>Shelf Location</label>
                 <input
                   value={bookForm.shelf_location}
                   onChange={(e) => setBookForm({ ...bookForm, shelf_location: e.target.value })}
@@ -1640,7 +1640,7 @@ export function AdminBooksPage() {
                 />
               </div>
               <div>
-                <label style={{ fontSize: '11.5px', fontWeight: 700 }}>Status</label>
+                <label style={{ fontSize: '14px', fontWeight: 700 }}>Status</label>
                 <select
                   value={bookForm.status}
                   onChange={(e) => setBookForm({ ...bookForm, status: e.target.value })}
@@ -1651,7 +1651,7 @@ export function AdminBooksPage() {
                 </select>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ fontSize: '11.5px', fontWeight: 700 }}>Description</label>
+                <label style={{ fontSize: '14px', fontWeight: 700 }}>Description</label>
                 <textarea
                   rows={3}
                   value={bookForm.description}
@@ -1677,7 +1677,7 @@ export function AdminBooksPage() {
             <h3 style={{ margin: '0 0 14px' }}>Add Physical Copy to Title</h3>
             <form onSubmit={handleSaveCopy} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div>
-                <label style={{ fontSize: '11.5px', fontWeight: 700 }}>Book Title</label>
+                <label style={{ fontSize: '14px', fontWeight: 700 }}>Book Title</label>
                 <select
                   required
                   value={copyForm.book_id}
@@ -1690,7 +1690,7 @@ export function AdminBooksPage() {
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: '11.5px', fontWeight: 700 }}>Barcode *</label>
+                <label style={{ fontSize: '14px', fontWeight: 700 }}>Barcode *</label>
                 <input
                   required
                   value={copyForm.barcode}
@@ -1699,7 +1699,7 @@ export function AdminBooksPage() {
                 />
               </div>
               <div>
-                <label style={{ fontSize: '11.5px', fontWeight: 700 }}>Shelf Location</label>
+                <label style={{ fontSize: '14px', fontWeight: 700 }}>Shelf Location</label>
                 <input
                   value={copyForm.shelf_location}
                   onChange={(e) => setCopyForm({ ...copyForm, shelf_location: e.target.value })}
@@ -1722,15 +1722,15 @@ export function AdminBooksPage() {
         <div className="ab-modal-backdrop" onClick={() => setBarcodePreviewCopy(null)}>
           <div className="ab-modal-box" style={{ maxWidth: '340px', padding: '24px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ margin: '0 0 6px' }}>Barcode Label Preview</h3>
-            <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#7c736a' }}>{barcodePreviewCopy.books?.title}</p>
+            <p style={{ margin: '0 0 14px', fontSize: '14px', color: '#7c736a' }}>{barcodePreviewCopy.books?.title}</p>
             <div style={{ background: '#ffffff', border: '1.5px dashed #dcd3c5', borderRadius: '10px', padding: '16px', marginBottom: '16px' }}>
-              <div style={{ fontSize: '28px', letterSpacing: '3px', fontFamily: 'monospace', fontWeight: 800, color: '#18120e' }}>
+              <div style={{ fontSize: '34px', letterSpacing: '3px', fontFamily: 'monospace', fontWeight: 800, color: '#18120e' }}>
                 ||| || ||| || |||
               </div>
-              <div style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '15px', marginTop: '6px' }}>
+              <div style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '18px', marginTop: '6px' }}>
                 {barcodePreviewCopy.barcode}
               </div>
-              <div style={{ fontSize: '11px', color: '#7c736a', marginTop: '2px' }}>
+              <div style={{ fontSize: '13px', color: '#7c736a', marginTop: '2px' }}>
                 {barcodePreviewCopy.shelf_location || 'ShelfHelp Library'}
               </div>
             </div>

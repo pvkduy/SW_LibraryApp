@@ -114,7 +114,7 @@ export function QueuesPage() {
         <div className="admin-kpi-card">
           <div>
             <div className="admin-kpi-label">Hold Policy</div>
-            <div className="admin-kpi-value" style={{ fontSize: '20px' }}>
+            <div className="admin-kpi-value" style={{ fontSize: '24px' }}>
               48h FIFO
             </div>
           </div>
@@ -126,7 +126,7 @@ export function QueuesPage() {
         <div className="admin-kpi-card">
           <div>
             <div className="admin-kpi-label">Strikes Threshold</div>
-            <div className="admin-kpi-value" style={{ fontSize: '20px' }}>
+            <div className="admin-kpi-value" style={{ fontSize: '24px' }}>
               3 Strikes
             </div>
           </div>
@@ -141,7 +141,7 @@ export function QueuesPage() {
         <input
           type="text"
           placeholder="Lọc theo tên sách, sinh viên, mã số sinh viên..."
-          style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px', fontFamily: 'inherit' }}
+          style={{ border: 'none', outline: 'none', width: '100%', fontSize: '17px', fontFamily: 'inherit' }}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
@@ -159,7 +159,7 @@ export function QueuesPage() {
             backgroundColor: actionFeedback.type === 'error' ? '#fee2e2' : '#dcfce7',
             color: actionFeedback.type === 'error' ? '#991b1b' : '#166534',
             fontWeight: 600,
-            fontSize: '13px',
+            fontSize: '16px',
           }}
         >
           {actionFeedback.message}
@@ -192,23 +192,23 @@ export function QueuesPage() {
                   >
                     <td>
                       <div style={{ fontWeight: 700, color: '#241e19' }}>{res.books?.title}</div>
-                      <div style={{ fontSize: '11px', color: '#72685e' }}>
+                      <div style={{ fontSize: '13px', color: '#72685e' }}>
                         {res.books?.authors?.join(', ')} · ISBN: {res.books?.isbn13}
                       </div>
                     </td>
 
                     <td>
-                      <div style={{ fontWeight: 700, color: '#6e472a', fontSize: '14px' }}>
+                      <div style={{ fontWeight: 700, color: '#6e472a', fontSize: '17px' }}>
                         {res.status === 'ready_for_pickup' ? 'Ready (Hold)' : `#${res.queue_position || 1}`}
                       </div>
-                      <div style={{ fontSize: '11px', color: '#9d9388' }}>
+                      <div style={{ fontSize: '13px', color: '#9d9388' }}>
                         {res.status === 'ready_for_pickup' ? 'Đang giữ sách' : 'Xếp hàng chờ'}
                       </div>
                     </td>
 
                     <td>
                       <div style={{ fontWeight: 600 }}>{res.profiles?.full_name || 'Sinh viên'}</div>
-                      <div style={{ fontSize: '11px', color: '#72685e' }}>
+                      <div style={{ fontSize: '13px', color: '#72685e' }}>
                         MSSV: {res.profiles?.student_id || 'N/A'}
                         {res.profiles?.debt_outstanding > 0 && (
                           <span style={{ color: '#dc2626', fontWeight: 600, marginLeft: '4px' }}>(Nợ)</span>
@@ -220,7 +220,7 @@ export function QueuesPage() {
                       {res.status === 'ready_for_pickup' && (
                         <div>
                           <span className="admin-badge admin-badge-ready">Ready for Pickup</span>
-                          <div style={{ fontSize: '11px', color: '#92400e', marginTop: '2px' }}>
+                          <div style={{ fontSize: '13px', color: '#92400e', marginTop: '2px' }}>
                             Hạn: {res.hold_until ? new Date(res.hold_until).toLocaleDateString() : '48h'}
                           </div>
                         </div>
@@ -237,7 +237,7 @@ export function QueuesPage() {
                       <button
                         type="button"
                         className="admin-btn-outline"
-                        style={{ padding: '4px 10px', fontSize: '11px' }}
+                        style={{ padding: '4px 10px', fontSize: '13px' }}
                         onClick={(e) => {
                           e.stopPropagation()
                           setSelectedRes(res)
@@ -263,14 +263,14 @@ export function QueuesPage() {
 
         {/* Right Drawer: Queue Detail Allocation */}
         <div className="admin-drawer">
-          <div style={{ fontSize: '16px', fontWeight: 700, color: '#241e19' }}>Queue Detail Allocation</div>
+          <div style={{ fontSize: '19px', fontWeight: 700, color: '#241e19' }}>Queue Detail Allocation</div>
 
           {selectedRes ? (
             <>
               {/* Book Info */}
               <div className="admin-drawer-box">
-                <div style={{ fontWeight: 700, fontSize: '15px' }}>{selectedRes.books?.title}</div>
-                <div style={{ fontSize: '12px', color: '#72685e', marginBottom: '8px' }}>
+                <div style={{ fontWeight: 700, fontSize: '18px' }}>{selectedRes.books?.title}</div>
+                <div style={{ fontSize: '14px', color: '#72685e', marginBottom: '8px' }}>
                   {selectedRes.books?.authors?.join(', ')}
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
@@ -278,7 +278,7 @@ export function QueuesPage() {
                     {selectedRes.status === 'ready_for_pickup' ? 'Giữ tại quầy' : 'Đang chờ mượn'}
                   </span>
                   {selectedRes.copies?.barcode && (
-                    <span style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: 600 }}>
+                    <span style={{ fontSize: '13px', fontFamily: 'monospace', fontWeight: 600 }}>
                       Copy: {selectedRes.copies.barcode}
                     </span>
                   )}
@@ -288,17 +288,17 @@ export function QueuesPage() {
               {/* Patron Info */}
               <div className="admin-drawer-box">
                 <div className="admin-drawer-box-title">Thông tin bạn đọc giữ chỗ</div>
-                <div style={{ fontSize: '14px', fontWeight: 700 }}>{selectedRes.profiles?.full_name}</div>
-                <div style={{ fontSize: '12px', color: '#72685e' }}>
+                <div style={{ fontSize: '17px', fontWeight: 700 }}>{selectedRes.profiles?.full_name}</div>
+                <div style={{ fontSize: '14px', color: '#72685e' }}>
                   MSSV: {selectedRes.profiles?.student_id} · Email: {selectedRes.profiles?.email}
                 </div>
                 {selectedRes.pickup_code && (
-                  <div style={{ marginTop: '8px', fontSize: '13px', fontWeight: 700, color: '#6e472a' }}>
+                  <div style={{ marginTop: '8px', fontSize: '16px', fontWeight: 700, color: '#6e472a' }}>
                     Mã lấy sách: {selectedRes.pickup_code}
                   </div>
                 )}
                 {selectedRes.hold_until && (
-                  <div style={{ marginTop: '4px', fontSize: '12px', color: '#92400e' }}>
+                  <div style={{ marginTop: '4px', fontSize: '14px', color: '#92400e' }}>
                     Thời hạn giữ chỗ đến: {new Date(selectedRes.hold_until).toLocaleString()}
                   </div>
                 )}
@@ -318,13 +318,13 @@ export function QueuesPage() {
                       color: '#dc2626',
                       fontWeight: 700,
                       cursor: 'pointer',
-                      fontSize: '13px',
+                      fontSize: '16px',
                     }}
                     onClick={() => setShowCancelModal(true)}
                   >
                     ✕ Hủy đặt trước (Staff Cancel)
                   </button>
-                  <div style={{ fontSize: '11px', color: '#72685e', marginTop: '6px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '13px', color: '#72685e', marginTop: '6px', textAlign: 'center' }}>
                     * Hủy bởi thủ thư không phạt strike sinh viên (theo chính sách POL-07).
                   </div>
                 </div>
@@ -360,13 +360,13 @@ export function QueuesPage() {
               boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
             }}
           >
-            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#dc2626' }}>Xác nhận hủy đặt trước</h3>
-            <p style={{ fontSize: '13px', color: '#72685e', margin: '0 0 16px 0' }}>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '22px', color: '#dc2626' }}>Xác nhận hủy đặt trước</h3>
+            <p style={{ fontSize: '16px', color: '#72685e', margin: '0 0 16px 0' }}>
               Bạn đang thực hiện hủy yêu cầu đặt trước cuốn "<strong>{selectedRes.books?.title}</strong>" của sinh viên{' '}
               <strong>{selectedRes.profiles?.full_name}</strong>.
             </p>
 
-            <label style={{ fontSize: '12px', fontWeight: 600, color: '#241e19', display: 'block', marginBottom: '6px' }}>
+            <label style={{ fontSize: '14px', fontWeight: 600, color: '#241e19', display: 'block', marginBottom: '6px' }}>
               Lý do hủy (bắt buộc theo đặc tả UC-29):
             </label>
             <textarea
@@ -376,7 +376,7 @@ export function QueuesPage() {
                 padding: '8px',
                 borderRadius: '6px',
                 border: '1px solid #dcd3c5',
-                fontSize: '13px',
+                fontSize: '16px',
                 boxSizing: 'border-box',
                 fontFamily: 'inherit',
                 marginBottom: '16px',
@@ -403,7 +403,7 @@ export function QueuesPage() {
                   borderRadius: '6px',
                   padding: '8px 16px',
                   fontWeight: 600,
-                  fontSize: '13px',
+                  fontSize: '16px',
                   cursor: 'pointer',
                 }}
                 disabled={actionLoading}

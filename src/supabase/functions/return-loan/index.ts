@@ -34,6 +34,8 @@ Deno.serve(async (req: Request) => {
 
   const barcode = (body.copy_barcode || body.barcode || '').trim()
   const conditionIn = body.condition_in || body.conditionIn || 'good'
+  const conditionInNotes = body.condition_in_notes || null
+  const conditionInMedia = body.condition_in_media ?? []
   const damageTier = Number(body.damage_tier ?? body.damageTier ?? 0)
   const settleNow = Boolean(body.settle_now ?? body.settleNow ?? false)
   const amountCollected = Number(body.amount_collected ?? body.amountCollected ?? 0)
@@ -66,13 +68,28 @@ Deno.serve(async (req: Request) => {
     return fail('NOT_AVAILABLE', `Copy "${barcode}" is not currently on loan (Current status: ${copy.status})`)
   }
 
+  const mediaPrefix = `return/${loanItem.id}/`
+  if (
+    !Array.isArray(conditionInMedia) ||
+    conditionInMedia.length > 3 ||
+    conditionInMedia.some((path: unknown) =>
+      typeof path !== 'string' ||
+      !path.startsWith(mediaPrefix) ||
+      !/^[0-9a-f-]+\.(jpg|png|webp)$/i.test(path.slice(mediaPrefix.length))
+    )
+  ) {
+    return fail('VALIDATION_FAILED', 'Return media must contain up to three valid evidence paths')
+  }
+
   // 2. Execute Return transaction in PostgreSQL
-  const { data: result, error: rpcErr } = await supabaseAdmin.rpc('rpc_process_return', {
+  const { data: result, error: rpcErr } = await supabaseAdmin.rpc('rpc_process_return_with_evidence', {
     p_copy_barcode: barcode,
     p_condition_in: conditionIn,
     p_damage_tier: damageTier,
     p_settle_now: settleNow,
     p_amount_collected: amountCollected,
+    p_condition_in_notes: conditionInNotes,
+    p_condition_in_media: conditionInMedia,
   })
 
   if (rpcErr || (result && !result.success)) {

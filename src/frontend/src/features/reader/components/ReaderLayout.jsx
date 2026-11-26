@@ -61,9 +61,9 @@ export function ReaderLayout({
         <div className="sh-topbar-inner">
           <div className="sh-topbar-left" />
 
-          <div className="sh-topbar-center" onClick={() => onSelectTab('books')}>
-            <ShelfBookLogo size={24} />
-            <span>ShelfHelp</span>
+          <div className="sh-topbar-center" onClick={() => onSelectTab(activeTab === 'loans' ? 'loans' : 'books')}>
+            {activeTab !== 'loans' && <ShelfBookLogo size={24} />}
+            <span>{activeTab === 'loans' ? 'My Loans' : 'ShelfHelp'}</span>
           </div>
 
           <div className="sh-topbar-right">

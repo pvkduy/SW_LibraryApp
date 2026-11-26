@@ -1,26 +1,27 @@
-import React, { useState } from 'react'
+import React from 'react'
 import './admin.css'
 import {
   IconDashboard,
+  IconReports,
   IconCirculation,
   IconBooks,
+  IconAcquisitions,
   IconQueues,
   IconPeople,
   IconMoney,
-  IconBell,
-  IconSearch
+  IconBell
 } from './AdminIcons'
 
 export function AdminLayout({ activePage = 'circulation', onNavigate, profile, onLogout, children }) {
-  const [searchQuery, setSearchQuery] = useState('')
-
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: IconDashboard },
     { id: 'circulation', label: 'Circulation', icon: IconCirculation },
     { id: 'books', label: 'Books', icon: IconBooks },
-    { id: 'queues', label: 'Queues & Holds', icon: IconQueues },
+    { id: 'acquisitions', label: 'Acquisitions', icon: IconAcquisitions },
+    { id: 'queues', label: 'Queues', icon: IconQueues },
     { id: 'people', label: 'People', icon: IconPeople },
     { id: 'money', label: 'Money', icon: IconMoney },
+    { id: 'reports', label: 'Reports', icon: IconReports },
   ]
 
   return (
@@ -28,7 +29,7 @@ export function AdminLayout({ activePage = 'circulation', onNavigate, profile, o
       {/* Sidebar */}
       <aside className="admin-sidebar">
         <div className="admin-brand">
-          <div className="admin-brand-icon">SH</div>
+          <div className="admin-brand-icon"><IconBooks size={16} color="#fff" /></div>
           <div>
             <div className="admin-brand-title">ShelfHelp</div>
             <div className="admin-brand-sub">Archival & Circulation Desk</div>
@@ -46,7 +47,7 @@ export function AdminLayout({ activePage = 'circulation', onNavigate, profile, o
                 className={`admin-nav-item ${isActive ? 'active' : ''}`}
                 onClick={() => onNavigate && onNavigate(item.id)}
               >
-                <Icon size={18} />
+                <Icon size={14} />
                 <span>{item.label}</span>
               </button>
             )
@@ -55,13 +56,12 @@ export function AdminLayout({ activePage = 'circulation', onNavigate, profile, o
 
         <div className="admin-sidebar-footer">
           <div className="admin-system-status">
+            <span>System Status</span>
             <span className="admin-status-dot" />
-            <span>Postgres DB Local · Online</span>
           </div>
           <button
             type="button"
-            className="admin-btn-outline"
-            style={{ width: '100%', justifyContent: 'center', fontSize: '12px' }}
+            className="admin-logout-button"
             onClick={onLogout}
           >
             Đăng xuất
@@ -72,48 +72,25 @@ export function AdminLayout({ activePage = 'circulation', onNavigate, profile, o
       {/* Main Content */}
       <div className="admin-main">
         <header className="admin-header">
-          <div className="admin-header-search">
-            <IconSearch size={16} color="#9d9388" />
-            <input
-              type="text"
-              placeholder="Search student ID, barcode, ISBN..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          <div className="admin-user-pill">
-            <div style={{ position: 'relative', cursor: 'pointer' }}>
-              <IconBell size={20} color="#72685e" />
+          <div className="admin-header-spacer" />
+          <div className="admin-header-account">
+            <button type="button" className="admin-notifications" aria-label="Notifications">
+              <IconBell size={18} color="#72685e" />
               <span
-                style={{
-                  position: 'absolute',
-                  top: -4,
-                  right: -4,
-                  background: '#dc2626',
-                  color: '#fff',
-                  borderRadius: '50%',
-                  fontSize: '10px',
-                  fontWeight: 700,
-                  width: '15px',
-                  height: '15px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
+                className="admin-notification-count"
               >
                 3
               </span>
-            </div>
+            </button>
 
             <div className="admin-avatar">
               {profile?.full_name ? profile.full_name.substring(0, 2).toUpperCase() : 'TH'}
             </div>
-            <div>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: '#241e19' }}>
+            <div className="admin-account-details">
+              <div className="admin-account-name">
                 {profile?.full_name || 'Thủ Thư (Librarian)'}
               </div>
-              <div style={{ fontSize: '11px', color: '#72685e' }}>LIB - 24125105</div>
+              <div className="admin-account-id">{profile?.student_id || profile?.email || 'Library Staff'}</div>
             </div>
           </div>
         </header>

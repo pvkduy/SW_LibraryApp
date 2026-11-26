@@ -11,6 +11,17 @@ export function IconDashboard({ size = 20, color = 'currentColor', className = '
   )
 }
 
+export function IconReports({ size = 20, color = 'currentColor', className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M4 20V10" />
+      <path d="M10 20V4" />
+      <path d="M16 20v-7" />
+      <path d="M22 20H2" />
+    </svg>
+  )
+}
+
 export function IconCirculation({ size = 20, color = 'currentColor', className = '' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -18,6 +29,33 @@ export function IconCirculation({ size = 20, color = 'currentColor', className =
       <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
       <path d="m7 22-4-4 4-4" />
       <path d="M21 13v1a4 4 0 0 1-4 4H3" />
+    </svg>
+  )
+}
+
+export function IconAcquisitions({ size = 20, color = 'currentColor', className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <path d="M8 8h8M8 12h5" />
+      <path d="M16 16h.01" />
+    </svg>
+  )
+}
+
+export function IconPackage({ size = 20, color = 'currentColor', className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="m12 3 9 5-9 5-9-5 9-5Z" />
+      <path d="M3 8v9l9 5 9-5V8M12 13v9M7.5 5.5l9 5" />
+    </svg>
+  )
+}
+
+export function IconBookOpen({ size = 20, color = 'currentColor', className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 7v14M3 18V5a1 1 0 0 1 1-1h4a4 4 0 0 1 4 4v13a4 4 0 0 0-4-4H3Zm18 0V5a1 1 0 0 0-1-1h-4a4 4 0 0 0-4 4v13a4 4 0 0 1 4-4h5Z" />
     </svg>
   )
 }
@@ -35,10 +73,10 @@ export function IconBooks({ size = 20, color = 'currentColor', className = '' })
 export function IconQueues({ size = 20, color = 'currentColor', className = '' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M12 2v20" />
-      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-      <rect x="3" y="4" width="18" height="16" rx="2" stroke="none" fill="none" />
-      <path d="M7 6h10M7 12h10M7 18h6" />
+      <circle cx="5" cy="6" r="1" />
+      <circle cx="5" cy="12" r="1" />
+      <circle cx="5" cy="18" r="1" />
+      <path d="M9 6h10M9 12h10M9 18h10" />
     </svg>
   )
 }
@@ -68,6 +106,41 @@ export function IconBarcode({ size = 20, color = 'currentColor', className = '' 
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <path d="M3 5v14M6 5v14M9 5v14M13 5v14M16 5v14M21 5v14" />
+    </svg>
+  )
+}
+
+export function IconCalendar({ size = 20, color = 'currentColor', className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M16 3v4M8 3v4M3 11h18" />
+    </svg>
+  )
+}
+
+export function IconDownload({ size = 18, color = 'currentColor', className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <path d="m7 10 5 5 5-5M12 15V3" />
+    </svg>
+  )
+}
+
+export function IconSort({ size = 14, color = 'currentColor', className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M4 6h16M7 12h10M10 18h4" />
+    </svg>
+  )
+}
+
+export function IconReturn({ size = 18, color = 'currentColor', className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="m9 14-4-4 4-4" />
+      <path d="M5 10h9a5 5 0 0 1 0 10h-2" />
     </svg>
   )
 }

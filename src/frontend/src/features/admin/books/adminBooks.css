@@ -10,7 +10,7 @@
 
 .ab-header h1 {
   margin: 0;
-  font-size: 23px;
+  font-size: 28px;
   font-weight: 800;
   color: #241e19;
   letter-spacing: -0.3px;
@@ -18,7 +18,7 @@
 
 .ab-header p {
   margin: 4px 0 0;
-  font-size: 13px;
+  font-size: 16px;
   color: #7c736a;
 }
 
@@ -37,7 +37,7 @@
   border-bottom: 2.5px solid transparent;
   padding: 10px 14px;
   margin-bottom: -1px;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
   color: #7c736a;
   cursor: pointer;
@@ -62,7 +62,7 @@
   color: #6e472a;
   border-radius: 999px;
   padding: 1px 7px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -108,12 +108,12 @@
   border: none;
   outline: none;
   background: transparent;
-  font-size: 13.5px;
+  font-size: 16px;
   color: #241e19;
 }
 
 .ab-kbd {
-  font-size: 10.5px;
+  font-size: 13px;
   font-weight: 700;
   color: #8c8277;
   background: #ede6db;
@@ -128,7 +128,7 @@
   border-radius: 9px;
   height: 38px;
   padding: 0 15px;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   cursor: pointer;
   display: inline-flex;
@@ -154,7 +154,7 @@
   border-radius: 9px;
   height: 38px;
   padding: 0 14px;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
@@ -176,7 +176,7 @@
   border-radius: 9px;
   height: 38px;
   padding: 0 14px;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -200,7 +200,7 @@
   background: #ffffff;
   color: #4b423b;
   padding: 0 10px;
-  font-size: 12.5px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -235,7 +235,7 @@
 .ab-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: 15px;
 }
 
 .ab-table thead tr {
@@ -246,7 +246,7 @@
 .ab-table th {
   padding: 10px 12px;
   text-align: left;
-  font-size: 10.5px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.4px;
   text-transform: uppercase;
@@ -278,7 +278,7 @@
   border-radius: 6px;
   background: linear-gradient(145deg, #4f6b58 0%, #3a5241 100%);
   color: #ffffff;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   display: flex;
   align-items: center;
@@ -293,7 +293,7 @@
   padding: 10px 14px;
   background: #faf7f2;
   border-top: 1px solid #ede6db;
-  font-size: 12px;
+  font-size: 14px;
   color: #7c736a;
 }
 
@@ -304,7 +304,7 @@
   gap: 4px;
   padding: 2px 8px;
   border-radius: 6px;
-  font-size: 10.5px;
+  font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.25px;
@@ -325,7 +325,7 @@
 
 /* Right Inspector Sections */
 .ab-inspector-label {
-  font-size: 10.5px;
+  font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -349,13 +349,13 @@
 
 .ab-meta-cell small {
   display: block;
-  font-size: 10px;
+  font-size: 12px;
   text-transform: uppercase;
   color: #8c8277;
 }
 
 .ab-meta-cell strong {
-  font-size: 12px;
+  font-size: 14px;
   color: #241e19;
 }
 

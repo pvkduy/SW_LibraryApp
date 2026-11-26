@@ -1,12 +1,58 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
+import { PickupQrSvg, ReceiptIcon } from '../catalog/CatalogIcons.jsx'
 import { FineCheckoutModal } from './FineCheckoutModal.jsx'
 
-export function FinesPage({ onProfileRefresh }) {
+const RECEIPT_LABELS = {
+  fine: 'Fine payment',
+  overdue_fine: 'Overdue fine payment',
+  damage: 'Damage fee payment',
+  damage_fee: 'Damage fee payment',
+  loss: 'Lost item payment',
+  borrow_fee: 'Borrowing fee',
+  membership: 'Membership payment',
+}
+
+function formatReceiptDate(value, includeTime = false) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleString('en-US', includeTime
+    ? { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }
+    : { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function receiptLabel(receipt) {
+  return RECEIPT_LABELS[receipt.type] || 'Library transaction'
+}
+
+function receiptMethod(method) {
+  const methods = {
+    cash: 'Cash',
+    card: 'Card',
+    transfer: 'Bank transfer',
+    counter: 'At the circulation desk',
+    online: 'Online payment',
+    ewallet: 'E-wallet',
+  }
+  return methods[method] || method || '—'
+}
+
+function chargeTitle(charge) {
+  const titles = {
+    overdue_fine: 'Overdue fine',
+    damage_fee: 'Damage fee',
+    loss_fee: 'Lost book fee',
+  }
+  return titles[charge.type] || 'Library charge'
+}
+
+export function FinesPage({ onProfileRefresh, embedded = false, profile }) {
   const [charges, setCharges] = useState([])
   const [receipts, setReceipts] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedChargeIds, setSelectedChargeIds] = useState([])
+  const [selectedReceipt, setSelectedReceipt] = useState(null)
   const [showCheckout, setShowCheckout] = useState(false)
   const [activeTab, setActiveTab] = useState('unpaid') // unpaid | history
   const [message, setMessage] = useState(null)
@@ -69,9 +115,9 @@ export function FinesPage({ onProfileRefresh }) {
     })
 
     if (error) throw error
-    if (data?.error) throw new Error(data.message || data.error)
+    if (data?.error) throw new Error('Payment could not be completed. Please review the selected charges and try again.')
 
-    setMessage({ type: 'success', text: data.message || 'Thanh toán thành công!' })
+    setMessage({ type: 'success', text: 'Payment completed successfully.' })
     setSelectedChargeIds([])
     await loadData()
     if (onProfileRefresh) onProfileRefresh()
@@ -81,25 +127,27 @@ export function FinesPage({ onProfileRefresh }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: '22px', color: '#241e19' }}>Khoản phí & Tiền phạt</h2>
-          <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#6e665e' }}>
-            Quản lý các khoản phí mượn quá hạn, bồi thường sách và lịch sử biên lai.
-          </p>
+      {!embedded && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '22px', color: '#241e19' }}>Fines & Fees</h2>
+            <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#6e665e' }}>
+              Manage overdue, damage, and other library charges.
+            </p>
+          </div>
+          {unpaidCharges.length > 0 && (
+            <button
+              type="button"
+              className="auth-btn-primary"
+              style={{ width: 'auto', padding: '0 20px', height: '40px', marginTop: 0, backgroundColor: '#b3261e' }}
+              disabled={selectedChargeIds.length === 0}
+              onClick={() => setShowCheckout(true)}
+            >
+              Pay selected ({selectedChargeIds.length})
+            </button>
+          )}
         </div>
-        {unpaidCharges.length > 0 && (
-          <button
-            type="button"
-            className="auth-btn-primary"
-            style={{ width: 'auto', padding: '0 20px', height: '40px', marginTop: 0, backgroundColor: '#b3261e' }}
-            disabled={selectedChargeIds.length === 0}
-            onClick={() => setShowCheckout(true)}
-          >
-            Nộp tiền ({selectedChargeIds.length} mục)
-          </button>
-        )}
-      </div>
+      )}
 
       {message && (
         <div style={{ padding: '12px 16px', background: message.type === 'success' ? '#e8f5e9' : '#ffebee', color: message.type === 'success' ? '#2e7d32' : '#c62828', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' }}>
@@ -110,9 +158,9 @@ export function FinesPage({ onProfileRefresh }) {
       {totalUnpaid > 0 && (
         <div className="debt-hold-banner">
           <div>
-            <strong>Nợ phí thư viện hiện tại: {totalUnpaid.toLocaleString('vi-VN')} đ</strong>
+            <strong>Outstanding library balance: {totalUnpaid.toLocaleString('en-US')} VND</strong>
             <div style={{ fontSize: '12px', marginTop: '2px' }}>
-              Vui lòng thanh toán để duy trì quyền hạn mượn và đặt trước sách.
+              Please pay your balance to restore borrowing and reservation access.
             </div>
           </div>
           <button
@@ -123,7 +171,7 @@ export function FinesPage({ onProfileRefresh }) {
               setShowCheckout(true)
             }}
           >
-            Thanh toán tất cả
+            Pay all
           </button>
         </div>
       )}
@@ -132,26 +180,127 @@ export function FinesPage({ onProfileRefresh }) {
         <button
           type="button"
           className={`reader-tab-btn ${activeTab === 'unpaid' ? 'active' : ''}`}
-          onClick={() => setActiveTab('unpaid')}
+          onClick={() => {
+            setActiveTab('unpaid')
+            setSelectedReceipt(null)
+          }}
         >
-          Chưa thanh toán ({unpaidCharges.length})
+          Unpaid ({unpaidCharges.length})
         </button>
         <button
           type="button"
           className={`reader-tab-btn ${activeTab === 'history' ? 'active' : ''}`}
           onClick={() => setActiveTab('history')}
         >
-          Lịch sử biên lai ({receipts.length})
+          Payment History ({receipts.length})
         </button>
+        {embedded && activeTab === 'unpaid' && unpaidCharges.length > 0 && (
+          <button
+            type="button"
+            className="my-loans-fines-pay"
+            disabled={selectedChargeIds.length === 0}
+            onClick={() => setShowCheckout(true)}
+          >
+            Pay selected
+          </button>
+        )}
       </div>
 
       {loading ? (
-        <p style={{ color: '#6e665e' }}>Đang tải dữ liệu...</p>
-      ) : activeTab === 'unpaid' ? (
+        <p style={{ color: '#6e665e' }}>Loading charges…</p>
+      ) : activeTab === 'history' ? (
+        selectedReceipt ? (
+          <div className="receipt-inline-view">
+            <button
+              type="button"
+              className="receipt-return-button"
+              onClick={() => setSelectedReceipt(null)}
+            >
+              Return
+            </button>
+            <div className="receipt-details">
+              <p className="receipt-eyebrow">RECEIPT DETAILS</p>
+              <div className="receipt-complete-icon" aria-hidden="true">
+                <span>✓</span>
+              </div>
+              <h2>Transaction Completed</h2>
+              <p className="receipt-complete-copy">
+                {selectedReceipt.type === 'borrow_fee'
+                  ? 'Show your pickup QR at the circulation desk. You can find this receipt anytime in My Loans > Payment History.'
+                  : 'Keep this payment receipt for your records. You can find it anytime in My Loans > Payment History.'}
+              </p>
+
+              <div className="receipt-qr-wrap">
+                <PickupQrSvg value={selectedReceipt.number || selectedReceipt.id} size={152} />
+                <span>{selectedReceipt.number || 'RECEIPT'}</span>
+              </div>
+
+              <section className="receipt-detail-card" aria-label="Receipt information">
+                <h3><ReceiptIcon size={17} color="#6e472a" /> Receipt</h3>
+                <div className="receipt-detail-row">
+                  <span>Reference ID</span>
+                  <strong>#{selectedReceipt.number || selectedReceipt.id?.slice(0, 8).toUpperCase()}</strong>
+                </div>
+                <div className="receipt-detail-row">
+                  <span>Timestamp</span>
+                  <strong>{formatReceiptDate(selectedReceipt.created_at, true)}</strong>
+                </div>
+                <div className="receipt-detail-row">
+                  <span>Patron</span>
+                  <strong>{profile?.full_name || 'Library patron'}</strong>
+                </div>
+                {selectedReceipt.type === 'borrow_fee' && (
+                  <div className="receipt-detail-row">
+                    <span>Pickup Location</span>
+                    <strong>Main Library Circulation Desk</strong>
+                  </div>
+                )}
+                <div className="receipt-detail-row">
+                  <span>Transaction</span>
+                  <strong>{receiptLabel(selectedReceipt)}</strong>
+                </div>
+                <div className="receipt-detail-row">
+                  <span>Payment Method</span>
+                  <strong>{receiptMethod(selectedReceipt.method)}</strong>
+                </div>
+                <div className="receipt-detail-row">
+                  <span>Amount Paid</span>
+                  <strong>{Number(selectedReceipt.amount || 0).toLocaleString('en-US')} VND</strong>
+                </div>
+              </section>
+
+              <button type="button" className="receipt-print-button" onClick={() => window.print()}>
+                Print Receipt
+              </button>
+            </div>
+          </div>
+        ) : receipts.length === 0 ? (
+          <div className="reader-card">
+            <p className="receipt-history-empty">No receipts have been recorded yet.</p>
+          </div>
+        ) : (
+          <div className="receipt-history-list">
+            {receipts.map((receipt) => (
+              <button
+                type="button"
+                key={receipt.id}
+                className="receipt-history-card"
+                onClick={() => setSelectedReceipt(receipt)}
+              >
+                <strong>{receiptLabel(receipt).toUpperCase()}</strong>
+                <span className="receipt-history-meta">
+                  <time>{formatReceiptDate(receipt.created_at)}</time>
+                  <span className="receipt-number-badge">{receipt.number}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )
+      ) : (
         <div className="reader-card">
           {unpaidCharges.length === 0 ? (
             <p style={{ margin: 0, color: '#6e665e', textAlign: 'center', padding: '24px 0' }}>
-              🎉 Tuyệt vời! Bạn không có khoản phí phạt nào chưa thanh toán.
+              🎉 You have no unpaid library charges.
             </p>
           ) : (
             <div>
@@ -163,7 +312,7 @@ export function FinesPage({ onProfileRefresh }) {
                   onChange={handleSelectAll}
                 />
                 <label htmlFor="select-all" style={{ fontSize: '13px', fontWeight: 600, color: '#52473f', cursor: 'pointer' }}>
-                  Chọn tất cả
+                  Select all
                 </label>
               </div>
 
@@ -177,49 +326,18 @@ export function FinesPage({ onProfileRefresh }) {
                     />
                     <div>
                       <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#241e19' }}>
-                        {c.notes || (c.type === 'overdue_fine' ? 'Phí quá hạn trả sách' : 'Phí bồi thường')}
+                        {chargeTitle(c)}
                       </h4>
                       <div style={{ fontSize: '12px', color: '#8c827a' }}>
-                        Ngày phát sinh: {new Date(c.created_at).toLocaleDateString('vi-VN')}
+                        Date issued: {formatReceiptDate(c.created_at)}
                       </div>
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <span style={{ fontSize: '16px', fontWeight: 700, color: '#b3261e', display: 'block' }}>
-                      {Number(c.amount).toLocaleString('vi-VN')} đ
+                      {Number(c.amount).toLocaleString('en-US')} VND
                     </span>
-                    <span className="badge-status badge-overdue">Chưa thanh toán</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="reader-card">
-          {receipts.length === 0 ? (
-            <p style={{ margin: 0, color: '#6e665e', textAlign: 'center', padding: '24px 0' }}>
-              Chưa có biên lai thanh toán nào được ghi nhận.
-            </p>
-          ) : (
-            <div>
-              {receipts.map((rc) => (
-                <div key={rc.id} className="loan-item-card">
-                  <div>
-                    <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#241e19' }}>
-                      Biên lai: {rc.number}
-                    </h4>
-                    <div className="loan-item-sub">
-                      <span>Loại: {rc.type}</span>
-                      <span>Hình thức: {rc.method === 'online' ? 'Trực tuyến' : rc.method}</span>
-                      <span>Ngày: {new Date(rc.created_at).toLocaleString('vi-VN')}</span>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: '16px', fontWeight: 700, color: '#2e7d32', display: 'block' }}>
-                      +{Number(rc.amount).toLocaleString('vi-VN')} đ
-                    </span>
-                    <span className="badge-status badge-borrowed">Đã thu</span>
+                    <span className="badge-status badge-overdue">Unpaid</span>
                   </div>
                 </div>
               ))}
