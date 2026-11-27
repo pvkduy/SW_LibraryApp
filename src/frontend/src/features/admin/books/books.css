@@ -337,6 +337,7 @@
   height: 28px;
   border: 1px solid var(--admin-border);
   background: #ffffff;
+  color: var(--admin-text-main);
   border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
@@ -1097,6 +1098,7 @@
   justify-content: center;
   width: 26px;
   height: 26px;
+  padding: 0;
   border: 1px solid var(--admin-border-dark);
   border-radius: 6px;
   background: #ffffff;
@@ -1104,6 +1106,10 @@
   font-size: 15px;
   line-height: 1;
   cursor: pointer;
+}
+
+.books-icon-btn svg {
+  flex-shrink: 0;
 }
 
 .books-icon-btn:hover {
@@ -2297,10 +2303,39 @@
 
 .books-staged-select input,
 .books-page-container input[type='checkbox'] {
-  width: 14px;
-  height: 14px;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  border: 1.5px solid #b8aca0;
+  border-radius: 4px;
+  background-color: #ffffff;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 11px 11px;
   accent-color: var(--admin-primary);
   cursor: pointer;
+  vertical-align: middle;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.books-staged-select input:hover,
+.books-page-container input[type='checkbox']:hover {
+  border-color: var(--admin-primary);
+}
+
+.books-staged-select input:checked,
+.books-page-container input[type='checkbox']:checked {
+  background-color: var(--admin-primary);
+  border-color: var(--admin-primary);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5 6.5 11.5 12.5 4.5'/%3E%3C/svg%3E");
+}
+
+.books-staged-select input:focus-visible,
+.books-page-container input[type='checkbox']:focus-visible {
+  outline: 2px solid var(--admin-primary);
+  outline-offset: 2px;
 }
 
 .books-staged-main {

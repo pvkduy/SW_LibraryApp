@@ -1466,7 +1466,7 @@
   min-width: 0;
 }
 
-.admin-layout input,
+.admin-layout input:not([type='checkbox']):not([type='radio']),
 .admin-layout textarea,
 .admin-layout select {
   color-scheme: light;

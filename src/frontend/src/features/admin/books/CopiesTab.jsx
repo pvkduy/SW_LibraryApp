@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../../lib/api'
-import { IconChevron, IconRefresh, IconSliders, IconSort } from './booksIcons'
+import { IconRefresh, IconSliders, IconSort } from './booksIcons'
 import { supabase } from '../../../lib/supabase'
 import {
   CONDITIONS,
@@ -351,11 +351,10 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
                   <th>Location</th>
                   <th>Condition</th>
                   <th>Source</th>
-                  <th aria-label="Copy history" />
                 </tr>
               </thead>
               <tbody>
-                {loading && <tr><td colSpan="8" className="books-table-empty">Loading copies…</td></tr>}
+                {loading && <tr><td colSpan="7" className="books-table-empty">Loading copies…</td></tr>}
                 {!loading && rows.map((copy) => (
                   <tr key={copy.id} className={copy.id === selectedId ? 'selected' : ''} onClick={() => setSelectedId(copy.id)}>
                     <td className="check" onClick={(event) => event.stopPropagation()}>
@@ -370,13 +369,10 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
                     <td className="books-cell-wrap">{copyShelf(copy, copy.books)}</td>
                     <td>{statusLabel(copy.condition)}</td>
                     <td>{statusLabel(copy.source_type || 'manual')}</td>
-                    <td>
-                      <button type="button" className="books-icon-btn" aria-label={`Open ${copy.barcode} history`} onClick={(event) => { event.stopPropagation(); setSelectedId(copy.id) }}><IconChevron size={13} /></button>
-                    </td>
                   </tr>
                 ))}
                 {!loading && rows.length === 0 && (
-                  <tr><td colSpan="8" className="books-table-empty">No copies match the selected filters.</td></tr>
+                  <tr><td colSpan="7" className="books-table-empty">No copies match the selected filters.</td></tr>
                 )}
               </tbody>
             </table>
