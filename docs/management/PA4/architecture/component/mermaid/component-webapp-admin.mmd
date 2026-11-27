@@ -41,8 +41,8 @@ C4Component
     Rel(dataAccess, auth, "Verifies session", "HTTPS, PKCE")
     Rel(dataAccess, db, "(Data → DB) <br/>Reads; writes own profile", "PostgREST, RLS")
     Rel(dataAccess, api, "Invokes commands", "HTTPS, JWT")
-    Rel(dataAccess, storage, "Files", "HTTPS, signed URLs")
-    Rel(dataAccess, realtime, "(Data → Realtime) <br/>Subscribes", "WebSocket, RLS")
+    Rel(dataAccess, storage, "(Data → Storage) <br/>Files", "HTTPS, signed URLs")
+    Rel(dataAccess, realtime, Subscribes, "WebSocket, RLS")
 
     UpdateRelStyle(librarian, appShell, $offsetX="-20", $offsetY="-50")
 
@@ -51,13 +51,13 @@ C4Component
     UpdateRelStyle(appShell, adminCatalog, $offsetX="-20", $offsetY="10")
     UpdateRelStyle(appShell, adminMoney, $offsetX="-80", $offsetY="20")
     UpdateRelStyle(appShell, adminAcquisitions, $offsetX="-30", $offsetY="-20")
-    UpdateRelStyle(appShell, authProfile, $offsetX="-145", $offsetY="135")
+    UpdateRelStyle(appShell, authProfile, $offsetX="-165", $offsetY="65")
 
     UpdateRelStyle(adminCirculation, dataAccess, $offsetX="-35", $offsetY="-30")
     UpdateRelStyle(adminCatalog, dataAccess, $offsetX="60", $offsetY="-20")
     UpdateRelStyle(adminMoney, dataAccess, $offsetX="-50", $offsetY="10")
     UpdateRelStyle(adminAcquisitions, dataAccess, $offsetX="-50", $offsetY="10")
-    UpdateRelStyle(authProfile, dataAccess, $offsetX="15", $offsetY="10")
+    UpdateRelStyle(authProfile, dataAccess, $offsetX="-18", $offsetY="10")
 
     UpdateRelStyle(dataAccess, auth, $offsetX="-90", $offsetY="300")
     UpdateRelStyle(dataAccess, db, $offsetX="20", $offsetY="-30")

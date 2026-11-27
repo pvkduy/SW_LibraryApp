@@ -108,7 +108,7 @@ C4Container
 
     System_Boundary(supabase, "Supabase Platform (managed services)") {
         Container_Ext(storage, "Supabase Storage", "Managed object storage with bucket policies", "Covers, avatars, write-off evidence and CSV imports; access controlled by storage policies and signed URLs.")
-        Container_Ext(auth, "Supabase Auth", "Managed identity service, JWT, PKCE", "Registration, email verification, sign-in/out, password reset and JWT issuance. Planned UC-32: active-session listing/revocation.")
+        Container_Ext(auth, "Supabase Auth", "Managed identity service, JWT, PKCE", "Registration, email verification, sign-in/out, active sessions, password reset and JWT issuance with app_metadata.role.")
         Container_Ext(realtime, "Supabase Realtime", "Managed change-data service", "Pushes live availability counters, notifications and own loan-item changes to subscribed browsers under RLS.")
     }
 
@@ -227,7 +227,7 @@ Source: [`mermaid/container-part1.mmd`](mermaid/container-part1.mmd) and
 **Communication with other containers:**
 - **ShelfHelp API:** Invokes serverless Edge Functions via **HTTPS POST** bearing the caller's JWT bearer token in the `Authorization` header to execute transactional business commands.
 - **PostgreSQL Database:** Reads catalog, loan history, charges, and user profile data directly via **PostgREST over HTTPS** using the Supabase anonymous key and caller's JWT, strictly filtered by PostgreSQL Row Level Security (RLS). Personal cart items and profile contact fields are written directly under own-row RLS policies and column-level grants.
-- **Supabase Auth:** Handles OTP verification, sign-in/out, and password reset via **HTTPS POST** (PKCE flow). Student registration is validated and initiated through the `register-student` Edge Function using the Auth Admin API; direct public sign-up is disabled. Persists only the revocable refresh token in `localStorage` when *"Keep me signed in"* is selected (or `sessionStorage` otherwise), never storing the password (`UC-02`); active-session listing and revocation (`UC-32`) go through **ShelfHelp API**.
+- **Supabase Auth:** Handles OTP verification, sign-in/out, and password reset via **HTTPS POST** (PKCE flow). Student registration is validated and initiated through the `register-student` Edge Function using the Auth Admin API; direct public sign-up is disabled. Persists only the revocable refresh token in `localStorage` when *"Keep me signed in"* is selected (or `sessionStorage` otherwise), never storing the password (`UC-02`). Active-session listing and revocation (`UC-32`) are a **PA5 target** and will route through **ShelfHelp API**.
 - **Supabase Storage:** Uploads avatars and evidence images and downloads public cover assets via **HTTPS** using signed URLs or public endpoints.
 - **Supabase Realtime:** Subscribes to live book availability counters, personal notifications, and loan-item status changes via persistent **WebSocket (WSS)** connections under RLS filtering.
 
@@ -252,7 +252,7 @@ Source: [`mermaid/container-part1.mmd`](mermaid/container-part1.mmd) and
 **Communication with other containers:**
 - **ShelfHelp Web Application:** Receives command requests via **HTTPS POST** with JWT authentication; returns standardized JSON responses or error envelopes (`{ error: { reason, message, details } }`).
 - **PostgreSQL Database:** Invokes database stored procedures via **PostgREST HTTPS** using the privileged database `service_role` key to execute atomic transactional RPCs (e.g. `rpc_confirm_handover`, `rpc_process_return`), commit audit logs atomically, and query real-time profile states.
-- **Supabase Auth:** Calls the GoTrue Admin API via **HTTPS** (`service_role`) to create verified user accounts, manage user security metadata, and list or revoke user sessions (`list-sessions`, `revoke-session`, `revoke-other-sessions`, and `set-account-inactive`) because `auth.sessions` is not exposed through PostgREST.
+- **Supabase Auth:** Calls the GoTrue Admin API via **HTTPS** (`service_role`) to create verified user accounts, manage user security metadata, and, as a **PA5 target**, list or revoke user sessions (`list-sessions`, `revoke-session`, `revoke-other-sessions`) plus `set-account-inactive`, because `auth.sessions` is not exposed through PostgREST.
 - **PostgreSQL Database (`pg_cron`):** Receives background job trigger invocations from PostgreSQL via **HTTPS** using the `pg_net` extension with an internal authorization secret header (`x-job-secret`).
 - **External Services:** Communicates with external providers (**Email Provider** via HTTPS/SMTP, **Payment Provider** simulator via HTTPS, **AI Provider** via HTTPS, and **Bibliographic Metadata Services** via HTTPS).
 
@@ -403,7 +403,7 @@ If the Supabase project is unavailable, reads, writes, auth, and storage fail; t
 
 ## 9. Scope and assumptions
 
-**Out of scope:** deployment topology inside Supabase, network diagrams, vendor internals, and class/module structure.
+**Out of scope:** deployment topology inside Supabase, network diagrams, vendor internals, and class/module structure. The deployment view is [Deployment.md](../../deployment/Deployment.md).
 
 **Assumptions:** one library branch, one staff role, institutional email, a catalog at or below roughly
 50,000 titles, simulated payments with no card data, best-effort email with an in-app durable record, and Supabase as the managed backend.

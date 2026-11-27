@@ -223,7 +223,7 @@ Executes stateless TypeScript functions on Deno V8 isolates that run in the same
 **Communication protocols:**
 - **Web Application:** Receives command requests over **HTTPS POST** with JWT bearer authentication.
 - **PostgreSQL Database:** Invokes transactional stored procedures via **PostgREST HTTPS** using the internal `service_role` key, within the same region.
-- **Supabase Auth:** Invokes GoTrue administrative endpoints over **HTTPS** (`service_role`) to create and manage user records and list or revoke active sessions (`UC-32`).
+- **Supabase Auth:** Invokes GoTrue administrative endpoints over **HTTPS** (`service_role`) to create and manage user records. Listing or revoking active sessions (`UC-32`) uses the same endpoints but is a **PA5 target**; those functions are not deployed yet.
 - **PostgreSQL Database (`pg_cron`):** Receives background job trigger requests over **HTTPS** initiated by `pg_net` bearing the `x-job-secret` header.
 - **External Providers:** Dispatches outbound HTTPS/SMTP calls to Email, Payment, AI, and Bibliographic APIs.
 
@@ -250,7 +250,7 @@ These three services are managed platform services, not team-owned containers ([
 
 | Service node | Platform technology | Service running | Description & Protocols |
 | :--- | :--- | :--- | :--- |
-| **Auth Service Node** | GoTrue (Go microservice) | **Supabase Auth** (managed) | Manages OTP verification, sign-in, password hashing (bcrypt), server-side sign-in throttling, session records (`auth.sessions`), refresh-token revocation, and JWT rotation with embedded `app_metadata.role`. Student registration is validated by `register-student` and created through the Auth Admin API; direct public sign-up must be disabled in local config and managed Auth settings. Exposes HTTPS endpoints to Web App and API (never exposing `auth.sessions` via PostgREST); dispatches verification emails via external SMTP. |
+| **Auth Service Node** | GoTrue (Go microservice) | **Supabase Auth** (managed) | Manages OTP verification, sign-in, password hashing (bcrypt), sign-in throttling, session records (`auth.sessions`), refresh-token revocation, and JWT rotation with embedded `app_metadata.role`. Student registration is validated by `register-student` and created through the Admin API; direct public sign-up must be disabled in local config and managed Auth settings. Exposes HTTPS endpoints to Web App and API (never exposing `auth.sessions` via PostgREST); dispatches verification emails via external SMTP. Admin-side session revocation (`UC-32`) is a PA5 target. |
 | **Storage Service Node** | Supabase Storage (Node.js service) | **Supabase Storage** (managed) | Multi-tenant object storage managing dedicated buckets (`covers`, `avatars`, `evidence`, `imports`); enforces bucket access policies (evidence photos are limited to 10 MiB) and serves private files via time-limited signed URLs over HTTPS. |
 | **Realtime Cluster Node** | Phoenix Channels (Elixir / BEAM) | **Supabase Realtime** (managed) | Ingests table mutations from PostgreSQL via **logical replication** and broadcasts filtered updates (book availability counters, notifications, loan changes) to active clients over **WebSocket (WSS)** under RLS. |
 
@@ -312,4 +312,5 @@ ShelfHelp defines four formal deployment environments, matching [Container.md §
 - **Level 1 — System Context:** [System-Context.md](../architecture/system-context/System-Context.md)
 - **Level 2 — Container View:** [Container.md](../architecture/container/Container.md)
 - **Level 3 — Component View:** [Component.md](../architecture/component/Component.md)
-- **Deployment Diagram Source:** [`mermaid/deployment.mmd`](mermaid/deployment.mmd)
+
+Environment definitions are summarised in [Container.md §6](../architecture/container/Container.md#6-deployment-and-environments); §5 above gives the environment-specific infrastructure detail.
