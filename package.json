@@ -16,6 +16,8 @@
     "typecheck:e2e": "tsc --noEmit -p src/e2e/tsconfig.json",
     "build": "npm run build --workspace=frontend",
     "spec-matrix": "node src/scripts/spec-matrix.mjs",
+    "seed:books": "node src/scripts/seed-books.mjs",
+    "seed:books:check": "node src/scripts/seed-books.mjs --check",
     "db:start": "supabase start --workdir src",
     "db:reset": "supabase db reset --workdir src",
     "db:test": "supabase test db --workdir src",
