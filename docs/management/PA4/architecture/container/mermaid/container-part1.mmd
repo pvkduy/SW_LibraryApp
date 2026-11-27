@@ -15,7 +15,7 @@ C4Container
 
     System_Boundary(supabase, "Supabase Platform (managed services)") {
         Container_Ext(storage, "Supabase Storage", "Managed object storage with bucket policies", "Covers, avatars, write-off evidence and CSV imports; access controlled by storage policies and signed URLs.")
-        Container_Ext(auth, "Supabase Auth", "Managed identity service, JWT, PKCE", "Registration, email verification, sign-in/out, password reset and JWT issuance with app_metadata.role.")
+        Container_Ext(auth, "Supabase Auth", "Managed identity service, JWT, PKCE", "Registration, email verification, sign-in/out, active sessions, password reset and JWT issuance with app_metadata.role.")
         Container_Ext(realtime, "Supabase Realtime", "Managed change-data service", "Pushes live availability counters, notifications and own loan-item changes to subscribed browsers under RLS.")
     }
 
@@ -30,7 +30,7 @@ C4Container
     Rel(webapp, storage, "Uploads/downloads files", "HTTPS, signed URLs")
     Rel(webapp, auth, "Signs up/in, resets password", "HTTPS, PKCE")
     Rel(webapp, realtime, "Subscribes to changes", "WebSocket, RLS")
-    Rel(api, auth, "Verifies JWT, creates users", "HTTPS")
+    Rel(api, auth, "Verifies JWT, manages users & sessions", "HTTPS")
     Rel(realtime, db, "Reads change stream", "logical replication")
 
     UpdateRelStyle(student, webapp, $offsetX="10", $offsetY="-60")

@@ -1,6 +1,6 @@
 C4Component
     title Component diagram — ShelfHelp API: request path (business commands)
-    Container_Ext(auth, "Supabase Auth", "Managed identity service", "JWT verification and user identity.")
+    Container_Ext(auth, "Supabase Auth", "Managed identity service", "JWT verification, user identity and session management.")
     Container(webapp, "ShelfHelp Web Application", "React SPA", "Calls business commands.")
     ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "System of record, RLS, triggers, atomic RPC transactions and audit logging.")
 
@@ -9,7 +9,7 @@ C4Component
         Component(commandGateway, "Command Execution & RPC Gateway", "SQL RPCs, idempotency keys", "Executes each command as one PostgreSQL RPC/transaction (writing state changes and audit_logs atomically), retries deadlocks, and returns cached idempotency responses.")
         Component(jobLogger, "Job Tracking & Error Logger", "job_runs, logger", "Captures unhandled exceptions for operational monitoring.")
 
-        Component(validation, "Request Validation", "Zod schemas", "Parses and validates every request body before any database work begins.")
+        Component(validation, "Request Validation", "Shared validation", "Parses and validates every request body before any database work begins.")
         Component(commandHandlers, "Business Command Handlers", "One function folder per command", "Account, catalog, inventory, borrowing, money, circulation, write-off, acquisition, notification and assistant commands; thin orchestration only.")
         Component(httpHelpers, "HTTP & CORS Helpers", "_shared/http.ts", "Accept POST requests, handle CORS and OPTIONS, and map results to JSON or the standard error envelope.")
 
@@ -35,6 +35,7 @@ C4Component
     Rel(commandHandlers, jobLogger, "Logs unhandled errors")
 
     Rel(authGuard, auth, "Verifies JWT", "HTTPS")
+    Rel(commandHandlers, auth, "Manages users & sessions", "HTTPS, service role")
     Rel(authGuard, db, "Reloads profiles.status", "PostgREST HTTPS, service role")
     Rel(commandGateway, db, "Executes RPC (commits state & audit)", "PostgREST HTTPS, service role")
     Rel(jobLogger, db, "Writes error records", "PostgREST HTTPS, service role")
@@ -53,6 +54,7 @@ C4Component
     UpdateRelStyle(commandHandlers, adapters, $offsetX="10", $offsetY="0")
 
     UpdateRelStyle(authGuard, auth, $offsetX="10", $offsetY="0")
+    UpdateRelStyle(commandHandlers, auth, $offsetX="25", $offsetY="-115")
     UpdateRelStyle(authGuard, db, $offsetX="10", $offsetY="-25")
     UpdateRelStyle(commandGateway, db, $offsetX="-40", $offsetY="50")
     UpdateRelStyle(jobLogger, db, $offsetX="20", $offsetY="-30")

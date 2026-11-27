@@ -17,8 +17,8 @@ description: "Task list for 001a-accounts-reader implementation"
 
 **Purpose**: Core validation schemas and database triggers needed by both backend and frontend.
 
-- [x] **T001** [P] Create `src/shared/src/domain/auth.ts` defining Zod validation schemas for student registration (`studentRegisterSchema`), login (`loginSchema`), and password reset (`resetPasswordSchema`) following POL-02 constraints (email `*.edu.vn`, student ID pattern `^[A-Za-z0-9]{6,15}$`, password $\ge$ 8 chars with 1 letter & 1 digit).
-- [x] **T002** [P] Export new auth domain schemas in `src/shared/src/index.ts`.
+- [x] **T001** [P] Create `src/shared/src/domain/auth.ts` defining shared validation functions for student registration, login, and password reset following POL-02 constraints (email `*.edu.vn`, student ID pattern `^[A-Za-z0-9]{6,15}$`, password $\ge$ 8 chars with 1 letter & 1 digit).
+- [x] **T002** [P] Export the auth domain validation and helpers from `src/shared/src/index.ts`.
 - [x] **T003** Create database migration `src/supabase/migrations/0002_auth_triggers.sql` adding a trigger function on `auth.users` that automatically updates `public.profiles.status = 'active'` when `email_confirmed_at` is updated.
 
 ---
@@ -28,7 +28,7 @@ description: "Task list for 001a-accounts-reader implementation"
 **Purpose**: Server-side registration logic with atomic rollback and role assignment (Principle II & VI).
 
 - [x] **T004** Create Edge Function `src/supabase/functions/register-student/index.ts`:
-  - Validate payload with Zod schema from `@shelfhelp/shared`.
+  - Validate payload with shared validation from `@shelfhelp/shared`.
   - Check uniqueness of `student_id` and `email` against `public.profiles`.
   - Create Supabase Auth user with `app_metadata.role = 'student'`.
   - Insert row in `public.profiles` with `status = 'pending_verification'`.
@@ -65,7 +65,7 @@ description: "Task list for 001a-accounts-reader implementation"
   - "New patron? Sign up" navigation link to `/register`.
 - [x] **T010** Create `src/frontend/src/features/auth/RegisterPage.jsx` (Figma Screen 3):
   - Form fields: Full Name, Student ID, Institutional Email, Password, Confirm Password.
-  - Live client-side Zod validation.
+  - Live client-side shared validation.
   - "Complete Registration" button calling `register-student` Edge Function.
   - "Already have an account? Sign In" link to `/login`.
 - [x] **T011** Create `src/frontend/src/features/auth/ForgotPasswordPage.jsx` (Figma Screen 4):

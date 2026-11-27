@@ -80,7 +80,7 @@ Uploads and downloads obey role/owner/size/type policies.
 - **FR-SYS-01** `[+]` **Scheduled jobs registry.** Jobs exist as `pg_cron` schedules in UTC (DEC-55), idempotent, recording a run in `job_runs`: `nightly-loans`, `due-notifications`, `hold-expiry` (15 min), `payment-expiry` (5 min), `membership-reminders`, `pickup-warnings` (30 min), `email-outbox` (1 min), `embed-queue` (5 min), `unverified-cleanup` (daily), `ttl-cleanup` (daily), `reconcile` (nightly). Pure SQL jobs inside Postgres; external-service jobs as Edge Functions via `pg_net` with a secret header. Each job processes everything due.
 - **FR-SYS-02** `[+]` **Idempotency and concurrency.** All mutating Edge Functions SHALL accept an idempotency key, run one Postgres transaction following the lock order and retry rules (10.7), and be safe to retry.
 - **FR-SYS-03** `[+]` **Audit logging.** Write immutable audit entries for status changes, money actions, role changes, restore/inactivation, condition corrections, and staff views of student detail.
-- **FR-SYS-05** `[+]` **File handling.** Uploads and private downloads use Storage buckets with policies checking role, owner path, content type, and size (avatars 300 KB, covers 1 MB, evidence 2 MB each, CSV 2 MB).
+- **FR-SYS-05** `[+]` **File handling.** Uploads and private downloads use Storage buckets with policies checking role, owner path, content type, and size (avatars 300 KB, covers 1 MB, evidence 10 MiB each, CSV 2 MB).
 
 ### Key Entities
 

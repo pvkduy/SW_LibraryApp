@@ -14,6 +14,7 @@
 | 24/Nov/2026 | 1.5 | Restated the frontend versions as the installed React 19.3.1 / Vite 8.3.5, aligning with the deployment view | Nguyễn Anh Khôi |
 | 24/Nov/2026 | 1.6 | Applied the locked React 19.3.1 / Vite 8.3.5 notation consistently in §3.1 and §3.2 | Nguyễn Anh Khôi |
 | 24/Nov/2026 | 1.7 | System Context diagram presented as a rendered image, matching the other C4 views | Nguyễn Anh Khôi |
+| 27/Nov/2026 | 1.8 | Aligned references, actor use-case coverage (UC-01–UC-32), and §3.5 authentication/session rules with PA4 UC-02 and UC-32 changes | Nguyễn Anh Khôi |
 
 ### Table of contents
 
@@ -43,9 +44,9 @@ The document covers the whole product scope from PA1 through PA4, including the 
 | :--- | :--- | :--- |
 | R1 | [`SHELFHELP_FULLSPEC.md`](../../../../../src/speckit/specs/SHELFHELP_FULLSPEC.md) | Authoritative requirements specification |
 | R2 | [`docs/DECISIONS.md`](../../../../DECISIONS.md) | Recorded architectural decisions |
-| R3 | [`Vision Document`](../../../PA2/vision-document/Vision-Document.md) | Stakeholders and feature catalogue (`FEAT-01`–`FEAT-26`) |
-| R4 | [`Use-Case Diagrams`](../../../PA3/use-case-diagrams/Use-Case-Diagrams.md) | Actors and the 31 use cases |
-| R5 | [`Use-Case Specifications`](../../../PA3/use-case-specifications/) | Detailed UC-01 to UC-31 descriptions |
+| R3 | [`Vision Document`](../../vision-document/Vision-Document.md) | Stakeholders, quality targets, and feature catalogue (`FEAT-01`–`FEAT-26`, v2.1) |
+| R4 | [`Use-Case Diagrams`](../../use-case/Use-Case-Diagrams.md) | Actors and the 32 active use cases (`UC-01` to `UC-32`) |
+| R5 | [`PA4 Use-Case Specifications`](../../use-case/) & [`PA3 Specs`](../../../PA3/use-case-specifications/) | Revised `UC-02` and new `UC-32` in PA4; unchanged `UC-01`, `UC-03`–`UC-31` in PA3 |
 | R6 | [`Project Plan`](../../../PA3/project-plan/Project-Plan.md) | Phase plan and Build 2 scope |
 
 ---
@@ -60,11 +61,11 @@ The team owns the application code, database schema, Edge Functions, and policie
 
 ### 2.2 System capabilities
 
-The system provides the following capabilities in two modes over one shared backend. Together they cover all 31 use cases and all 26 features in the PA2 catalogue.
+The system provides the following capabilities in two modes over one shared backend. Together they cover all 32 active use cases and all 26 features in the vision catalogue.
 
 | Area | Capabilities |
 | :--- | :--- |
-| **Identity and membership** | Self-registration and email verification, sign-in/out, credential recovery, profile and avatar, two membership tiers with entitlement snapshots |
+| **Identity and membership** | Self-registration and email verification, sign-in/out with failed-attempt lockout and optional persistent sessions, credential recovery, active-session inventory and remote revocation, profile and avatar, two membership tiers with entitlement snapshots |
 | **Catalog and discovery** | Book and copy maintenance, diacritic-insensitive search and filters, browsing, ISBN barcode lookup, book detail, reviews, wishlist |
 | **Borrowing and fulfilment** | Cart, atomic checkout, copy holds, 48-hour pickup window, online or counter payment, handover, return, renewal, lost-book resolution |
 | **Reservations and acquisitions** | FIFO reservation queues with automatic promotion and strikes, student suggestions, acquisition batches, shipment receipt |
@@ -87,10 +88,10 @@ The system provides the following capabilities in two modes over one shared back
 | **PA1** | Project proposal, actors, feature list | Problem scope and initial technology direction |
 | **PA2** | Vision document, Spec Kit setup, requirement IDs | Feature catalogue, quality attributes, traceability |
 | **PA3** | 31 use cases, UI prototypes, first FR (authentication) | React auth screens, `register-student` function, `profiles`/`books`/`copies` schema, RLS, auth triggers |
-| **PA4** | Architecture baseline, circulation and reader loan/fine slice | `handover-items`, `return-loan`, `record-counter-payment`, `cancel-reservation`, circulation/queue tables and RPCs, reader loans/fines/reservations and admin circulation/queues/ledger screens |
-| **PA5** *(planned)* | Final release | Catalog administration, cart/checkout, acquisitions, receipts, analytics, reminders, assistant, and the remaining command and job functions |
+| **PA4** | Architecture baseline, circulation and reader loan/fine slice, `UC-02` security hardening & `UC-32` active-session specs | Implemented: `handover-items`, `return-loan`, `record-counter-payment`, `cancel-reservation`, `checkout-cart`, `complete-simulated-payment`, catalog/import/write-off/inventory handlers, circulation/queue tables and RPCs, reader loan/fine/reservation flows, and admin circulation/queues/ledger screens |
+| **PA5** *(planned)* | Final release | Remaining catalog and acquisition workflows, receipts, analytics, reminders, assistant, UC-02 failed-sign-in lockout/persistent-session hardening, UC-32 active-session endpoints (`list-sessions`, `revoke-session`, `revoke-other-sessions`), and scheduled job functions; also reconciliation of several target tables (`memberships`, `notifications`, `email_outbox`, `suggestions`, `batches`, `chats`, `audit_logs`, `copy_events`, `job_runs`, and `settings`) |
 
-In the PA4 circulation test slice, loan requests and items for handover testing are provided via deterministic database seeds (`src/supabase/seed.sql`) and direct staff counter operations, prior to the student self-service `checkout-cart` flow planned for PA5.
+In the PA4 circulation test slice, loan requests and items for handover testing are provided via deterministic database seeds (`src/supabase/seed.sql`) and direct staff counter operations. The `checkout-cart` and `complete-simulated-payment` handlers are also implemented in the codebase, while broader PA5 workflows and scheduled jobs remain target scope.
 
 ---
 
@@ -118,10 +119,10 @@ Supabase is a single managed platform that provides the function runtime, Postgr
 
 The frontend is a responsive **React 19.3.1 + Vite 8.3.5** application. Reader Mode is mobile-first; Admin Mode is desktop-first. Reader and admin routes are separate lazy-loaded bundles so admin code is never shipped to students.
 
-- **Routing and access:** React Router with guards by session, role, and account status. Students opening `/admin/*` receive a 403 page; staff are redirected to `/admin`.
-- **Data and forms:** TanStack Query with `supabase-js` for server state; React Hook Form with Zod schemas shared with Edge Functions so client and server validation agree.
-- **UI:** Tailwind CSS with shadcn/ui (Radix) for accessible components; Recharts for dashboards; react-i18next and date-fns for English UI and `Asia/Ho_Chi_Minh` formatting.
-- **Specialised features:** `@zxing/browser` for ISBN scanning, JsBarcode and a PDF library for label sheets, PapaParse/ExcelJS for import and export, pdfmake for Vietnamese-capable PDFs, and react-easy-crop for avatars.
+- **Routing and access:** React Router is planned to add guarded role/account-status routes. Students opening `/admin/*` will receive a 403 page; staff will be redirected to `/admin`.
+- **Data and forms:** TanStack Query will be added for server state; forms currently use custom React controls and shared domain validation.
+- **UI:** Hand-written CSS and native HTML controls are used; date and number formatting follows `Asia/Ho_Chi_Minh`. React Router and TanStack Query are planned additions.
+- **Later implementation:** Barcode lookup, barcode labels, CSV/Excel/PDF exports, and image cropping will use implementation-appropriate browser APIs or libraries selected when those features are built.
 - **Language note:** the UI is currently JavaScript/JSX; the shared domain and type contracts are strict TypeScript, following an incremental path toward an all-TypeScript frontend.
 
 ### 3.3 Backend
@@ -145,10 +146,13 @@ The backend logic is a set of **stateless Supabase Edge Functions** written in T
 
 ### 3.5 Authentication and authorization
 
-- **Supabase Auth**, a managed service of the Supabase platform, handles registration, email verification, sign-in/out, and password reset. The browser uses PKCE and auto-refreshes the session. Verification, reset, and notification messages leave through the external email provider described in §3.7.
+- **Supabase Auth**, a managed service of the Supabase platform, handles registration, email verification, sign-in/out, password reset, and session records (`auth.sessions`). The browser uses PKCE and auto-refreshes the session. Verification, reset, and notification messages leave through the external email provider described in §3.7.
+- **Persistent sessions and credential handling (`UC-02`):** The application never stores the user's password in browser storage, cookies, state, or logs. Selecting *"Keep me signed in"* persists only the revocable Supabase refresh token in `localStorage` (`persistSession: true`, `autoRefreshToken: true`) while keeping the access token in memory; leaving it unchecked stores the refresh token in `sessionStorage` so it clears when the tab or window closes. Sign-in uses standard `<form>` `autocomplete` attributes for browser password managers.
+- **PA5 target — server-enforced lockout and throttling (`UC-02`):** After five consecutive failed sign-in attempts for the same identifier (email or Student ID) within 15 minutes, the identifier will be locked server-side for 10 minutes (returning HTTP 429 with `Retry-After` and a generic message), paired with a per-IP/device rate limit. A successful sign-in or password reset will clear the counter, and password recovery will not be blocked.
+- **PA5 target — active-session inventory and revocation (`UC-32`):** Because `auth.sessions` is not exposed through PostgREST, later server-side Edge Functions (`list-sessions`, `revoke-session`, `revoke-other-sessions`) will call the Auth Admin API with `service_role`. Callers will be identified strictly from their verified JWT; no raw tokens will be returned, revocation will be idempotent and audit-logged, and the current session will end only through normal sign-out.
 - **Role:** `app_metadata.role` in the JWT is the source of truth (`student` or `admin`). `profiles.role` is a display copy. Both are written only by server code.
 - **Authorization:** RLS enforces row access; Edge Functions additionally check role, account status (`active`, `restricted`, `inactive`), debt hold, membership entitlement, and reservation ban.
-- **Revocation and bots:** every function reloads `profiles.status`, so a deactivated admin is refused even with an old token; Cloudflare Turnstile protects register, login, and reset.
+- **Revocation and bots:** every function reloads `profiles.status`, so a deactivated admin is refused even with an old token; Cloudflare Turnstile is planned to protect register, login, and reset.
 - **Secrets:** only the Supabase URL and anon key reach the browser. The service-role key and provider keys exist only in Edge Function secrets and CI.
 
 ### 3.6 Cloud file storage
@@ -159,7 +163,7 @@ The backend logic is a set of **stateless Supabase Edge Functions** written in T
 | :--- | :--- | :--- | :--- | :--- |
 | `covers` | Public read | Staff | Anyone | 1 MB; JPEG/PNG/WebP |
 | `avatars` | Private | Owner (`{uid}/avatar.jpg`) | Owner and staff via signed URL | 300 KB; JPEG |
-| `evidence` | Private | Staff | Staff via signed URL | 2 MB; JPEG/PNG/WebP |
+| `evidence` | Private | Staff | Staff via signed URL | 10 MiB; JPEG/PNG/WebP |
 | `imports` | Private | Staff | Staff; deleted after 7 days | 2 MB; CSV |
 
 Policies check the bucket, the caller's role, and avatar ownership. Bucket settings enforce size and MIME type.
@@ -180,7 +184,7 @@ Policies check the bucket, the caller's role, and avatar ownership. Bucket setti
 
 - **Hosting & Environments:** The SPA is deployed to a static host and global CDN over HTTPS; the backend is hosted on Supabase. Environments span local Docker stacks, automated CI, and cloud deployment (detailed in [Container view §6](../container/Container.md#6-deployment-and-environments)).
 - **CI/CD:** GitHub Actions executes linting, type-checking, pgTAP database tests, Edge Function integration tests, and Playwright end-to-end tests.
-- **Testing:** Vitest and React Testing Library for domain/UI, pgTAP for database schema/RPC invariants and RLS, and Playwright for critical user journeys.
+- **Testing:** Vitest is planned for domain/UI tests; pgTAP covers database schema/RPC invariants and RLS, and Playwright covers critical user journeys.
 
 ---
 
@@ -249,8 +253,8 @@ Source: [`mermaid/system-context.mmd`](mermaid/system-context.mmd).
 
 | Actor | Description | Main goals | Use cases |
 | :--- | :--- | :--- | :--- |
-| **Student (Reader)** | University student using Reader Mode on a phone or laptop; may be a non-member or a Premium member. | Find and borrow books, manage loans and charges, reserve titles, suggest acquisitions, get AI recommendations | UC-01 to UC-18, UC-28 |
-| **Librarian (Admin)** | Library staff using Admin Mode on a desktop; holds the single `admin` role. | Maintain the catalog, run circulation, manage money, acquisitions, students, and reports | UC-02, UC-04, UC-13, UC-18, UC-19 to UC-31 |
+| **Student (Reader)** | University student using Reader Mode on a phone or laptop; may be a non-member or a Premium member. | Find and borrow books, manage loans, charges, and active sessions, reserve titles, suggest acquisitions, get AI recommendations | UC-01 to UC-18, UC-28, UC-32 |
+| **Librarian (Admin)** | Library staff using Admin Mode on a desktop; holds the single `admin` role. | Maintain the catalog, run circulation, manage money, acquisitions, students, own active sessions, and reports | UC-02, UC-04, UC-13, UC-18, UC-19 to UC-32 |
 
 Staff accounts cannot borrow; a staff member who is also a student uses a separate student account. The two roles do not form a generalisation hierarchy.
 
@@ -258,7 +262,7 @@ Staff accounts cannot borrow; a staff member who is also a student uses a separa
 
 | External system | What it provides | Interaction with ShelfHelp |
 | :--- | :--- | :--- |
-| **Supabase Platform** | Managed backend: PostgreSQL, Auth, Storage, Realtime, Edge Functions runtime, scheduled jobs | The team's schema, functions, and policies are deployed there. The browser reads via PostgREST under RLS and authenticates through Supabase Auth; business writes run in Edge Functions and commit in one PostgreSQL transaction |
+| **Supabase Platform** | Managed backend: PostgreSQL, Auth, Storage, Realtime, Edge Functions runtime, scheduled jobs | The team's schema, functions, and policies are deployed there. The browser reads via PostgREST under RLS and authenticates through Supabase Auth; business writes and privileged session queries (`auth.sessions` via the Auth Admin API for `UC-32`) run in Edge Functions and commit in one PostgreSQL transaction |
 | **Email Delivery Provider** | Delivery of verification, reset, and notification email | Supabase Auth sends verification and reset mail through the configured SMTP relay; application notifications leave through the email outbox to the same provider |
 | **Payment Provider (simulator)** | Online payment and refunds | ShelfHelp sends purpose, amount, and reference, then records the settlement; the simulator implements the `PaymentProvider` interface |
 | **AI Provider** | Embeddings and grounded answer generation | ShelfHelp sends query text and book metadata only; retrieved book ids are validated server-side; no student identity or borrowing history is sent |

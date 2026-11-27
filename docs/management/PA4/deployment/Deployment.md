@@ -12,6 +12,7 @@
 | 24/Nov/2026 | 1.3 | §1.2 topology sentence rewritten; Turnstile removed from the diagram so supporting services are diagrammed consistently; rate-limit sentence removed from §6.2 | Nguyễn Anh Khôi |
 | 24/Nov/2026 | 1.4 | Deployment diagram presented as a rendered image with the client-to-platform edges aggregated; node catalogue rounded out with the Edge Functions and managed-services rows | Nguyễn Anh Khôi |
 | 24/Nov/2026 | 1.5 | Region corrected to AWS `ap-northeast-2` (Seoul) to match the provisioned Supabase project | Nguyễn Anh Khôi |
+| 27/Nov/2026 | 1.6 | Aligned Auth service and Edge Functions session-management descriptions with PA4 UC-02 and UC-32 | Nguyễn Anh Khôi |
 
 ### Table of contents
 
@@ -174,7 +175,7 @@ Source: [`mermaid/deployment.mmd`](mermaid/deployment.mmd).
 | **Execution container** | **ShelfHelp Web Application** executed within modern evergreen browsers (current versions of Google Chrome, Mozilla Firefox, Apple Safari, and Microsoft Edge). Camera barcode scanning varies across phones and browsers, so manual ISBN entry is always available as a fallback. |
 
 **Description and responsibilities:**
-The client hardware executes the compiled single-page application in browser memory. It renders both **Reader Mode** (optimized for mobile touchscreens and responsive viewports) and **Admin Mode** (optimized for multi-column desktop workflows), manages local routing state via React Router, and interfaces with device peripherals such as webcams for barcode scanning (`@zxing/browser`).
+The client hardware executes the compiled single-page application in browser memory. It renders both **Reader Mode** (optimized for mobile touchscreens and responsive viewports) and **Admin Mode** (optimized for multi-column desktop workflows), will use React Router for routing, and interfaces with device peripherals such as webcams for browser-native barcode scanning.
 
 **Communication protocols:**
 - **Static Hosting & CDN (Vercel):** Inbound download of static HTML/JS/CSS assets via **HTTPS (port 443)**.
@@ -193,7 +194,7 @@ The client hardware executes the compiled single-page application in browser mem
 | :--- | :--- |
 | **Node type** | Distributed Edge Content Delivery Network (CDN) |
 | **Cloud platform** | Vercel Global Edge Network |
-| **Deployed assets** | **Static Web Assets**: Compiled, minified HTML5, ES modules (JavaScript), CSS (Tailwind), and optimized SVGs/images |
+| **Deployed assets** | **Static Web Assets**: Compiled, minified HTML5, ES modules (JavaScript), CSS, and optimized SVGs/images |
 
 **Description and responsibilities:**
 Hosts the immutable build output produced by Vite. Deployed automatically via Git push triggers in CI. Edge nodes cache static assets across geographically distributed Points of Presence (PoPs), serving readers with minimal round-trip latency, automatic HTTP/2 and HTTP/3 multiplexing, and Gzip/Brotli compression. Non-asset URL paths rewrite to `/index.html` to support client-side HTML5 History API routing.
@@ -217,12 +218,12 @@ The Supabase project and every persistent backend service (database, storage, au
 | **Containers running** | **ShelfHelp API** (stateless business command handlers and scheduled background job functions) |
 
 **Description and responsibilities:**
-Executes stateless TypeScript functions on Deno V8 isolates that run in the same region as the database. Validates incoming JSON payloads against Zod schemas, extracts and verifies caller identity from JWT tokens, reloads profile status to enforce debt holds and suspension policies, applies `@shelfhelp/shared` domain logic, and routes commands to PostgreSQL stored procedures in `ap-northeast-2`.
+Executes stateless TypeScript functions on Deno V8 isolates that run in the same region as the database. Validates incoming JSON payloads with shared domain validation and type guards, extracts and verifies caller identity from JWT tokens, reloads profile status to enforce debt holds and suspension policies, applies `@shelfhelp/shared` domain logic, and routes commands to PostgreSQL stored procedures in `ap-northeast-2`.
 
 **Communication protocols:**
 - **Web Application:** Receives command requests over **HTTPS POST** with JWT bearer authentication.
 - **PostgreSQL Database:** Invokes transactional stored procedures via **PostgREST HTTPS** using the internal `service_role` key, within the same region.
-- **Supabase Auth:** Invokes GoTrue administrative endpoints over **HTTPS** to create and manage user records.
+- **Supabase Auth:** Invokes GoTrue administrative endpoints over **HTTPS** (`service_role`) to create and manage user records and list or revoke active sessions (`UC-32`).
 - **PostgreSQL Database (`pg_cron`):** Receives background job trigger requests over **HTTPS** initiated by `pg_net` bearing the `x-job-secret` header.
 - **External Providers:** Dispatches outbound HTTPS/SMTP calls to Email, Payment, AI, and Bibliographic APIs.
 
@@ -249,8 +250,8 @@ These three services are managed platform services, not team-owned containers ([
 
 | Service node | Platform technology | Service running | Description & Protocols |
 | :--- | :--- | :--- | :--- |
-| **Auth Service Node** | GoTrue (Go microservice) | **Supabase Auth** (managed) | Manages registration, OTP verification, password hashing (bcrypt), and JWT rotation with embedded `app_metadata.role`. Exposes HTTPS endpoints to Web App and API; dispatches verification emails via external SMTP. |
-| **Storage Service Node** | Supabase Storage (Node.js service) | **Supabase Storage** (managed) | Multi-tenant object storage managing dedicated buckets (`covers`, `avatars`, `evidence`, `imports`); enforces bucket access policies and serves private files via time-limited signed URLs over HTTPS. |
+| **Auth Service Node** | GoTrue (Go microservice) | **Supabase Auth** (managed) | Manages registration, OTP verification, password hashing (bcrypt), server-side sign-in throttling, session records (`auth.sessions`), refresh-token revocation, and JWT rotation with embedded `app_metadata.role`. Exposes HTTPS endpoints to Web App and API (never exposing `auth.sessions` via PostgREST); dispatches verification emails via external SMTP. |
+| **Storage Service Node** | Supabase Storage (Node.js service) | **Supabase Storage** (managed) | Multi-tenant object storage managing dedicated buckets (`covers`, `avatars`, `evidence`, `imports`); enforces bucket access policies (evidence photos are limited to 10 MiB) and serves private files via time-limited signed URLs over HTTPS. |
 | **Realtime Cluster Node** | Phoenix Channels (Elixir / BEAM) | **Supabase Realtime** (managed) | Ingests table mutations from PostgreSQL via **logical replication** and broadcasts filtered updates (book availability counters, notifications, loan changes) to active clients over **WebSocket (WSS)** under RLS. |
 
 ---
@@ -293,7 +294,7 @@ ShelfHelp defines four formal deployment environments, matching [Container.md §
 
 ### 6.2 Credential and secret management
 
-- **Client exposure:** The frontend bundle receives only public parameters: the Supabase project URL (`VITE_SUPABASE_URL`) and the anonymous public key (`VITE_SUPABASE_ANON_KEY`).
+- **Client exposure:** The frontend bundle receives only public parameters: the Supabase project URL (`VITE_SUPABASE_URL`) and the publishable/anonymous public key (`VITE_SUPABASE_PUBLISHABLE_KEY`).
 - **Secret confinement:** The database `service_role` key, external email SMTP credentials, and AI provider API keys exist exclusively within Supabase Edge Function environment secrets and GitHub Actions CI secrets. They are never transmitted to client browsers.
 - **Bootstrapping protection:** The browser obtains a Cloudflare Turnstile token for register, login, and password reset, and Supabase Auth verifies it server-side before creating a session ([System-Context §3.5](../architecture/system-context/System-Context.md#35-authentication-and-authorization)).
 - **Observability:** Runtime errors and performance events go to Sentry from both the browser and the Edge Functions, alongside Supabase platform logs and the append-only `audit_logs` and `job_runs` tables owned by the database and API containers.

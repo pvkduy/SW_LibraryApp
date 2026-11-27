@@ -1,21 +1,21 @@
 # Supabase local development configuration
 # https://supabase.com/docs/guides/local-development/cli/config
 #
-# Project region for hosted deployments: ap-southeast-1 (Singapore) — SRS §10.1.
+# Project region for hosted deployments: ap-northeast-2 (Seoul) — SRS §10.1.
 # Schedules and date logic use Asia/Ho_Chi_Minh (POL-01, DEC-55).
 
 project_id = "shelfhelp"
 
 [api]
 enabled = true
-port = 60021
+port = 54321
 schemas = ["public", "storage", "graphql_public"]
 extra_search_path = ["public", "extensions"]
 max_rows = 1000
 
 [db]
-port = 60022
-shadow_port = 60020
+port = 54322
+shadow_port = 54320
 major_version = 15
 
 [db.pooler]
@@ -23,11 +23,11 @@ enabled = false
 
 [studio]
 enabled = true
-port = 60023
+port = 54323
 
 [local_smtp]
 enabled = true
-port = 60024
+port = 54324
 
 [storage]
 enabled = true

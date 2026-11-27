@@ -540,7 +540,7 @@ Conventions for every screen: loading uses skeletons (never a blank page), faile
 **Story:** As a new student, I want to create an account with my university email and student ID so that I can borrow books.
 **Flow:** Fill form, submit, account is created as `pending_verification`, redirect to R-02.
 
-- **FR-AUTH-01** `[PA1 §3.1]` **Register.** The system SHALL collect the fields in POL-02, validate them with one shared Zod schema on client and server, and create the account through the Edge Function `register-student`, which checks that the student ID and email are unused, creates the Auth user (role `student` in `app_metadata`), inserts the `profiles` row (`status=pending_verification`), and triggers the verification email. If the `profiles` insert fails, the Auth user is deleted so no half-created account remains (EC-36). *AC:* Given valid data, when submitted, then the user document exists with `pending_verification` and a verification email was sent. Given a student ID already in use, then a field error is shown and no Auth user exists. Given an email domain outside the allowlist, then the error names the allowed domains. Given a network drop mid-submit, then entered data is kept and a retry with the same idempotency key creates exactly one account.
+- **FR-AUTH-01** `[PA1 §3.1]` **Register.** The system SHALL collect the fields in POL-02, validate them with shared client/server domain validation, and create the account through the Edge Function `register-student`, which checks that the student ID and email are unused, creates the Auth user (role `student` in `app_metadata`), inserts the `profiles` row (`status=pending_verification`), and triggers the verification email. If the `profiles` insert fails, the Auth user is deleted so no half-created account remains (EC-36). *AC:* Given valid data, when submitted, then the user document exists with `pending_verification` and a verification email was sent. Given a student ID already in use, then a field error is shown and no Auth user exists. Given an email domain outside the allowlist, then the error names the allowed domains. Given a network drop mid-submit, then entered data is kept and a retry with the same idempotency key creates exactly one account.
 
 **States:** submit button disabled while pending; inline field errors; password rules shown live. **Edge:** email already registered shows "already registered, log in or reset password" (accepted trade-off against enumeration, see Section 18).
 
@@ -797,7 +797,7 @@ Navigation and layout only. No feature requirements of its own.
 - **FR-SYS-01** `[+]` **Scheduled jobs registry.** The following jobs SHALL exist as `pg_cron` schedules in UTC (DEC-55), each idempotent and recording a run in `job_runs`: `nightly-loans` (17:05 UTC, 00:05 local), `due-notifications` (01:00 UTC, 08:00 local), `hold-expiry` (every 15 min), `payment-expiry` (every 5 min), `membership-reminders` (01:00 UTC), `pickup-warnings` (every 30 min), `email-outbox` (every minute), `embed-queue` (every 5 min), `unverified-cleanup` (daily), `ttl-cleanup` (daily: expired notifications, chats, imports), `reconcile` (nightly). Pure SQL jobs run inside Postgres; jobs that call external services run as Edge Functions invoked through `pg_net` with a secret header. Each job processes everything that is due, not only the current window, so a missed run catches up. *AC:* Given any job run twice for the same window, then no duplicate side effects exist. Given the project was unavailable for 3 days and then resumes, then the next runs process every overdue item exactly once.
 - **FR-SYS-02** `[+]` **Idempotency and concurrency.** All mutating Edge Functions SHALL accept an idempotency key, run in one Postgres transaction following the lock order and retry rules in 10.7, and be safe to retry. *AC:* Given the same key sent twice concurrently, then one effect and the same response are returned. Given a client timeout after the database committed, then retrying with the same key returns the stored response (EC-34).
 - **FR-SYS-03** `[+]` **Audit logging.** The system SHALL write an immutable audit entry for status changes, money actions, settings changes, role changes, restore and inactivation, condition corrections, and staff views of student detail. There is no in-app audit viewer in the current scope (Section 20); entries are read through the database. *AC:* Given any listed action, then an entry with actor, entity, before, after, and time exists.
-- **FR-SYS-05** `[+]` **File handling.** All uploads and private downloads SHALL use the Storage buckets in 10.5, whose policies check role, owner path, content type, and size (avatars 300 KB after processing, covers 1 MB, evidence photos 2 MB each, CSV 2 MB). *AC:* Given a student uploading to another student's avatar path, then Storage denies it. Given a 10 MB file, then it is rejected before it is stored.
+- **FR-SYS-05** `[+]` **File handling.** All uploads and private downloads SHALL use the Storage buckets in 10.5, whose policies check role, owner path, content type, and size (avatars 300 KB after processing, covers 1 MB, evidence photos 10 MiB each, CSV 2 MB). *AC:* Given a student uploading to another student's avatar path, then Storage denies it. Given an evidence photo over 10 MiB, then it is rejected before it is stored.
 
 ---
 
@@ -826,18 +826,18 @@ Supabase project (region ap-northeast-2, Seoul)
 |---|---|---|
 | Language | TypeScript (strict) everywhere, SQL for the database | Database types generated with `supabase gen types` |
 | Web framework | React 18+, Vite | Reader and admin are separate lazy chunks |
-| Routing | React Router (data router) | Guards by role and account status |
-| Server state | TanStack Query with supabase-js | Realtime only for availability counters, notifications, and own loan items |
-| Forms and validation | React Hook Form + Zod | Same schemas in Edge Functions |
-| UI | Tailwind CSS + shadcn/ui (Radix) | Accessible primitives |
-| i18n and time | react-i18next (English only for now), date-fns + date-fns-tz | Strings in the `en` locale file, no hardcoded strings |
-| Charts | Recharts | Dashboard |
+| Routing | React Router (data router, to be added) | Guards by role and account status |
+| Server state | TanStack Query with supabase-js (to be added) | Realtime only for availability counters, notifications, and own loan items |
+| Forms and validation | Custom React controls with shared domain validation | Consistent field and server validation |
+| UI | Hand-written CSS and native HTML components | Responsive, accessible controls |
+| i18n and time | English UI with shared `Asia/Ho_Chi_Minh` formatting | Locale support may be added later |
+| Charts | Browser-native SVG/HTML implementation | Dashboard |
 | Search | Postgres full-text search, `pg_trgm`, `unaccent` | See 10.4 |
 | Vector search | `pgvector` with an HNSW index | Chatbot retrieval |
-| Barcode scan | `@zxing/browser` (with native BarcodeDetector when present) | Manual fallback |
-| Barcode labels | JsBarcode (Code 128) + PDF library | Label sheet |
-| Import/export | PapaParse (CSV), ExcelJS (XLSX), pdfmake or jsPDF with an embedded Vietnamese-capable font | Client-side up to 20,000 rows |
-| Image crop | react-easy-crop + canvas | 512x512 output |
+| Barcode scan | Browser-native barcode APIs, with a manual fallback | ISBN and copy-barcode lookup |
+| Barcode labels | Implementation-selected Code 128 rendering | Label sheet |
+| Import/export | Implementation-selected browser utilities | Client-side CSV and spreadsheet exports |
+| Image crop | Browser canvas implementation | 512x512 output |
 | Auth | Supabase Auth | Role in `app_metadata.role`, written only by server code; session inventory and revocation through Edge Functions with the service role (DEC-57) |
 | Database | Supabase Postgres | RLS on every table, migrations via Supabase CLI |
 | Backend | Supabase Edge Functions (Deno, TypeScript) | One folder per function, thin handlers |
@@ -846,7 +846,7 @@ Supabase project (region ap-northeast-2, Seoul)
 | Bot protection | Cloudflare Turnstile (Supabase Auth CAPTCHA) on register, login, reset | Plus per-user rate limits in functions |
 | Hosting | Static host (Vercel, Netlify, or Cloudflare Pages) | SPA fallback rewrite |
 | Monitoring | Sentry (web and functions), Supabase logs, uptime check | NFR-13 |
-| Tests | Vitest, React Testing Library, Playwright, pgTAP, Supabase local stack (Docker), MSW | NFR-14 |
+| Tests | Vitest (to be added), Playwright, pgTAP, Supabase local stack (Docker) | NFR-14 |
 | CI/CD | GitHub Actions: lint, typecheck, unit, pgTAP, integration against the local stack, Playwright, migration deploy, preview deploy | Spec matrix check is a required job |
 
 ### 10.3 External services and integrations
@@ -885,7 +885,7 @@ Matching and ranking behavior is defined by POL-17. This section says how to bui
 |---|---|---|---|---|
 | `covers` | public read | staff | anyone | 1 MB, JPEG/PNG/WebP |
 | `avatars` | private | owner, path `{uid}/avatar.jpg` | owner and staff (signed URL, 15 min) | 300 KB, JPEG |
-| `evidence` | private | staff | staff (signed URL, 15 min) | 2 MB each, JPEG/PNG/WebP |
+| `evidence` | private | staff | staff (signed URL, 15 min) | 10 MiB each, JPEG/PNG/WebP |
 | `imports` | private | staff | staff, deleted after 7 days by `ttl-cleanup` | 2 MB, CSV |
 
 Policies on `storage.objects` check the bucket, the caller's role from the JWT, and for `avatars` that the first path segment equals `auth.uid()`. Bucket-level `file_size_limit` and `allowed_mime_types` enforce size and type. Clients upload and request signed read URLs directly under their own identity, so no custom URL-issuing function is needed.
@@ -925,7 +925,6 @@ shelfhelp/
   apps/web/
     src/
       app/            router, providers, guards, error boundary
-      components/ui/  shadcn primitives
       features/
         auth/ profile/ membership/ catalog/ cart/ loans/ reservations/
         charges/ notifications/ suggestions/ assistant/
@@ -1042,7 +1041,7 @@ Edge Functions return JSON `{ "error": { "reason", "message", "details" } }` wit
 | NFR-03 | Server latency | p95 at most 2 s for checkout, handover, return, payment completion, renewal; p95 at most 8 s for an assistant reply; the active-session list p95 at most 1 s for up to 20 sessions and a single-session revocation p95 at most 800 ms; "Sign Out All Other Sessions" at most 2 s for up to 20 sessions. |
 | NFR-04 | Read efficiency | No unbounded Realtime subscriptions or unpaginated queries in the UI. Lists are paginated. Dashboard RPCs use indexes and stay under 1 s p95 at the NFR-05 scale. Home screen makes at most 12 API requests on load. |
 | NFR-05 | Scale baseline | 20,000 students, 100,000 copies, 500 concurrent users, 50 checkouts per minute at semester start. Hot-book contention is mitigated by `SKIP LOCKED` copy selection and short transactions (10.7, RISK-02). |
-| NFR-06 | Security | Deny-by-default RLS on every table; CAPTCHA on register, login, and reset; every Edge Function validates input with Zod and authorizes by role and status; no service-role key or database URL in the client; CSP and no `dangerouslySetInnerHTML` with user content; signed URL TTLs per 10.5; rate limits on registration, resend, chat, and payments; dependency scanning in CI; OWASP ASVS Level 2 as the review checklist. |
+| NFR-06 | Security | Deny-by-default RLS on every table; CAPTCHA on register, login, and reset (Turnstile to be added); every Edge Function validates input with shared domain validation and authorizes by role and status; no service-role key or database URL in the client; CSP and no `dangerouslySetInnerHTML` with user content; signed URL TTLs per 10.5; rate limits on registration, resend, chat, and payments; dependency scanning in CI; OWASP ASVS Level 2 as the review checklist. |
 | NFR-07 | Privacy | POL-16. No PII in logs or provider prompts. Staff access to student detail is audit-logged. |
 | NFR-08 | Accessibility | WCAG 2.2 AA. Full keyboard operation, visible focus, 4.5:1 text contrast, programmatic labels, `aria-live` for toasts and chat, touch targets at least 44 px, reduced-motion support, camera features always have a non-camera alternative, countdowns are not announced every second. Key flows tested with a screen reader. |
 | NFR-09 | Reliability | Idempotent mutations and jobs, retries with exponential backoff, target availability 99.5 percent, daily database backups and point-in-time recovery if the plan allows it (check before launch), with a tested restore, RPO 24 h, RTO 4 h, alerts on job failure and function error rate. Graceful degradation per feature (search, assistant, email). |

@@ -12,6 +12,7 @@
 | 24/Nov/2026 | 1.3 | Aligned L2 container classification with L3, updated API-DB protocol to PostgREST HTTPS, and removed redundant technology relisting | Nguyễn Anh Khôi |
 | 24/Nov/2026 | 1.4 | Stated the locked frontend versions (React 19.3.1, Vite 8.3.5) consistently with the Level 1 and deployment views | Nguyễn Anh Khôi |
 | 24/Nov/2026 | 1.5 | Container diagram rendered as two panels (core containers; API outbound integrations) so the C4 layout stays readable | Nguyễn Anh Khôi |
+| 27/Nov/2026 | 1.6 | Aligned Container view, API-to-Auth session relationship, authentication path, and traceability (UC-01–UC-32) with PA4 UC-02 and UC-32 | Nguyễn Anh Khôi |
 
 ### Table of contents
 
@@ -54,7 +55,7 @@ The view covers the whole product scope from PA1–PA4: identity and membership,
 | R1 | [`System-Context.md`](../system-context/System-Context.md) | Level 1 actors, external systems, and platform description |
 | R2 | [`SHELFHELP_FULLSPEC.md`](../../../../../src/speckit/specs/SHELFHELP_FULLSPEC.md) | Technology stack, data model, functions, and RPCs |
 | R3 | [`DECISIONS.md`](../../../../DECISIONS.md) | Supabase and project-layout decisions |
-| R4 | [`Use-Case-Diagrams.md`](../../../PA3/use-case-diagrams/Use-Case-Diagrams.md) | Actors and UC-01 to UC-31 |
+| R4 | [`Use-Case-Diagrams.md`](../../use-case/Use-Case-Diagrams.md) | Actors and UC-01 to UC-32 |
 
 ---
 
@@ -107,7 +108,7 @@ C4Container
 
     System_Boundary(supabase, "Supabase Platform (managed services)") {
         Container_Ext(storage, "Supabase Storage", "Managed object storage with bucket policies", "Covers, avatars, write-off evidence and CSV imports; access controlled by storage policies and signed URLs.")
-        Container_Ext(auth, "Supabase Auth", "Managed identity service, JWT, PKCE", "Registration, email verification, sign-in/out, password reset and JWT issuance with app_metadata.role.")
+        Container_Ext(auth, "Supabase Auth", "Managed identity service, JWT, PKCE", "Registration, email verification, sign-in/out, password reset and JWT issuance. Planned UC-32: active-session listing/revocation.")
         Container_Ext(realtime, "Supabase Realtime", "Managed change-data service", "Pushes live availability counters, notifications and own loan-item changes to subscribed browsers under RLS.")
     }
 
@@ -122,7 +123,7 @@ C4Container
     Rel(webapp, storage, "Uploads/downloads files", "HTTPS, signed URLs")
     Rel(webapp, auth, "Signs up/in, resets password", "HTTPS, PKCE")
     Rel(webapp, realtime, "Subscribes to changes", "WebSocket, RLS")
-    Rel(api, auth, "Verifies JWT, creates users", "HTTPS")
+    Rel(api, auth, "Verifies JWT, manages users & sessions", "HTTPS")
     Rel(realtime, db, "Reads change stream", "logical replication")
 
     UpdateRelStyle(student, webapp, $offsetX="10", $offsetY="-60")
@@ -221,12 +222,12 @@ Source: [`mermaid/container-part1.mmd`](mermaid/container-part1.mmd) and
 **Responsibilities and services provided:**
 - Renders the responsive single-page user interface for both **Reader Mode** (students: catalog discovery, borrowing cart, checkout, active loans, reservations, fines/payments, grounded AI assistant) and **Admin Mode** (staff: circulation desk handover and returns, copy management, reservation queues, financial ledger, write-off slips, report exports).
 - Enforces client-side route guards based on session state, role (`student` vs `admin`), and account status (`active`, `pending_verification`, `restricted`, `inactive`).
-- Executes client-side auxiliary utilities including camera barcode scanning (`@zxing/browser`), barcode label rendering (`JsBarcode`), client-side CSV parsing (`PapaParse`), Excel reporting (`ExcelJS`), and client-side PDF receipt generation (`pdfmake`).
+- Executes browser-native camera barcode scanning and implementation-selected utilities for barcode rendering, CSV, Excel, PDF, and image handling as those features are added.
 
 **Communication with other containers:**
 - **ShelfHelp API:** Invokes serverless Edge Functions via **HTTPS POST** bearing the caller's JWT bearer token in the `Authorization` header to execute transactional business commands.
 - **PostgreSQL Database:** Reads catalog, loan history, charges, and user profile data directly via **PostgREST over HTTPS** using the Supabase anonymous key and caller's JWT, strictly filtered by PostgreSQL Row Level Security (RLS). Personal cart items and profile contact fields are written directly under own-row RLS policies and column-level grants.
-- **Supabase Auth:** Initiates self-registration, OTP verification, sign-in/out, and password reset via **HTTPS POST** (PKCE flow).
+- **Supabase Auth:** Initiates self-registration, OTP verification, sign-in/out, and password reset via **HTTPS POST** (PKCE flow). Persists only the revocable refresh token in `localStorage` when *"Keep me signed in"* is selected (or `sessionStorage` otherwise), never storing the password (`UC-02`); active-session listing and revocation (`UC-32`) go through **ShelfHelp API**.
 - **Supabase Storage:** Uploads avatars and evidence images and downloads public cover assets via **HTTPS** using signed URLs or public endpoints.
 - **Supabase Realtime:** Subscribes to live book availability counters, personal notifications, and loan-item status changes via persistent **WebSocket (WSS)** connections under RLS filtering.
 
@@ -243,15 +244,15 @@ Source: [`mermaid/container-part1.mmd`](mermaid/container-part1.mmd) and
 
 **Responsibilities and services provided:**
 - Provides a centralized serverless backend hosting one dedicated function per business command (e.g. checkout, handover, return, counter payment, cancellation) and one function per scheduled cron task.
-- Validates request payloads against strict Zod schemas shared with the frontend.
-- Authenticates callers using JWT tokens and reloads `profiles.status` to enforce authorization policies (role verification, account suspension, debt holds, membership entitlement).
+- Validates request payloads with shared implementation-domain validation and strict type guards.
+- Authenticates callers using JWT tokens, reloads `profiles.status` (and session validity where immediate revocation is required), and enforces authorization policies (role verification, account suspension, debt holds, membership entitlement, and sign-in lockout protection).
 - Applies domain rules using `@shelfhelp/shared` (borrowing entitlements, gating checks, and input validations) and orchestrates single-transaction execution via PostgreSQL RPCs (which enforce transactional formulas and invariants).
 - Isolates third-party service communication behind pluggable integration adapters with standard fallback mechanisms.
 
 **Communication with other containers:**
 - **ShelfHelp Web Application:** Receives command requests via **HTTPS POST** with JWT authentication; returns standardized JSON responses or error envelopes (`{ error: { reason, message, details } }`).
 - **PostgreSQL Database:** Invokes database stored procedures via **PostgREST HTTPS** using the privileged database `service_role` key to execute atomic transactional RPCs (e.g. `rpc_confirm_handover`, `rpc_process_return`), commit audit logs atomically, and query real-time profile states.
-- **Supabase Auth:** Calls the GoTrue Admin API via **HTTPS** to create verified user accounts or manage user security metadata.
+- **Supabase Auth:** Calls the GoTrue Admin API via **HTTPS** (`service_role`) to create verified user accounts, manage user security metadata, and list or revoke user sessions (`list-sessions`, `revoke-session`, `revoke-other-sessions`, and `set-account-inactive`) because `auth.sessions` is not exposed through PostgREST.
 - **PostgreSQL Database (`pg_cron`):** Receives background job trigger invocations from PostgreSQL via **HTTPS** using the `pg_net` extension with an internal authorization secret header (`x-job-secret`).
 - **External Services:** Communicates with external providers (**Email Provider** via HTTPS/SMTP, **Payment Provider** simulator via HTTPS, **AI Provider** via HTTPS, and **Bibliographic Metadata Services** via HTTPS).
 
@@ -286,8 +287,8 @@ Source: [`mermaid/container-part1.mmd`](mermaid/container-part1.mmd) and
 
 | Container | Responsibilities & services provided | Technology | Communication with other containers |
 | :--- | :--- | :--- | :--- |
-| **Supabase Auth** | Manages user registration, email OTP verification, password recovery, session token issuance, and JWT rotation with embedded `app_metadata.role`. | GoTrue identity server, JWT, PKCE | Receives **HTTPS** requests from **Web Application** (sign-up/in) and **ShelfHelp API** (admin user operations); dispatches verification/reset emails to **Email Delivery Provider** via **SMTP**. |
-| **Supabase Storage** | Stores binary files across dedicated buckets (`covers`, `avatars`, `evidence`, `imports`); enforces file size limits, MIME type filtering, and access security. | Supabase Object Storage (S3-compatible) | Accepts direct file uploads and downloads from **Web Application** via **HTTPS**; validates permissions against bucket storage policies and generates signed URLs for private assets. |
+| **Supabase Auth** | Manages user registration, email OTP verification, password recovery, server-side sign-in throttling, active session records (`auth.sessions`), refresh-token revocation, session token issuance, and JWT rotation with embedded `app_metadata.role`. | GoTrue identity server, JWT, PKCE | Receives **HTTPS** requests from **Web Application** (sign-up/in) and **ShelfHelp API** (admin user and session operations); dispatches verification/reset emails to **Email Delivery Provider** via **SMTP**. |
+| **Supabase Storage** | Stores binary files across dedicated buckets (`covers`, `avatars`, `evidence`, `imports`); enforces file size limits (including 10 MiB for evidence photos), MIME type filtering, and access security. | Supabase Object Storage (S3-compatible) | Accepts direct file uploads and downloads from **Web Application** via **HTTPS**; validates permissions against bucket storage policies and generates signed URLs for private assets. |
 | **Supabase Realtime** | Listens to database replication stream and broadcasts live table changes to active client subscriptions. | Elixir Phoenix Channels / WebSocket | Ingests table modification events from **PostgreSQL Database** via **logical replication**; pushes live updates to **Web Application** via persistent **WebSocket (WSS)** connections under RLS filtering. |
 
 ### 4.5 External systems
@@ -320,14 +321,13 @@ Static hosting, Cloudflare Turnstile, Sentry, and CI are supporting services rat
 
 The underlying principles are summarized in [Key principles](../system-context/System-Context.md#23-key-principles) and detailed in the [API component view](../component/Component.md#9-shelfhelp-api--interactions-and-design-notes).
 
-### 5.3 Authentication path
+### 5.3 Authentication and session path
 
 1. Registration calls `register-student`, which creates the Auth user and the `profiles` row.
 2. Supabase Auth sends the verification email through the email provider.
-3. The SPA verifies the OTP, receives a JWT, and loads the caller's profile; the role and status select
-   the Reader or Admin shell.
-4. Every command reloads the profile, so a deactivated or restricted account is refused even with an
-   old token.
+3. **PA5 target:** On sign-in (`UC-02`), failed attempts will be throttled server-side (5 consecutive failures per identifier within 15 minutes triggers a 10-minute lockout returning HTTP 429 with `Retry-After`). On success, the SPA will store only the refresh token (`localStorage` if *"Keep me signed in"* is checked, `sessionStorage` otherwise — never the password) and load the caller's profile so role and status select the Reader or Admin shell.
+4. Every command reloads `profiles.status`, so a deactivated or restricted account is refused even with an old token.
+5. **PA5 target:** In Active Sessions (`UC-32`), the SPA will call `list-sessions`, `revoke-session`, or `revoke-other-sessions` on **ShelfHelp API** with the caller's JWT. The API will derive identity from the JWT, query or revoke the caller's own sessions via the Supabase Auth Admin API (`service_role`), log the revocation in `audit_logs`, and never return raw tokens. The current session will end only through normal sign-out (`UC-02`).
 
 ### 5.4 Scheduled job path
 
@@ -369,7 +369,7 @@ Schema changes move only through migrations applied by CI. The SPA release is a 
 
 | Feature group | Features | Use cases | Containers involved |
 | :--- | :--- | :--- | :--- |
-| **Accounts, identity, profile** | FEAT-01, FEAT-02 | UC-01–UC-04, UC-31 | Web App, API, Database, Auth, Email |
+| **Accounts, identity, profile** | FEAT-01, FEAT-02 | UC-01–UC-04, UC-31, UC-32 | Web App, API, Database, Auth, Email |
 | **Membership and entitlements** | FEAT-03 | UC-05 | Web App, API, Database, Payment |
 | **Catalog, search, barcode, wishlist** | FEAT-04–FEAT-07 | UC-06–UC-08 | Web App, Database, Storage |
 | **Cart, checkout, payment** | FEAT-08, FEAT-09 | UC-09, UC-10 | Web App, API, Database, Payment, Email |
@@ -382,7 +382,7 @@ Schema changes move only through migrations applied by CI. The SPA release is a 
 | **AI research assistant** | FEAT-26 | UC-17 | Web App, API, Database (`pgvector`), AI Provider |
 | **Notifications and reminders** | FEAT-15 | UC-28, UC-30 | Web App, API, Database, Email |
 
-All feature groups and all 31 use cases use the Web Application and PostgreSQL; groups with a business write add the API, and groups that touch a third party add the corresponding external system.
+All feature groups and all 32 active use cases use the Web Application and PostgreSQL; groups with a business write or privileged Auth session query add the API, and groups that touch a third party add the corresponding external system.
 
 ---
 

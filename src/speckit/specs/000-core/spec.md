@@ -503,7 +503,7 @@ Precedence applies only when an action is blocked for more than one reason; it c
 | NFR-03 | Server latency | p95 ≤ 2 s for checkout, handover, return, payment completion, renewal; p95 ≤ 8 s for assistant reply; active-session list p95 ≤ 1 s for up to 20 sessions, single-session revocation p95 ≤ 800 ms, and "Sign Out All Other Sessions" ≤ 2 s for up to 20 sessions. |
 | NFR-04 | Read efficiency | No unbounded Realtime subscriptions or unpaginated queries. Lists paginated. Dashboard RPCs ≤ 1 s p95 at NFR-05 scale. Home ≤ 12 API requests on load. |
 | NFR-05 | Scale baseline | 20,000 students, 100,000 copies, 500 concurrent users, 50 checkouts/min at semester start. |
-| NFR-06 | Security | Deny-by-default RLS; CAPTCHA on register/login/reset; Zod validation + role/status auth in every Edge Function; no service-role key or DB URL in client; CSP; signed URL TTLs; rate limits on register, resend, chat, payments; dependency scanning; OWASP ASVS Level 2. |
+| NFR-06 | Security | Deny-by-default RLS; CAPTCHA on register/login/reset (Turnstile to be added); shared domain validation + role/status auth in every Edge Function; no service-role key or DB URL in client; CSP; signed URL TTLs; rate limits on register, resend, chat, payments; dependency scanning; OWASP ASVS Level 2. |
 | NFR-07 | Privacy | POL-16. No PII in logs or provider prompts. Staff access to student detail is audit-logged. |
 | NFR-08 | Accessibility | WCAG 2.2 AA. Full keyboard, visible focus, 4.5:1 contrast, labels, `aria-live`, 44 px touch targets, reduced motion, camera always has non-camera alternative. |
 | NFR-09 | Reliability | Idempotent mutations/jobs, retries with backoff, 99.5% availability, daily backups + PITR, RPO 24 h, RTO 4 h, alerts on job failure and error rate. |

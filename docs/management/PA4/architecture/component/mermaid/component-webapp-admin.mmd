@@ -8,9 +8,11 @@ C4Component
         Component(appShell, "App Shell & Access Guard", "React Router", "Bootstraps the application, selects the Reader or Admin shell and enforces session, role and account-status guards.")
         Component(adminCatalog, "Admin Catalog & Inventory", "React", "Books, copies, ISBN lookup, bulk import, inventory history and write-off slips.")
 
-        Component(adminMoney, "Admin Money & Reporting", "React, Recharts", "Receipts and reversals, dashboard KPIs and report exports.")
+        Component(adminMoney, "Admin Money & Reporting", "React", "Receipts and reversals, dashboard KPIs and report exports.")
         Component(dataAccess, "Data Access & Realtime Client", "supabase-js, TanStack Query", "PostgREST reads, Realtime subscriptions, Storage uploads and Edge Function invocation with the JWT and standard error envelope.")
         Component(adminAcquisitions, "Admin Acquisitions & Students", "React", "Suggestion review, acquisition batches, shipment receipt and student accounts.")
+
+        Component(authProfile, "Authentication & Profile", "React", "Sign-in/out, password reset, personal profile and own active sessions (/admin/profile/sessions).")
     }
 
     Boundary(backend, "Backend services", "SUPABASE") {
@@ -28,11 +30,13 @@ C4Component
     Rel(appShell, adminCatalog, "Renders")
     Rel(appShell, adminMoney, "Renders")
     Rel(appShell, adminAcquisitions, "Renders")
+    Rel(appShell, authProfile, "Routes auth/session flows")
 
     Rel(adminCirculation, dataAccess, "Queries/commands")
     Rel(adminCatalog, dataAccess, "Queries/commands")
     Rel(adminMoney, dataAccess, "Queries/commands")
     Rel(adminAcquisitions, dataAccess, "Queries/commands")
+    Rel(authProfile, dataAccess, "Auth & sessions")
 
     Rel(dataAccess, auth, "Verifies session", "HTTPS, PKCE")
     Rel(dataAccess, db, "(Data → DB) <br/>Reads; writes own profile", "PostgREST, RLS")
@@ -47,16 +51,18 @@ C4Component
     UpdateRelStyle(appShell, adminCatalog, $offsetX="-20", $offsetY="10")
     UpdateRelStyle(appShell, adminMoney, $offsetX="-80", $offsetY="20")
     UpdateRelStyle(appShell, adminAcquisitions, $offsetX="-30", $offsetY="-20")
+    UpdateRelStyle(appShell, authProfile, $offsetX="-145", $offsetY="135")
 
     UpdateRelStyle(adminCirculation, dataAccess, $offsetX="-35", $offsetY="-30")
     UpdateRelStyle(adminCatalog, dataAccess, $offsetX="60", $offsetY="-20")
     UpdateRelStyle(adminMoney, dataAccess, $offsetX="-50", $offsetY="10")
     UpdateRelStyle(adminAcquisitions, dataAccess, $offsetX="-50", $offsetY="10")
+    UpdateRelStyle(authProfile, dataAccess, $offsetX="15", $offsetY="10")
 
-    UpdateRelStyle(dataAccess, auth, $offsetX="0", $offsetY="-10")
-    UpdateRelStyle(dataAccess, db, $offsetX="10", $offsetY="-20")
-    UpdateRelStyle(dataAccess, api, $offsetX="-90", $offsetY="-20")
-    UpdateRelStyle(dataAccess, storage, $offsetX="-60", $offsetY="180")
-    UpdateRelStyle(dataAccess, realtime, $offsetX="10", $offsetY="200")
+    UpdateRelStyle(dataAccess, auth, $offsetX="-90", $offsetY="300")
+    UpdateRelStyle(dataAccess, db, $offsetX="20", $offsetY="-30")
+    UpdateRelStyle(dataAccess, api, $offsetX="-200", $offsetY="160")
+    UpdateRelStyle(dataAccess, storage, $offsetX="20", $offsetY="300")
+    UpdateRelStyle(dataAccess, realtime, $offsetX="60", $offsetY="150")
 
     UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

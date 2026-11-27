@@ -184,7 +184,7 @@ Recorded because each one would have shipped broken if M0 had stopped at "files 
 | 1 | `_shared/http.ts` imported `@shelfhelp/shared` | Function returned `503 BOOT_ERROR`; log: *Relative import path not prefixed with / or ./ or ../* | Relative import + DEC-LOG-04 |
 | 2 | `revoke select (embedding)` was a no-op | A student could read `books.embedding` | Column GRANT list + DEC-LOG-05; asserted by pgTAP |
 | 3 | Edge Function tsconfig never typechecked (not in `typecheck` script) | 4 latent TS errors, incl. missing `Deno` global | `typecheck:deno` + `src/supabase/deno-globals.d.ts` |
-| 4 | `zod` needed as an npm devDependency only to typecheck a remote URL import | `npm ci` desynced; high-severity advisory pulled in | Hand-written Zod surface in `deno-globals.d.ts`; **zero** npm deps for the Deno check |
+| 4 | Shared validation was previously coupled to an external remote package import | Typecheck and dependency drift risk | Hand-written validation declarations and shared domain helpers; **zero** npm dependencies for the Deno check |
 | 5 | Playwright `webServer` probed `127.0.0.1` while Vite bound `localhost` (IPv6) | `Error: Timed out waiting 120000ms from config.webServer` | `--host 127.0.0.1` on the dev command |
 | 6 | `exactOptionalPropertyTypes` rejected `webServer: undefined` | e2e typecheck error TS2769 | Conditional spread |
 | 7 | pgTAP planned 21 tests, ran 22 (and later 21/23) | `Bad plan. You planned N tests but ran M` | Plan count corrected; seed rows isolated by scoping assertions to fixtures |
@@ -246,7 +246,7 @@ Two boxes remain, both requiring a push and repo-owner settings — not further 
 ## 9. Explicitly out of scope for M0
 
 - Any FR from M1–M11 (no auth screens, catalog, cart, loans)
-- shadcn/ui and the design system (M1, when first screens exist)
+- Implementation-native UI components and styling (M1, when first screens exist)
 - i18n string extraction (M1)
 - Sentry / monitoring (NFR-13, M11 hardening)
 - Hosted Supabase projects for staging/prod (D4, M1)
