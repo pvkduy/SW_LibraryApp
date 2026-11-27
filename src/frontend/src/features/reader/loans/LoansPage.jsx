@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
+import { api } from '../../../lib/api'
 import { FinesPage } from '../fines/FinesPage.jsx'
 import { BookReviewPage } from './BookReviewPage.jsx'
 
@@ -105,12 +106,8 @@ export function LoansPage({ maxItems = 5, onProfileRefresh, profile }) {
     setMessage(null)
 
     try {
-      const { data, error } = await supabase.rpc('rpc_renew_loan', {
-        p_loan_item_id: loanItemId,
-      })
-
-      if (error) throw error
-      if (data?.error) throw new Error(data.message || data.error)
+      const data = await api.invoke('renew-loan', { loan_item_id: loanItemId })
+      if (!data?.success) throw new Error(data?.message || 'Renewal failed.')
 
       setMessage({ type: 'success', text: data.message || 'Renewal successful.' })
       await loadLoans()
@@ -122,15 +119,13 @@ export function LoansPage({ maxItems = 5, onProfileRefresh, profile }) {
   }
 
   const handleReviewSubmit = async (loanItemId, rating, headline, comment) => {
-    const { data, error } = await supabase.rpc('rpc_submit_book_review', {
-      p_loan_item_id: loanItemId,
-      p_rating: rating,
-      p_comment: comment,
-      p_headline: headline,
+    const data = await api.invoke('submit-book-review', {
+      loan_item_id: loanItemId,
+      rating,
+      comment,
+      headline,
     })
-
-    if (error) throw error
-    if (data?.error) throw new Error(data.message || data.error)
+    if (!data?.success) throw new Error(data?.message || 'Review could not be submitted.')
 
     await loadLoans()
   }

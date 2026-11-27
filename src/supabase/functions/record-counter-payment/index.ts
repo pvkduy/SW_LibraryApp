@@ -64,7 +64,8 @@ Deno.serve(async (req: Request) => {
   }
 
   // 2. Execute atomic settlement & receipt issuance
-  const { data: result, error: rpcErr } = await supabaseAdmin.rpc('rpc_settle_counter_charge', {
+  const { data: result, error: rpcErr } = await supabaseAdmin.rpc('rpc_settle_counter_charge_for_admin', {
+    p_admin_id: auth.user.id,
     p_charge_id: chargeId,
     p_amount_collected: amountCollected,
     p_notes: notes,

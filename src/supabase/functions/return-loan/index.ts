@@ -82,7 +82,8 @@ Deno.serve(async (req: Request) => {
   }
 
   // 2. Execute Return transaction in PostgreSQL
-  const { data: result, error: rpcErr } = await supabaseAdmin.rpc('rpc_process_return_with_evidence', {
+  const { data: result, error: rpcErr } = await supabaseAdmin.rpc('rpc_process_return_with_evidence_for_admin', {
+    p_admin_id: auth.user.id,
     p_copy_barcode: barcode,
     p_condition_in: conditionIn,
     p_damage_tier: damageTier,

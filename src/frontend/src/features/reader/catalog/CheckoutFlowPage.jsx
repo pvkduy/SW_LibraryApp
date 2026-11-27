@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { supabase } from '../../../lib/supabase'
 import { api } from '../../../lib/api'
 import { useCart } from './useCart'
 import { ALLOWED_DURATIONS, calculateLineFee, formatVnd } from './cartHelpers'
@@ -90,40 +89,16 @@ export function CheckoutFlowPage({ profile, user, onBackToCatalog, onGoToLoans }
     }
 
     try {
-      let data = null
-      // Try Edge Function `checkout-cart` first; fallback automatically to atomic RPC `rpc_checkout_cart`
-      try {
-        data = await api.invoke('checkout-cart', payload)
-      } catch (fnErr) {
-        if (fnErr.reason && fnErr.reason !== 'INTERNAL') {
-          if (Array.isArray(fnErr.details)) {
-            const mapped = {}
-            fnErr.details.forEach((d) => {
-              if (d.book_id) mapped[d.book_id] = d.message
-            })
-            setLineErrors(mapped)
-          }
-          throw fnErr
+      const data = await api.invoke('checkout-cart', payload)
+      if (!data?.success) {
+        if (Array.isArray(data?.line_errors)) {
+          const mapped = {}
+          data.line_errors.forEach((d) => {
+            if (d.book_id) mapped[d.book_id] = d.message
+          })
+          setLineErrors(mapped)
         }
-
-        const { data: rpcData, error: rpcErr } = await supabase.rpc('rpc_checkout_cart', {
-          p_items: payload.items,
-          p_payment_method: payload.payment_method,
-          p_idempotency_key: payload.idempotency_key,
-          p_simulate_failure: payload.simulate_failure,
-        })
-        if (rpcErr) throw rpcErr
-        if (!rpcData?.success) {
-          if (Array.isArray(rpcData?.line_errors)) {
-            const mapped = {}
-            rpcData.line_errors.forEach((d) => {
-              if (d.book_id) mapped[d.book_id] = d.message
-            })
-            setLineErrors(mapped)
-          }
-          throw new Error(rpcData?.message || 'Checkout failed.')
-        }
-        data = rpcData
+        throw new Error(data?.message || 'Checkout failed.')
       }
 
       setReceiptData(data)
@@ -137,8 +112,15 @@ export function CheckoutFlowPage({ profile, user, onBackToCatalog, onGoToLoans }
         setStep('success')
       }
     } catch (err) {
+      if (Array.isArray(err.details)) {
+        const mapped = {}
+        err.details.forEach((d) => {
+          if (d.book_id) mapped[d.book_id] = d.message
+        })
+        setLineErrors(mapped)
+      }
       setErrorMsg(err.message || 'Unable to complete checkout.')
-      if (Object.keys(lineErrors).length > 0) {
+      if (Array.isArray(err.details) && err.details.length > 0) {
         setStep('cart')
       }
     } finally {
@@ -151,21 +133,11 @@ export function CheckoutFlowPage({ profile, user, onBackToCatalog, onGoToLoans }
     setSubmitting(true)
     setErrorMsg(null)
     try {
-      let data = null
-      try {
-        data = await api.invoke('complete-simulated-payment', {
-          payment_id: receiptData.payment_id,
-          outcome,
-        })
-      } catch {
-        const { data: rpcData, error: rpcErr } = await supabase.rpc('rpc_complete_simulated_payment', {
-          p_payment_id: receiptData.payment_id,
-          p_outcome: outcome,
-        })
-        if (rpcErr) throw rpcErr
-        if (!rpcData?.success) throw new Error(rpcData?.message || 'Action failed.')
-        data = rpcData
-      }
+      const data = await api.invoke('complete-simulated-payment', {
+        payment_id: receiptData.payment_id,
+        outcome,
+      })
+      if (!data?.success) throw new Error(data?.message || 'Action failed.')
 
       if (outcome === 'cancel') {
         await refreshCartState()

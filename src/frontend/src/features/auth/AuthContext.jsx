@@ -70,27 +70,8 @@ export function AuthProvider({ children }) {
     return null
   }
 
-  // Register via Edge Function (FR-AUTH-01, EC-36) with client fallback for local dev
-  const registerStudent = async (registrationData) => {
-    try {
-      return await api.invoke('register-student', registrationData)
-    } catch (err) {
-      // If Edge Function is not served locally, fall back to direct Supabase Auth signUp
-      console.warn('Edge function register-student unavailable, falling back to direct auth.signUp:', err)
-      const res = await supabase.auth.signUp({
-        email: registrationData.email,
-        password: registrationData.password,
-        options: {
-          data: {
-            full_name: registrationData.fullName,
-            student_id: registrationData.studentId,
-          },
-        },
-      })
-      if (res.error) throw res.error
-      return res.data
-    }
-  }
+  // Registration is validated and created only by the server (FR-AUTH-01).
+  const registerStudent = (registrationData) => api.invoke('register-student', registrationData)
 
   // Sign in with credentials (FR-AUTH-03)
   const loginWithEmail = async (email, password) => {

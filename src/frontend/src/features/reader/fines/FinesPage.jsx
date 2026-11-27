@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
+import { api } from '../../../lib/api'
 import { PickupQrSvg, ReceiptIcon } from '../catalog/CatalogIcons.jsx'
 import { FineCheckoutModal } from './FineCheckoutModal.jsx'
 
@@ -109,13 +110,12 @@ export function FinesPage({ onProfileRefresh, embedded = false, profile }) {
   }
 
   const handlePaySuccess = async (chargeIds, method) => {
-    const { data, error } = await supabase.rpc('rpc_pay_reader_charges', {
-      p_charge_ids: chargeIds,
-      p_method: method
+    const data = await api.invoke('pay-reader-charges', {
+      charge_ids: chargeIds,
+      method,
     })
 
-    if (error) throw error
-    if (data?.error) throw new Error('Payment could not be completed. Please review the selected charges and try again.')
+    if (!data?.success) throw new Error(data?.message || 'Payment could not be completed. Please try again.')
 
     setMessage({ type: 'success', text: 'Payment completed successfully.' })
     setSelectedChargeIds([])

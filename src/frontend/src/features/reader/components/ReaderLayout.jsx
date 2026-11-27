@@ -24,6 +24,23 @@ export function ReaderLayout({
   return (
     <div className="sh-app-shell">
       {/* Debt hold notice banner if user has outstanding debt */}
+      {profile?.status === 'restricted' && (
+        <div
+          role="status"
+          style={{
+            backgroundColor: '#fff3cd',
+            color: '#664d03',
+            padding: '9px 18px',
+            textAlign: 'center',
+            fontSize: '12.5px',
+            fontWeight: 600,
+            borderBottom: '1px solid #ffecb5',
+          }}
+        >
+          Your account is restricted. New borrowing is unavailable until the restriction is resolved.
+        </div>
+      )}
+
       {debt > 0 && (
         <div
           style={{

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
+import { api } from '../../../lib/api'
 import { useCart } from './useCart'
 import { BOOK_SAFE_COLUMNS, BOOK_SAFE_COLUMNS_WITH_PAGES } from './cartHelpers'
 import {
@@ -205,8 +206,7 @@ export function BookDetailPage({ bookId, profile, onBack, onOpenCart, onNavigate
     setSubmitting(true)
     setActionToast(null)
     try {
-      const { data, error } = await supabase.rpc('rpc_reserve_book', { p_book_id: book.id })
-      if (error) throw error
+      const data = await api.invoke('reserve-book', { book_id: book.id })
       if (!data?.success) throw new Error(data?.message || 'Could not place reservation.')
       setActionToast({ type: 'success', text: data.message })
     } catch (err) {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../lib/supabase'
+import { api } from '../../../lib/api'
 
 export function ReservationsPage() {
   const [reservations, setReservations] = useState([])
@@ -52,13 +53,12 @@ export function ReservationsPage() {
     setMessage(null)
 
     try {
-      const { data, error } = await supabase.rpc('rpc_cancel_reservation_staff', {
-        p_reservation_id: reservationId,
-        p_reason: 'Student cancelled the request'
+      const response = await api.invoke('cancel-reservation', {
+        reservation_id: reservationId,
+        reason: 'Student cancelled the request',
       })
 
-      if (error) throw error
-      if (data?.error) throw new Error(data.message || data.error)
+      if (!response?.success) throw new Error(response?.message || 'Unable to cancel the reservation.')
 
       setMessage({ type: 'success', text: 'Reservation cancelled successfully.' })
       await loadReservations()

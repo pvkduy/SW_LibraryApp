@@ -92,17 +92,20 @@ Deno.serve(async (req: Request) => {
 
   const userId = authData.user.id
 
-  // 2. Insert into profiles with pending_verification
-  const { error: profileError } = await supabaseAdmin.from('profiles').insert({
-    id: userId,
-    role: 'student',
-    status: 'pending_verification',
-    full_name: fullName,
-    email,
-    student_id: studentId,
-    faculty,
-    phone,
-  })
+  // The Auth trigger creates this row first; upsert also handles environments without the trigger.
+  const { error: profileError } = await supabaseAdmin.from('profiles').upsert(
+    {
+      id: userId,
+      role: 'student',
+      status: 'pending_verification',
+      full_name: fullName,
+      email,
+      student_id: studentId,
+      faculty,
+      phone,
+    },
+    { onConflict: 'id' },
+  )
 
   // Atomic Rollback (EC-36): If profile creation fails, delete the created auth user
   if (profileError) {

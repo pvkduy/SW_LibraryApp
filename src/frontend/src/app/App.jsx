@@ -26,7 +26,9 @@ import { CheckoutFlowPage } from '../features/reader/catalog/CheckoutFlowPage.js
 
 function getInitialRoute() {
   if (typeof window === 'undefined') return 'login'
-  const path = window.location.pathname.replace(/^\//, '')
+  const pathname = window.location.pathname
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) return 'forbidden'
+  const path = pathname.replace(/^\//, '')
   if (['login', 'register', 'forgot-password', 'reset-password', 'verify-email'].includes(path)) {
     return path === 'verify-email' ? 'verify-otp' : path
   }
@@ -220,6 +222,30 @@ function App() {
           onNavigate={navigate}
           onVerified={() => navigate('success')}
         />
+      )
+    }
+
+    if (profile?.status === 'inactive') {
+      return (
+        <div className="auth-viewport" style={{ alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <section className="sh-card" role="alert" style={{ maxWidth: '480px', textAlign: 'center' }}>
+            <h1 style={{ color: '#241e19' }}>Account inactive</h1>
+            <p>Please contact the library for assistance.</p>
+            <button type="button" className="auth-btn-primary" onClick={logout}>Sign Out</button>
+          </section>
+        </div>
+      )
+    }
+
+    if (currentRoute === 'forbidden' && profile?.role !== 'admin') {
+      return (
+        <div className="auth-viewport" style={{ alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <section className="sh-card" role="alert" style={{ maxWidth: '480px', textAlign: 'center' }}>
+            <h1 style={{ color: '#241e19' }}>403 — Access denied</h1>
+            <p>You do not have permission to access the administration area.</p>
+            <button type="button" className="auth-btn-primary" onClick={() => navigate('home')}>Return to ShelfHelp</button>
+          </section>
+        </div>
       )
     }
 

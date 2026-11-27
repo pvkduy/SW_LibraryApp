@@ -6,7 +6,7 @@
  * (FOR UPDATE SKIP LOCKED), holds copies, creates Loan Request + Items + Receipts.
  */
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { requireUser } from '../_shared/auth.ts'
 import { fail, handleOptions, json } from '../_shared/http.ts'
 import type { ReasonCode } from '../../../shared/src/reason-codes/index.ts'
 
@@ -14,20 +14,8 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return handleOptions()
   if (req.method !== 'POST') return fail('VALIDATION_FAILED', 'Method must be POST')
 
-  const authHeader = req.headers.get('Authorization')
-  if (!authHeader) return fail('UNAUTHENTICATED', 'Missing Authorization header')
-
-  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? 'http://127.0.0.1:54321'
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-
-  const supabaseUser = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  })
-
-  const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
-  if (authError || !user) {
-    return fail('UNAUTHENTICATED', authError?.message || 'Invalid authorization token')
-  }
+  const auth = await requireUser(req)
+  if (auth.errorResponse) return auth.errorResponse
 
   let body: {
     items?: Array<{ book_id: string; preferred_copy_id?: string | null; duration_days?: number }>
@@ -46,7 +34,8 @@ Deno.serve(async (req: Request) => {
     return fail('VALIDATION_FAILED', 'Cart items array is required')
   }
 
-  const { data, error } = await supabaseUser.rpc('rpc_checkout_cart', {
+  const { data, error } = await auth.supabaseAdmin.rpc('rpc_checkout_cart_for_user', {
+    p_user_id: auth.user.id,
     p_items: body.items,
     p_payment_method: body.payment_method ?? 'mobile_banking',
     p_idempotency_key: body.idempotency_key ?? null,

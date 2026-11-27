@@ -12,38 +12,15 @@
  *   - VALIDATION_FAILED: Missing reason
  */
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { authenticate } from '../_shared/auth.ts'
 import { fail, handleOptions, json } from '../_shared/http.ts'
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return handleOptions()
   if (req.method !== 'POST') return fail('VALIDATION_FAILED', 'Method must be POST')
 
-  const authHeader = req.headers.get('Authorization')
-  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? 'http://127.0.0.1:54321'
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
-
-  if (!serviceRoleKey) {
-    return fail('INTERNAL', 'Missing service role key')
-  }
-
-  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
-
-  if (!authHeader) {
-    return fail('UNAUTHENTICATED', 'Missing Authorization header')
-  }
-
-  const supabaseUser = createClient(supabaseUrl, anonKey ?? serviceRoleKey, {
-    global: { headers: { Authorization: authHeader } },
-  })
-
-  const { data: { user }, error: authErr } = await supabaseUser.auth.getUser()
-  if (authErr || !user) {
-    return fail('UNAUTHENTICATED', 'Invalid token')
-  }
+  const auth = await authenticate(req)
+  if (auth.errorResponse) return auth.errorResponse
 
   let body: any
   try {
@@ -59,13 +36,25 @@ Deno.serve(async (req: Request) => {
     return fail('VALIDATION_FAILED', 'Missing required parameter: reservation_id')
   }
 
-  const isAdmin = user.app_metadata?.role === 'admin'
+  const isAdmin = auth.user.app_metadata?.role === 'admin' && auth.profile.role === 'admin'
+  if (isAdmin && auth.profile.status !== 'active') {
+    return fail('ACCOUNT_NOT_ACTIVE', 'An active admin account is required')
+  }
+  if (!isAdmin) {
+    if (auth.user.app_metadata?.role !== 'student' || auth.profile.role !== 'student') {
+      return fail('FORBIDDEN_ROLE', 'Student role required')
+    }
+    if (!['active', 'restricted'].includes(auth.profile.status)) {
+      return fail('ACCOUNT_NOT_ACTIVE', `Account is not eligible for this action (${auth.profile.status}).`)
+    }
+  }
+
   if (isAdmin && !reason) {
     return fail('VALIDATION_FAILED', 'Staff cancellation requires an explicit reason (UC-29)')
   }
 
   // 1. Fetch reservation
-  const { data: resRecord, error: resErr } = await supabaseAdmin
+  const { data: resRecord, error: resErr } = await auth.supabaseAdmin
     .from('reservations')
     .select('id, uid, status, book_id, copy_id')
     .eq('id', reservationId)
@@ -76,7 +65,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // If not admin, student can only cancel their own reservation
-  if (!isAdmin && resRecord.uid !== user.id) {
+  if (!isAdmin && resRecord.uid !== auth.user.id) {
     return fail('FORBIDDEN_ROLE', 'Cannot cancel another patron\'s reservation')
   }
 
@@ -85,7 +74,8 @@ Deno.serve(async (req: Request) => {
   }
 
   // 2. Execute cancellation & promotion
-  const { data: result, error: rpcErr } = await supabaseAdmin.rpc('rpc_cancel_reservation_staff', {
+  const { data: result, error: rpcErr } = await auth.supabaseAdmin.rpc('rpc_cancel_reservation_staff_for_user', {
+    p_user_id: auth.user.id,
     p_reservation_id: reservationId,
     p_reason: reason || 'Patron voluntary cancellation',
   })

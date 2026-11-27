@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
+import { api } from '../../../lib/api'
 import { CartContext } from './useCart'
-import { NONMEMBER_MAX_ITEMS, WISHLIST_MAX } from './cartHelpers'
+import { NONMEMBER_MAX_ITEMS } from './cartHelpers'
 
 const LOCAL_CART_KEY = 'shelfhelp_local_cart_v1'
 const LOCAL_WISHLIST_KEY = 'shelfhelp_local_wishlist_v1'
@@ -212,29 +213,20 @@ export function CartProvider({ user, children }) {
     async (bookId) => {
       if (!uid) return { ok: false, error: 'Please sign in first.' }
 
-      // Try server RPC first (enforces WISHLIST_FULL max 50 atomically)
-      const { data, error } = await supabase.rpc('rpc_toggle_wishlist', { p_book_id: bookId })
-      if (!error && data) {
-        if (!data.success) {
-          return { ok: false, error: data.message || 'Could not update wishlist.' }
+      try {
+        const data = await api.invoke('toggle-wishlist', { book_id: bookId })
+        if (!data?.success) {
+          return { ok: false, error: data?.message || 'Could not update wishlist.' }
         }
         setWishlistIds((prev) =>
           data.wishlisted ? [...new Set([...prev, bookId])] : prev.filter((id) => id !== bookId),
         )
         return { ok: true, wishlisted: data.wishlisted, message: data.message }
+      } catch (err) {
+        return { ok: false, error: err.message || 'Could not update wishlist.' }
       }
-
-      // Local fallback
-      const exists = wishlistIds.includes(bookId)
-      if (!exists && wishlistIds.length >= WISHLIST_MAX) {
-        return { ok: false, error: `Wishlist limit reached (max ${WISHLIST_MAX} books).` }
-      }
-      const next = exists ? wishlistIds.filter((id) => id !== bookId) : [...wishlistIds, bookId]
-      setWishlistIds(next)
-      writeLocal(`${LOCAL_WISHLIST_KEY}_${uid}`, next)
-      return { ok: true, wishlisted: !exists }
     },
-    [uid, wishlistIds],
+    [uid],
   )
 
   return (

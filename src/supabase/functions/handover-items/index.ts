@@ -90,7 +90,8 @@ Deno.serve(async (req: Request) => {
   }
 
   // 3. Execute atomic Handover via DB RPC
-  const { data: rpcRes, error: rpcErr } = await supabaseAdmin.rpc('rpc_confirm_handover', {
+  const { data: rpcRes, error: rpcErr } = await supabaseAdmin.rpc('rpc_confirm_handover_for_admin', {
+    p_admin_id: auth.user.id,
     p_loan_item_id: loanItemId,
     p_condition_out: conditionOut,
     p_notes: notes,

@@ -466,19 +466,19 @@ The **Panel** column names the diagram panel in which each component appears: *R
 | `rpc_pay_reader_charges` | Settles reader charges and records the immutable receipt. |
 | `rpc_submit_book_review` | Validates loan history and stores book rating and review text. |
 
-*Implementation status:* Eighteen business Edge Function directories are currently present, excluding `_shared`. The implemented set includes `handover-items`, `return-loan`, `record-counter-payment`, `cancel-reservation`, `checkout-cart`, `complete-simulated-payment`, catalog/import/write-off, and inventory handlers. The remaining PA5 command/job table below is a target map, not evidence that every listed function, table, or scheduled job is migrated and implemented.
+*Implementation status:* Twenty-one business Edge Function directories are currently present, excluding `_shared` and the `hello` health-check function. The implemented set includes `handover-items`, `return-loan`, `record-counter-payment`, `cancel-reservation`, `checkout-cart`, `complete-simulated-payment`, reader payment/renewal/review/reservation/wishlist handlers, catalog/import/write-off, and inventory handlers. The remaining PA5 command/job table below is a target map, not evidence that every listed function, table, or scheduled job is migrated and implemented.
 
 ---
 
 ## 8. ShelfHelp API — business command map
 
-Target map. Eighteen business function directories are implemented in `src/supabase/functions/`, while the target table below also lists additional PA5 command and job handlers that are not yet implemented.
+Target map. Twenty-one business function directories are implemented in `src/supabase/functions/`, while the target table below also lists additional PA5 command and job handlers that are not yet implemented.
 
 | Family | Functions | Main data touched | Use cases |
 | :--- | :--- | :--- | :--- |
 | **Account** | `register-student`, `set-account-inactive`, `reactivate-account`, `restore-account`, `request-restore-review`, `list-sessions`, `revoke-session`, `revoke-other-sessions` | `auth.users`, `auth.sessions`, `profiles`, `audit_logs` | UC-01–UC-04, UC-31, UC-32 |
 | **Catalog** | `lookup-isbn`, `save-book`, `import-books`, `add-copies`, `change-copy-status`, `set-books-collection`, `submit-review` | `books`, `copies`, `copy_events`, `reviews` | UC-06, UC-07, UC-15, UC-19 |
-| **Borrowing** | `checkout-cart`, `cancel-loan-item`, `switch-to-counter-payment`, `renew-loan`, `reserve-book`, `cancel-reservation`, `toggle-wishlist` | `loan_requests`, `loan_items`, `reservations`, `wishlist` | UC-08–UC-10, UC-12, UC-14 |
+| **Borrowing** | `checkout-cart`, `cancel-loan-item`, `switch-to-counter-payment`, `renew-loan`, `submit-book-review`, `pay-reader-charges`, `reserve-book`, `cancel-reservation`, `toggle-wishlist` | `loan_requests`, `loan_items`, `reservations`, `wishlist` | UC-08–UC-10, UC-12, UC-14 |
 | **Money** | `create-payment`, `complete-simulated-payment`, `purchase-membership`, `record-counter-payment`, `create-manual-receipt`, `reverse-receipt` | `payments`, `payment_lines`, `memberships`, `receipts`, `charges` | UC-05, UC-10, UC-13, UC-18, UC-23 |
 | **Circulation** | `handover-items`, `return-loan`, `mark-loan-lost` | `loan_items`, `copies`, `copy_events`, `charges` | UC-18, UC-20, UC-21 |
 | **Write-off** | `save-writeoff-slip`, `complete-writeoff-slip`, `cancel-writeoff-slip` | `writeoff_slips`, `writeoff_slip_copies`, `copies`, `inventory_transactions` | UC-22 |
