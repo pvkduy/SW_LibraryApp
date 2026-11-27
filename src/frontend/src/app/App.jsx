@@ -205,7 +205,7 @@ function App() {
   if (loading) {
     return (
       <div className="auth-viewport" style={{ alignItems: 'center' }}>
-        <p style={{ color: '#6e665e', fontWeight: 500 }}>Đang tải ShelfHelp...</p>
+        <p style={{ color: '#6e665e', fontWeight: 500 }}>Loading ShelfHelp...</p>
       </div>
     )
   }
@@ -240,10 +240,10 @@ function App() {
             {adminPage === 'money' && <FinancialLedgerPage />}
             {!['books', 'circulation', 'queues', 'money'].includes(adminPage) && (
               <div style={{ textAlign: 'center', padding: '60px 0', color: '#72685e' }}>
-                <h2 style={{ color: '#241e19' }}>Màn hình {adminPage.toUpperCase()} đang được phát triển</h2>
+                <h2 style={{ color: '#241e19' }}>{adminPage.toUpperCase()} screen is under development</h2>
                 <p>
-                  Vui lòng chọn <strong>Books</strong>, <strong>Circulation</strong>, <strong>Queues &amp; Holds</strong> hoặc{' '}
-                  <strong>Money</strong> ở menu bên trái.
+                  Please select <strong>Books</strong>, <strong>Circulation</strong>, <strong>Queues &amp; Holds</strong>, or{' '}
+                  <strong>Money</strong> from the left menu.
                 </p>
               </div>
             )}
@@ -251,10 +251,10 @@ function App() {
 
           {showLogoutConfirm && (
             <AuthConfirmModal
-              title="Xác nhận đăng xuất"
-              subtitle="Bạn có chắc chắn muốn đăng xuất khỏi tài khoản không?"
-              confirmText="Đăng xuất"
-              cancelText="Không, ở lại"
+              title="Confirm sign out"
+              subtitle="Are you sure you want to sign out?"
+              confirmText="Sign Out"
+              cancelText="Stay Signed In"
               onConfirm={() => {
                 setShowLogoutConfirm(false)
                 logout()
@@ -277,10 +277,10 @@ function App() {
 
         {showLogoutConfirm && (
           <AuthConfirmModal
-            title="Xác nhận đăng xuất"
-            subtitle="Bạn có chắc chắn muốn đăng xuất khỏi tài khoản không?"
-            confirmText="Đăng xuất"
-            cancelText="Không, ở lại"
+            title="Confirm sign out"
+            subtitle="Are you sure you want to sign out?"
+            confirmText="Sign Out"
+            cancelText="Stay Signed In"
             onConfirm={() => {
               setShowLogoutConfirm(false)
               logout()

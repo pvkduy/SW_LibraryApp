@@ -15,7 +15,7 @@ const STATUS_LABELS = {
 function formatDate(value) {
   if (!value) return '—'
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('vi-VN', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function getDaysRemaining(dueDate, now) {

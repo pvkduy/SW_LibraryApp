@@ -2,10 +2,10 @@ import { CheckIcon, CloseIcon, LogoutIcon } from './AuthIcons.jsx'
 import '../auth.css'
 
 export function AuthConfirmModal({
-  title = 'Xác nhận đăng xuất',
-  subtitle = 'Bạn có chắc chắn muốn kết thúc phiên làm việc không?',
-  confirmText = 'Đăng xuất',
-  cancelText = 'Không, ở lại',
+  title = 'Confirm sign out',
+  subtitle = 'Are you sure you want to end this session?',
+  confirmText = 'Sign Out',
+  cancelText = 'Stay Signed In',
   onConfirm,
   onCancel,
 }) {

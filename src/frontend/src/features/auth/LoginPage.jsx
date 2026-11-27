@@ -42,13 +42,13 @@ export function LoginPage({ onNavigate }) {
     } catch (err) {
       console.error('Login error:', err)
       if (err.name === 'TypeError' || err.message?.includes('fetch') || err.message?.includes('NetworkError')) {
-        setErrorMessage('Không thể kết nối tới Supabase (http://127.0.0.1:54321). Vui lòng kiểm tra Docker và lệnh "npm run db:start".')
+        setErrorMessage('Unable to connect to Supabase (http://127.0.0.1:54321). Check Docker and run "npm run db:start".')
       } else if (err.status === 429) {
         setErrorMessage('Too many failed attempts. Please try again later.')
       } else {
         setErrorMessage(
           err.message?.includes('Invalid login credentials')
-            ? 'Tài khoản chưa được nạp vào DB. Hãy mở Terminal chạy "npm run db:reset" rồi thử lại.'
+            ? 'The account is not loaded in the database. Run "npm run db:reset" in the terminal, then try again.'
             : err.message || 'Invalid email or password. Please try again.'
         )
       }
@@ -128,16 +128,16 @@ export function LoginPage({ onNavigate }) {
           textAlign: 'left'
         }}>
           <div style={{ fontWeight: 600, color: '#2a2421', marginBottom: '2px' }}>
-            💡 Tài khoản dùng chung cho nhóm:
+            💡 Shared demo accounts:
           </div>
           <div>
-            🎓 Sinh viên: <button type="button" className="auth-link" style={{ fontSize: '11.5px', textDecoration: 'underline' }} onClick={() => fillDemoAccount('student@shelfhelp.edu.vn', 'Password123!')}>student@shelfhelp.edu.vn</button> (hoặc MSSV <code>24125000</code>)
+            🎓 Student: <button type="button" className="auth-link" style={{ fontSize: '11.5px', textDecoration: 'underline' }} onClick={() => fillDemoAccount('student@shelfhelp.edu.vn', 'Password123!')}>student@shelfhelp.edu.vn</button> (or Student ID <code>24125000</code>)
           </div>
           <div>
-            👔 Thủ thư: <button type="button" className="auth-link" style={{ fontSize: '11.5px', textDecoration: 'underline' }} onClick={() => fillDemoAccount('admin@shelfhelp.edu.vn', 'Password123!')}>admin@shelfhelp.edu.vn</button>
+            👔 Librarian: <button type="button" className="auth-link" style={{ fontSize: '11.5px', textDecoration: 'underline' }} onClick={() => fillDemoAccount('admin@shelfhelp.edu.vn', 'Password123!')}>admin@shelfhelp.edu.vn</button>
           </div>
           <div style={{ fontSize: '11px', color: '#8c827a', marginTop: '2px' }}>
-            Mật khẩu chung: <code>Password123!</code> <em>(Bấm vào email để tự điền)</em>
+            Shared password: <code>Password123!</code> <em>(Click an email to fill it)</em>
           </div>
         </div>
 

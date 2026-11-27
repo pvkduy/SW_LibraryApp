@@ -154,10 +154,10 @@ export function FinancialLedgerPage() {
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
             >
-              <option value="all">Tất cả loại phí</option>
-              <option value="fine">Phí phạt (Fine)</option>
-              <option value="membership">Hội viên (Membership)</option>
-              <option value="damage">Bồi thường hư hại</option>
+              <option value="all">All charge types</option>
+              <option value="fine">Fine</option>
+              <option value="membership">Membership</option>
+              <option value="damage">Damage</option>
             </select>
           </div>
 
@@ -165,19 +165,19 @@ export function FinancialLedgerPage() {
             <table className="admin-ledger-table">
               <thead>
                 <tr style={{ background: '#faf6f0', borderBottom: '1px solid #ede6db', color: '#52473f', fontSize: '16px' }}>
-                  <th style={{ padding: '12px 16px' }}>Số biên lai</th>
-                  <th style={{ padding: '12px 16px' }}>Người nộp</th>
-                  <th style={{ padding: '12px 16px' }}>Loại phí</th>
-                  <th style={{ padding: '12px 16px' }}>Hình thức</th>
-                  <th style={{ padding: '12px 16px' }}>Số tiền</th>
-                  <th style={{ padding: '12px 16px' }}>Thời gian</th>
+                  <th style={{ padding: '12px 16px' }}>Receipt Number</th>
+                  <th style={{ padding: '12px 16px' }}>Payer</th>
+                  <th style={{ padding: '12px 16px' }}>Charge Type</th>
+                  <th style={{ padding: '12px 16px' }}>Payment Method</th>
+                  <th style={{ padding: '12px 16px' }}>Amount</th>
+                  <th style={{ padding: '12px 16px' }}>Time</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredReceipts.length === 0 ? (
                   <tr>
                     <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#6e665e' }}>
-                      Không có biên lai nào phù hợp điều kiện lọc.
+                      No receipts match the selected filters.
                     </td>
                   </tr>
                 ) : (
@@ -214,18 +214,18 @@ export function FinancialLedgerPage() {
         <table className="admin-ledger-table">
             <thead>
               <tr style={{ background: '#faf6f0', borderBottom: '1px solid #ede6db', color: '#52473f', fontSize: '16px' }}>
-                <th style={{ padding: '12px 16px' }}>Sinh viên</th>
-                <th style={{ padding: '12px 16px' }}>Loại nợ</th>
-                <th style={{ padding: '12px 16px' }}>Ghi chú</th>
-                <th style={{ padding: '12px 16px' }}>Số tiền</th>
-                <th style={{ padding: '12px 16px' }}>Ngày phát sinh</th>
+                <th style={{ padding: '12px 16px' }}>Student</th>
+                <th style={{ padding: '12px 16px' }}>Debt Type</th>
+                <th style={{ padding: '12px 16px' }}>Notes</th>
+                <th style={{ padding: '12px 16px' }}>Amount</th>
+                <th style={{ padding: '12px 16px' }}>Created At</th>
               </tr>
             </thead>
             <tbody>
               {charges.length === 0 ? (
                 <tr>
                   <td colSpan={5} style={{ padding: '24px', textAlign: 'center', color: '#6e665e' }}>
-                    Không có khoản nợ tồn đọng nào.
+                    There are no outstanding charges.
                   </td>
                 </tr>
               ) : (

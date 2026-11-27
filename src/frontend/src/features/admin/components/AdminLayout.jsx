@@ -64,7 +64,7 @@ export function AdminLayout({ activePage = 'circulation', onNavigate, profile, o
             className="admin-logout-button"
             onClick={onLogout}
           >
-            Đăng xuất
+            Sign Out
           </button>
         </div>
       </aside>
@@ -88,7 +88,7 @@ export function AdminLayout({ activePage = 'circulation', onNavigate, profile, o
             </div>
             <div className="admin-account-details">
               <div className="admin-account-name">
-                {profile?.full_name || 'Thủ Thư (Librarian)'}
+                {profile?.full_name || 'Librarian'}
               </div>
               <div className="admin-account-id">{profile?.student_id || profile?.email || 'Library Staff'}</div>
             </div>

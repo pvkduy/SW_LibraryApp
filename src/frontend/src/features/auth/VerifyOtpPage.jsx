@@ -170,7 +170,7 @@ export function VerifyOtpPage({ email, onNavigate, onVerified }) {
         {/* FR-AUTH-02: "I have verified" link button */}
         <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #ede6db', textAlign: 'center' }}>
           <p style={{ fontSize: '12px', color: '#6e665e', margin: '0 0 8px 0' }}>
-            Đã nhấp link xác nhận trong hòm thư Mailpit?
+            Did you click the confirmation link in Mailpit?
           </p>
           <button
             type="button"
@@ -179,7 +179,7 @@ export function VerifyOtpPage({ email, onNavigate, onVerified }) {
             onClick={handleCheckVerified}
             disabled={checkingLink}
           >
-            {checkingLink ? 'Checking...' : '✓ Tôi đã xác thực (I have verified)'}
+            {checkingLink ? 'Checking...' : '✓ I have verified'}
           </button>
         </div>
       </form>

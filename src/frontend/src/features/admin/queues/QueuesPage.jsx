@@ -7,7 +7,7 @@ export function QueuesPage() {
   const [reservations, setReservations] = useState([])
   const [selectedRes, setSelectedRes] = useState(null)
   const [showCancelModal, setShowCancelModal] = useState(false)
-  const [cancelReason, setCancelReason] = useState('Sinh viên báo bận không thể đến nhận sách trong đợt này.')
+  const [cancelReason, setCancelReason] = useState('The student is unavailable and cannot collect the book.')
   const [actionLoading, setActionLoading] = useState(false)
   const [actionFeedback, setActionFeedback] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -64,7 +64,7 @@ export function QueuesPage() {
 
       setActionFeedback({
         type: 'success',
-        message: res.message || 'Hủy đặt trước thành công! Cuốn sách đã được tự động đôn cho bạn đọc kế tiếp trong hàng đợi (nếu có).',
+        message: res.message || 'Reservation cancelled successfully. The book was offered to the next eligible reader in the queue when available.',
       })
       setShowCancelModal(false)
       await loadQueues()
@@ -140,7 +140,7 @@ export function QueuesPage() {
       <div className="admin-search-bar-wrap">
         <input
           type="text"
-          placeholder="Lọc theo tên sách, sinh viên, mã số sinh viên..."
+          placeholder="Filter by book title, student name, or student ID..."
           style={{ border: 'none', outline: 'none', width: '100%', fontSize: '17px', fontFamily: 'inherit' }}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -202,16 +202,16 @@ export function QueuesPage() {
                         {res.status === 'ready_for_pickup' ? 'Ready (Hold)' : `#${res.queue_position || 1}`}
                       </div>
                       <div style={{ fontSize: '13px', color: '#9d9388' }}>
-                        {res.status === 'ready_for_pickup' ? 'Đang giữ sách' : 'Xếp hàng chờ'}
+                        {res.status === 'ready_for_pickup' ? 'Held for Pickup' : 'Waiting'}
                       </div>
                     </td>
 
                     <td>
-                      <div style={{ fontWeight: 600 }}>{res.profiles?.full_name || 'Sinh viên'}</div>
+                      <div style={{ fontWeight: 600 }}>{res.profiles?.full_name || 'Student'}</div>
                       <div style={{ fontSize: '13px', color: '#72685e' }}>
                         MSSV: {res.profiles?.student_id || 'N/A'}
                         {res.profiles?.debt_outstanding > 0 && (
-                          <span style={{ color: '#dc2626', fontWeight: 600, marginLeft: '4px' }}>(Nợ)</span>
+                          <span style={{ color: '#dc2626', fontWeight: 600, marginLeft: '4px' }}>(Debt)</span>
                         )}
                       </div>
                     </td>
@@ -221,7 +221,7 @@ export function QueuesPage() {
                         <div>
                           <span className="admin-badge admin-badge-ready">Ready for Pickup</span>
                           <div style={{ fontSize: '13px', color: '#92400e', marginTop: '2px' }}>
-                            Hạn: {res.hold_until ? new Date(res.hold_until).toLocaleDateString() : '48h'}
+                            Deadline: {res.hold_until ? new Date(res.hold_until).toLocaleDateString('vi-VN') : '48h'}
                           </div>
                         </div>
                       )}
@@ -253,7 +253,7 @@ export function QueuesPage() {
               {filteredReservations.length === 0 && (
                 <tr>
                   <td colSpan="5" style={{ textAlign: 'center', padding: '32px', color: '#72685e' }}>
-                    Không có hàng đợi đặt trước nào.
+                    No reservation queue entries found.
                   </td>
                 </tr>
               )}
@@ -275,7 +275,7 @@ export function QueuesPage() {
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <span className="admin-badge admin-badge-ready">
-                    {selectedRes.status === 'ready_for_pickup' ? 'Giữ tại quầy' : 'Đang chờ mượn'}
+                    {selectedRes.status === 'ready_for_pickup' ? 'Held at Counter' : 'Waiting to Borrow'}
                   </span>
                   {selectedRes.copies?.barcode && (
                     <span style={{ fontSize: '13px', fontFamily: 'monospace', fontWeight: 600 }}>
@@ -287,19 +287,19 @@ export function QueuesPage() {
 
               {/* Patron Info */}
               <div className="admin-drawer-box">
-                <div className="admin-drawer-box-title">Thông tin bạn đọc giữ chỗ</div>
+                <div className="admin-drawer-box-title">Reserved Reader Information</div>
                 <div style={{ fontSize: '17px', fontWeight: 700 }}>{selectedRes.profiles?.full_name}</div>
                 <div style={{ fontSize: '14px', color: '#72685e' }}>
                   MSSV: {selectedRes.profiles?.student_id} · Email: {selectedRes.profiles?.email}
                 </div>
                 {selectedRes.pickup_code && (
                   <div style={{ marginTop: '8px', fontSize: '16px', fontWeight: 700, color: '#6e472a' }}>
-                    Mã lấy sách: {selectedRes.pickup_code}
+                    Pickup Code: {selectedRes.pickup_code}
                   </div>
                 )}
                 {selectedRes.hold_until && (
                   <div style={{ marginTop: '4px', fontSize: '14px', color: '#92400e' }}>
-                    Thời hạn giữ chỗ đến: {new Date(selectedRes.hold_until).toLocaleString()}
+                    Hold deadline: {new Date(selectedRes.hold_until).toLocaleString('vi-VN')}
                   </div>
                 )}
               </div>
@@ -322,17 +322,17 @@ export function QueuesPage() {
                     }}
                     onClick={() => setShowCancelModal(true)}
                   >
-                    ✕ Hủy đặt trước (Staff Cancel)
+                    ✕ Cancel Reservation
                   </button>
                   <div style={{ fontSize: '13px', color: '#72685e', marginTop: '6px', textAlign: 'center' }}>
-                    * Hủy bởi thủ thư không phạt strike sinh viên (theo chính sách POL-07).
+                    * Librarian cancellation does not add a reservation strike.
                   </div>
                 </div>
               )}
             </>
           ) : (
             <div style={{ textAlign: 'center', color: '#72685e', padding: '40px 0' }}>
-              Chọn một suất hàng đợi để xem chi tiết.
+              Select a queue entry to view details.
             </div>
           )}
         </div>
@@ -360,14 +360,14 @@ export function QueuesPage() {
               boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
             }}
           >
-            <h3 style={{ margin: '0 0 8px 0', fontSize: '22px', color: '#dc2626' }}>Xác nhận hủy đặt trước</h3>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '22px', color: '#dc2626' }}>Confirm Reservation Cancellation</h3>
             <p style={{ fontSize: '16px', color: '#72685e', margin: '0 0 16px 0' }}>
-              Bạn đang thực hiện hủy yêu cầu đặt trước cuốn "<strong>{selectedRes.books?.title}</strong>" của sinh viên{' '}
+              You are cancelling the reservation for "<strong>{selectedRes.books?.title}</strong>" by student{' '}
               <strong>{selectedRes.profiles?.full_name}</strong>.
             </p>
 
             <label style={{ fontSize: '14px', fontWeight: 600, color: '#241e19', display: 'block', marginBottom: '6px' }}>
-              Lý do hủy (bắt buộc theo đặc tả UC-29):
+              Cancellation reason (required):
             </label>
             <textarea
               rows="3"
@@ -392,7 +392,7 @@ export function QueuesPage() {
                 onClick={() => setShowCancelModal(false)}
                 disabled={actionLoading}
               >
-                Đóng
+                Close
               </button>
               <button
                 type="button"
@@ -409,7 +409,7 @@ export function QueuesPage() {
                 disabled={actionLoading}
                 onClick={handleCancelStaff}
               >
-                {actionLoading ? 'Đang hủy...' : 'Xác nhận hủy'}
+                {actionLoading ? 'Cancelling...' : 'Confirm Cancellation'}
               </button>
             </div>
           </div>

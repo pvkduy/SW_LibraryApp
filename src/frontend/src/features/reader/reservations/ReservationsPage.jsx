@@ -46,7 +46,7 @@ export function ReservationsPage() {
   }, [])
 
   const handleCancelReservation = async (reservationId) => {
-    if (!window.confirm('Bạn có chắc chắn muốn hủy đặt trước cuốn sách này không?')) return
+    if (!window.confirm('Are you sure you want to cancel this reservation?')) return
 
     setCancellingId(reservationId)
     setMessage(null)
@@ -54,16 +54,16 @@ export function ReservationsPage() {
     try {
       const { data, error } = await supabase.rpc('rpc_cancel_reservation_staff', {
         p_reservation_id: reservationId,
-        p_reason: 'Sinh viên tự hủy yêu cầu'
+        p_reason: 'Student cancelled the request'
       })
 
       if (error) throw error
       if (data?.error) throw new Error(data.message || data.error)
 
-      setMessage({ type: 'success', text: 'Đã hủy đặt trước sách thành công.' })
+      setMessage({ type: 'success', text: 'Reservation cancelled successfully.' })
       await loadReservations()
     } catch (err) {
-      setMessage({ type: 'error', text: err.message || 'Không thể hủy đặt trước.' })
+      setMessage({ type: 'error', text: err.message || 'Unable to cancel the reservation.' })
     } finally {
       setCancellingId(null)
     }
@@ -73,9 +73,9 @@ export function ReservationsPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: '22px', color: '#241e19' }}>Danh sách Đặt trước (Reservations)</h2>
+          <h2 style={{ margin: 0, fontSize: '22px', color: '#241e19' }}>Reservations</h2>
           <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#6e665e' }}>
-            Theo dõi vị trí hàng đợi và các cuốn sách đã sẵn sàng nhận tại quầy.
+            Track your queue position and books ready for pickup at the counter.
           </p>
         </div>
       </div>
@@ -87,12 +87,12 @@ export function ReservationsPage() {
       )}
 
       {loading ? (
-        <p style={{ color: '#6e665e' }}>Đang tải danh sách đặt trước...</p>
+        <p style={{ color: '#6e665e' }}>Loading reservations...</p>
       ) : (
         <div className="reader-card">
           {reservations.length === 0 ? (
             <p style={{ margin: 0, color: '#6e665e', textAlign: 'center', padding: '24px 0' }}>
-              Bạn chưa đặt trước cuốn sách nào.
+              You have no reserved books.
             </p>
           ) : (
             <div>
@@ -106,7 +106,7 @@ export function ReservationsPage() {
                   <div key={res.id} className="loan-item-card">
                     <div className="loan-item-info">
                       <h4>
-                        {book?.title || 'Sách'}
+                        {book?.title || 'Book'}
                         {book?.collection === 'premium' && (
                           <span style={{ marginLeft: '8px', fontSize: '11px', color: '#6e472a', fontWeight: 600 }}>
                             (Premium)
@@ -114,19 +114,19 @@ export function ReservationsPage() {
                         )}
                       </h4>
                       <div className="loan-item-sub">
-                        <span>Tác giả: {book?.authors?.join(', ') || 'N/A'}</span>
-                        <span>Ngày đặt: {new Date(res.created_at).toLocaleDateString('vi-VN')}</span>
+                        <span>Author: {book?.authors?.join(', ') || 'N/A'}</span>
+                        <span>Reserved: {new Date(res.created_at).toLocaleDateString('vi-VN')}</span>
                       </div>
                       <div style={{ marginTop: '8px', fontSize: '13px' }}>
                         {isWaiting && (
                           <span style={{ color: '#6e472a', fontWeight: 600 }}>
-                            Vị trí trong hàng đợi: #{res.queue_position || 1}
+                            Queue position: #{res.queue_position || 1}
                           </span>
                         )}
                         {isReady && (
                           <span style={{ color: '#2e7d32', fontWeight: 600 }}>
-                            🎉 Sách đã sẵn sàng tại quầy! Giữ đến:{' '}
-                            {res.hold_until ? new Date(res.hold_until).toLocaleString('vi-VN') : '48 giờ'}
+                            🎉 Your book is ready at the counter! Hold until:{' '}
+                            {res.hold_until ? new Date(res.hold_until).toLocaleString('vi-VN') : '48 hours'}
                           </span>
                         )}
                       </div>
@@ -142,7 +142,7 @@ export function ReservationsPage() {
                             : 'badge-returned'
                         }`}
                       >
-                        {isReady ? 'Sẵn sàng nhận' : isWaiting ? 'Đang chờ lượt' : res.status}
+                        {isReady ? 'Ready for pickup' : isWaiting ? 'Waiting' : res.status}
                       </span>
                       {canCancel && (
                         <button
@@ -161,7 +161,7 @@ export function ReservationsPage() {
                           disabled={cancellingId === res.id}
                           onClick={() => handleCancelReservation(res.id)}
                         >
-                          {cancellingId === res.id ? 'Đang hủy...' : 'Hủy đặt trước'}
+                          {cancellingId === res.id ? 'Cancelling...' : 'Cancel Reservation'}
                         </button>
                       )}
                     </div>

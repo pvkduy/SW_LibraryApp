@@ -189,7 +189,7 @@ export function CheckoutFlowPage({ profile, user, onBackToCatalog, onGoToLoans }
     if (!iso) return 'Just now'
     try {
       const d = new Date(iso)
-      return d.toLocaleString('en-US', {
+      return d.toLocaleString('vi-VN', {
         month: 'short',
         day: 'numeric',
         year: 'numeric',

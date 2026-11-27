@@ -245,7 +245,7 @@ export function CirculationPage() {
     const rejectedCount = files.length - acceptedFiles.length
 
     if (rejectedCount > 0) {
-      setHandoverMediaError('Chọn tối đa 3 ảnh JPG, PNG hoặc WebP; mỗi ảnh không quá 10 MB.')
+      setHandoverMediaError('Select up to 3 JPG, PNG, or WebP images; each image must be 10 MB or smaller.')
     } else {
       setHandoverMediaError('')
     }
@@ -278,7 +278,7 @@ export function CirculationPage() {
 
     setReturnMediaError(
       rejectedCount > 0
-        ? 'Chọn tối đa 3 ảnh JPG, PNG hoặc WebP; mỗi ảnh không quá 10 MB.'
+        ? 'Select up to 3 JPG, PNG, or WebP images; each image must be 10 MB or smaller.'
         : ''
     )
     const newMedia = acceptedFiles.map((file) => ({
@@ -339,7 +339,7 @@ export function CirculationPage() {
           .from('evidence')
           .upload(path, media.file, { contentType: media.file.type, upsert: false })
 
-        if (uploadError) throw new Error(`Không thể tải ảnh ${media.file.name}: ${uploadError.message}`)
+        if (uploadError) throw new Error(`Unable to upload image ${media.file.name}: ${uploadError.message}`)
         uploadedPaths.push(path)
       }
       uploadsComplete = true
@@ -351,7 +351,7 @@ export function CirculationPage() {
         condition_out_media: uploadedPaths,
       })
 
-      setActionFeedback({ type: 'success', message: res.message || 'Xuất mượn thành công! Đã chuyển sách sang trạng thái Borrowed.' })
+      setActionFeedback({ type: 'success', message: res.message || 'Handover completed. The copy is now borrowed.' })
       clearHandoverMedia()
       await loadData()
     } catch (err) {
@@ -369,19 +369,19 @@ export function CirculationPage() {
   const handleConfirmReturn = async () => {
     const targetBarcode = returnBarcode.trim() || selectedItemBarcode
     if (!targetBarcode) {
-      setActionFeedback({ type: 'error', message: 'Vui lòng nhập hoặc quét mã barcode cuốn sách cần trả.' })
+      setActionFeedback({ type: 'error', message: 'Enter or scan the copy barcode for the book being returned.' })
       return
     }
     if (returnCondition === 'damaged' && returnMedia.length === 0) {
-      setActionFeedback({ type: 'error', message: 'Vui lòng tải lên ít nhất một ảnh chứng cứ cho sách bị hư hỏng.' })
+      setActionFeedback({ type: 'error', message: 'Upload at least one evidence image for a damaged book.' })
       return
     }
     if (['poor', 'damaged'].includes(returnCondition) && returnDamageTier === null) {
-      setActionFeedback({ type: 'error', message: 'Vui lòng chọn mức phí hư hỏng trước khi xác nhận trả sách.' })
+      setActionFeedback({ type: 'error', message: 'Select a damage fee tier before confirming the return.' })
       return
     }
     if (returnMedia.length && selectedItem?.copies?.barcode !== targetBarcode) {
-      setActionFeedback({ type: 'error', message: 'Chọn hồ sơ khoản mượn tương ứng trước khi tải ảnh chứng cứ lên.' })
+      setActionFeedback({ type: 'error', message: 'Select the matching loan record before uploading evidence.' })
       return
     }
 
@@ -402,7 +402,7 @@ export function CirculationPage() {
           .from('evidence')
           .upload(path, media.file, { contentType: media.file.type, upsert: false })
 
-        if (uploadError) throw new Error(`Không thể tải ảnh ${media.file.name}: ${uploadError.message}`)
+        if (uploadError) throw new Error(`Unable to upload image ${media.file.name}: ${uploadError.message}`)
         uploadedPaths.push(path)
       }
       uploadsComplete = true
@@ -418,9 +418,9 @@ export function CirculationPage() {
       })
 
       const data = res.data
-      let msg = res.message || `Nhận trả sách thành công! Trạng thái bản sao: ${data?.copy_status}.`
+      let msg = res.message || `Return processed successfully. Copy status: ${data?.copy_status}.`
       if (data && data.total_fee > 0) {
-        msg += ` Tổng phí phạt: ${data.total_fee.toLocaleString()}đ (${data.settled ? 'Đã thu tiền tại quầy, Mã biên lai: ' + data.receipt_number : 'Đã ghi nợ vào tài khoản SV'}).`
+        msg += ` Total charge: ${data.total_fee.toLocaleString('vi-VN')}đ (${data.settled ? 'Collected at the counter. Receipt: ' + data.receipt_number : 'Added to the student account'}).`
       }
       setActionFeedback({ type: 'success', message: msg })
       setReturnBarcode('')
@@ -445,7 +445,7 @@ export function CirculationPage() {
     if (!collected || collected < selectedCharge.amount) {
       setActionFeedback({
         type: 'error',
-        message: `Số tiền thu (${collected.toLocaleString()}đ) không được nhỏ hơn khoản phải trả (${selectedCharge.amount.toLocaleString()}đ).`,
+        message: `Collected amount (${collected.toLocaleString('vi-VN')}đ) cannot be less than the amount due (${selectedCharge.amount.toLocaleString('vi-VN')}đ).`,
       })
       return
     }
@@ -457,13 +457,13 @@ export function CirculationPage() {
       const res = await api.invoke('record-counter-payment', {
         charge_id: selectedCharge.id,
         amount_collected: collected,
-        notes: paymentNotes || 'Thu tiền tại quầy lưu thông',
+        notes: paymentNotes || 'Counter payment',
       })
 
       const data = res.data
       setActionFeedback({
         type: 'success',
-        message: res.message || `Thu tiền thành công! Biên lai: ${data?.receipt_number}. Tiền thối lại: ${data?.change?.toLocaleString()}đ.`,
+        message: res.message || `Payment recorded. Receipt: ${data?.receipt_number}. Change: ${data?.change?.toLocaleString('vi-VN')}đ.`,
       })
       setPaymentAmountCollected('')
       await loadData()
@@ -700,13 +700,13 @@ export function CirculationPage() {
                       >
                         <td>
                           <div style={{ fontWeight: 600, color: '#241e19' }}>
-                            {item.profiles?.full_name || 'Sinh viên'}
+                            {item.profiles?.full_name || 'Student'}
                           </div>
                           <div style={{ fontSize: '13px', color: '#72685e' }}>
-                            {item.profiles?.student_id || 'Chưa cập nhật'}
+                            {item.profiles?.student_id || 'Not available'}
                             {item.profiles?.debt_outstanding > 0 && (
                               <span style={{ color: '#dc2626', marginLeft: '6px', fontWeight: 600 }}>
-                                (Nợ {item.profiles.debt_outstanding.toLocaleString()}đ)
+                                (Debt {item.profiles.debt_outstanding.toLocaleString('vi-VN')}đ)
                               </span>
                             )}
                           </div>
@@ -715,7 +715,7 @@ export function CirculationPage() {
                         <td>
                           <div style={{ fontWeight: 600 }}>{item.books?.title}</div>
                           <div style={{ fontSize: '13px', color: '#9d9388' }}>
-                            {item.copies?.shelf_location || item.books?.shelf_location || 'Kệ chính'}
+                            {item.copies?.shelf_location || item.books?.shelf_location || 'Main shelf'}
                             {item.is_premium && (
                               <span style={{ color: '#92400e', fontWeight: 600, marginLeft: '6px' }}>(Premium)</span>
                             )}
@@ -739,22 +739,22 @@ export function CirculationPage() {
                         <td>
                           {item.status === 'ready_for_pickup' && (
                             <span style={{ color: '#92400e', fontSize: '14px' }}>
-                              Hạn nhận: {item.pickup_deadline ? new Date(item.pickup_deadline).toLocaleDateString() : '24h'}
+                              Pickup deadline: {item.pickup_deadline ? new Date(item.pickup_deadline).toLocaleDateString('vi-VN') : '24h'}
                             </span>
                           )}
                           {item.status === 'borrowed' && (
                             <span style={{ color: '#166534', fontSize: '14px' }}>
-                              Hạn trả: {item.due_at ? new Date(item.due_at).toLocaleDateString() : '14 ngày'}
+                              Due date: {item.due_at ? new Date(item.due_at).toLocaleDateString('vi-VN') : '14 days'}
                             </span>
                           )}
                           {item.status === 'overdue' && (
                             <span style={{ color: '#dc2626', fontSize: '14px', fontWeight: 600 }}>
-                              Trễ: {item.due_at ? new Date(item.due_at).toLocaleDateString() : 'Quá hạn'}
+                              Late: {item.due_at ? new Date(item.due_at).toLocaleDateString('vi-VN') : 'Overdue'}
                             </span>
                           )}
                           {item.status === 'returned' && (
                             <span style={{ color: '#72685e', fontSize: '14px' }}>
-                              Đã trả: {item.returned_at ? new Date(item.returned_at).toLocaleDateString() : 'Hoàn tất'}
+                              Returned: {item.returned_at ? new Date(item.returned_at).toLocaleDateString('vi-VN') : 'Completed'}
                             </span>
                           )}
                         </td>
@@ -806,7 +806,7 @@ export function CirculationPage() {
                   {filteredItems.length === 0 && (
                     <tr>
                       <td colSpan="7" style={{ textAlign: 'center', padding: '32px', color: '#72685e' }}>
-                        Không có yêu cầu nào phù hợp bộ lọc.
+                        No requests match the selected filters.
                       </td>
                     </tr>
                   )}
@@ -905,7 +905,7 @@ export function CirculationPage() {
                             }}
                           >
                             {selectedItem.profiles?.debt_outstanding > 0
-                              ? `${selectedItem.profiles.debt_outstanding.toLocaleString()}đ (Blocked)`
+                              ? `${selectedItem.profiles.debt_outstanding.toLocaleString('vi-VN')}đ (Blocked)`
                               : '0đ (Clean)'}
                           </span>
                         </div>
@@ -937,7 +937,7 @@ export function CirculationPage() {
                         </div>
                         <div className="admin-loan-period">
                           <span>Loan period ({selectedItem.duration_days || 14} days)</span>
-                          <strong>{selectedItem.due_at ? `Return due ${new Date(selectedItem.due_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}` : 'Due date set at handover'}</strong>
+                          <strong>{selectedItem.due_at ? `Return due ${new Date(selectedItem.due_at).toLocaleDateString('vi-VN', { month: 'short', day: '2-digit', year: 'numeric' })}` : 'Due date set at handover'}</strong>
                         </div>
                       </div>
 
@@ -1046,13 +1046,13 @@ export function CirculationPage() {
                           onClick={handleConfirmHandover}
                         >
                           <IconCheck size={18} />
-                          {actionLoading ? 'Đang xử lý...' : 'Confirm Handover & Issue Loan'}
+                          {actionLoading ? 'Processing...' : 'Confirm Handover & Issue Loan'}
                         </button>
                       </div>
                     </>
                   ) : (
                     <div style={{ color: '#72685e', textAlign: 'center', padding: '40px 0' }}>
-                      Chọn một yêu cầu mượn bên bảng để kiểm tra.
+                      Select a loan request from the table to review it.
                     </div>
                   )}
                 </>
@@ -1091,8 +1091,8 @@ export function CirculationPage() {
                       </div>
                     </div>
                     <div className="admin-context-dates">
-                      <span>Borrowed: {selectedItem?.handover_at ? new Date(selectedItem.handover_at).toLocaleDateString('en-US') : '—'}</span>
-                      <span>Due: {selectedItem?.due_at ? new Date(selectedItem.due_at).toLocaleDateString('en-US') : '—'}</span>
+                      <span>Borrowed: {selectedItem?.handover_at ? new Date(selectedItem.handover_at).toLocaleDateString('vi-VN') : '—'}</span>
+                      <span>Due: {selectedItem?.due_at ? new Date(selectedItem.due_at).toLocaleDateString('vi-VN') : '—'}</span>
                     </div>
                   </div>
 
@@ -1154,7 +1154,7 @@ export function CirculationPage() {
                       <strong>{selectedItem?.condition_out?.replace(/^\w/, (letter) => letter.toUpperCase()) || 'Not recorded'}</strong>
                       <small>
                         {selectedItem?.handover_at
-                          ? `Checked out ${new Date(selectedItem.handover_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}`
+                          ? `Checked out ${new Date(selectedItem.handover_at).toLocaleDateString('vi-VN', { month: 'short', day: '2-digit', year: 'numeric' })}`
                           : 'Checkout date unavailable'}
                       </small>
                     </div>
@@ -1286,7 +1286,7 @@ export function CirculationPage() {
                       onClick={handleConfirmReturn}
                     >
                       <IconCheck size={18} />
-                      {actionLoading ? 'Đang xử lý...' : 'Confirm Return & Check-In'}
+                      {actionLoading ? 'Processing...' : 'Confirm Return & Check-In'}
                     </button>
                   </div>
                 </>
@@ -1490,7 +1490,7 @@ export function CirculationPage() {
                       textAlign: 'center',
                     }}
                   >
-                    ✓ Khoản phí này đã được thanh toán hoàn tất.
+                    ✓ This charge has been paid in full.
                   </div>
                 ) : (
                   <>

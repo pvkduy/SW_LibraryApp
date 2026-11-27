@@ -17,7 +17,7 @@ function formatReceiptDate(value, includeTime = false) {
   if (!value) return '—'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
-  return date.toLocaleString('en-US', includeTime
+  return date.toLocaleString('vi-VN', includeTime
     ? { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }
     : { month: 'short', day: 'numeric', year: 'numeric' })
 }
@@ -158,7 +158,7 @@ export function FinesPage({ onProfileRefresh, embedded = false, profile }) {
       {totalUnpaid > 0 && (
         <div className="debt-hold-banner">
           <div>
-            <strong>Outstanding library balance: {totalUnpaid.toLocaleString('en-US')} VND</strong>
+            <strong>Outstanding library balance: {totalUnpaid.toLocaleString('vi-VN')} VND</strong>
             <div style={{ fontSize: '12px', marginTop: '2px' }}>
               Please pay your balance to restore borrowing and reservation access.
             </div>
@@ -265,7 +265,7 @@ export function FinesPage({ onProfileRefresh, embedded = false, profile }) {
                 </div>
                 <div className="receipt-detail-row">
                   <span>Amount Paid</span>
-                  <strong>{Number(selectedReceipt.amount || 0).toLocaleString('en-US')} VND</strong>
+                  <strong>{Number(selectedReceipt.amount || 0).toLocaleString('vi-VN')} VND</strong>
                 </div>
               </section>
 
@@ -335,7 +335,7 @@ export function FinesPage({ onProfileRefresh, embedded = false, profile }) {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <span style={{ fontSize: '16px', fontWeight: 700, color: '#b3261e', display: 'block' }}>
-                      {Number(c.amount).toLocaleString('en-US')} VND
+                      {Number(c.amount).toLocaleString('vi-VN')} VND
                     </span>
                     <span className="badge-status badge-overdue">Unpaid</span>
                   </div>

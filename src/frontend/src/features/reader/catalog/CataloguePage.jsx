@@ -516,7 +516,7 @@ export function CataloguePage({ profile, mode = 'discover', onOpenBook, onOpenSc
                   Ask ShelfHelp AI to recommend books from the library catalog for your research topic (Milestone 012-assistant).
                 </p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px' }}>
-                  {['UX Design', 'Algorithms', 'Hóa học', 'Habits'].map((topic) => (
+                  {['UX Design', 'Algorithms', 'Chemistry', 'Habits'].map((topic) => (
                     <button
                       key={topic}
                       type="button"

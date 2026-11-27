@@ -59,7 +59,7 @@ export function FineCheckoutModal({ charges, onClose, onSuccess }) {
             {charges.map((c) => (
               <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '4px 0', borderBottom: '1px dashed #f0eae1' }}>
                 <span>{chargeTitle(c)}</span>
-                <strong style={{ color: '#c62828' }}>{Number(c.amount).toLocaleString('en-US')} VND</strong>
+                <strong style={{ color: '#c62828' }}>{Number(c.amount).toLocaleString('vi-VN')} VND</strong>
               </div>
             ))}
           </div>
@@ -67,7 +67,7 @@ export function FineCheckoutModal({ charges, onClose, onSuccess }) {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderTop: '1px solid #ede6db', borderBottom: '1px solid #ede6db', marginBottom: '16px' }}>
           <span style={{ fontSize: '15px', fontWeight: 600, color: '#241e19' }}>Total due:</span>
-          <span style={{ fontSize: '18px', fontWeight: 700, color: '#b3261e' }}>{totalAmount.toLocaleString('en-US')} VND</span>
+          <span style={{ fontSize: '18px', fontWeight: 700, color: '#b3261e' }}>{totalAmount.toLocaleString('vi-VN')} VND</span>
         </div>
 
         <div style={{ marginBottom: '20px' }}>
@@ -114,7 +114,7 @@ export function FineCheckoutModal({ charges, onClose, onSuccess }) {
             onClick={handlePay}
             disabled={submitting}
           >
-            {submitting ? 'Processing…' : `Pay ${totalAmount.toLocaleString('en-US')} VND`}
+            {submitting ? 'Processing…' : `Pay ${totalAmount.toLocaleString('vi-VN')} VND`}
           </button>
         </div>
       </div>
