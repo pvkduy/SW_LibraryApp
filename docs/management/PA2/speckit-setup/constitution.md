@@ -32,6 +32,31 @@ Follow-up TODOs:
   - NFR thresholds (NFR-01..16) are owned by specs/000-core/spec.md; this constitution
     delegates rather than duplicates, so amendments to numeric targets do not require a
     constitution amendment.
+
+Sync Impact Report (v1.0.0 → v1.1.0)
+Version change: 1.0.0 → 1.1.0 (MINOR)
+Reason: the "Stack & Architectural Constraints" frontend line listed libraries the
+build does not use, and omitted libraries the spec requires for features that are not
+built yet. This is materially expanded/corrected guidance, hence a MINOR bump.
+
+Sections changed:
+  - "Stack & Architectural Constraints" → Frontend bullet AMENDED. Removed React Hook
+    Form + Zod, Tailwind CSS + shadcn/ui (Radix), and react-i18next, which the
+    implemented UI never adopted: it uses custom React controls with shared domain
+    validation and hand-written CSS. Added `react-easy-crop` + canvas for the avatar
+    crop (FR-PROF-03), and clarified that React Router, TanStack Query, Recharts, and
+    `react-easy-crop` are adopted when the feature needing them is built.
+  - Reason for restoring Recharts and react-easy-crop: the REC-05 reconciliation removed
+    them to describe features that were already implemented, but the dashboard chart
+    (FR-ANLY-02) and the avatar crop (FR-PROF-03) were NOT yet implemented at that
+    time. They therefore remain the specified choices in SRS §10.2 and are restored
+    here rather than silently dropped.
+
+Removed sections: none. Principles unchanged.
+
+Governance: amended under the documented amendment procedure (rationale + version
+reasoning + dependent guidance updated). Deviations from the fixed stack MUST still be
+recorded per Principle VIII in `docs/DECISIONS.md`.
 -->
 
 # ShelfHelp Constitution
@@ -177,8 +202,11 @@ MUST be recorded per Principle VIII.
 - **Language**: TypeScript (strict) everywhere, plus SQL for the database. Database types are
   generated with `supabase gen types`.
 - **Frontend**: React 18+ with Vite; React Router (data router) with role/status guards; TanStack
-  Query over `supabase-js`; React Hook Form + Zod; Tailwind CSS + shadcn/ui (Radix); `react-i18next`
-  (English only for now); Recharts. Reader and admin are separate lazy-loaded chunks.
+  Query over `supabase-js`; custom React controls with shared domain validation (`@shelfhelp/shared`);
+  hand-written CSS and native HTML components; Recharts for dashboard charts; `react-easy-crop` +
+  canvas for the avatar crop. React Router, TanStack Query, Recharts, and `react-easy-crop` are
+  adopted when the feature that needs them is built (see SRS §10.2). Reader and admin are separate
+  lazy-loaded chunks.
 - **Backend**: Supabase Edge Functions (Deno, TypeScript), one folder per function, thin handlers.
 - **Database**: Supabase Postgres — tables, constraints, triggers, RLS on every table, `pg_cron`,
   `pg_net`, `pgvector`, `pg_trgm`, `unaccent`. Migrations only through `supabase/migrations/*.sql`.
@@ -232,4 +260,4 @@ ratification and is binding on all subsequent work.
 MUST be stated explicitly and justified in the change itself, and recorded per Principle VIII.
 Complexity and departures from the fixed stack MUST be justified against the value delivered.
 
-**Version**: 1.0.0 | **Ratified**: 2025-10-25 | **Last Amended**: 2025-10-25
+**Version**: 1.1.0 | **Ratified**: 2025-10-25 | **Last Amended**: 2026-11-27

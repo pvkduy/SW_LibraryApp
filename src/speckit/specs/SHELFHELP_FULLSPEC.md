@@ -831,13 +831,13 @@ Supabase project (region ap-northeast-2, Seoul)
 | Forms and validation | Custom React controls with shared domain validation | Consistent field and server validation |
 | UI | Hand-written CSS and native HTML components | Responsive, accessible controls |
 | i18n and time | English UI with shared `Asia/Ho_Chi_Minh` formatting | Locale support may be added later |
-| Charts | Browser-native SVG/HTML implementation | Dashboard |
+| Charts | Recharts | Dashboard |
 | Search | Postgres full-text search, `pg_trgm`, `unaccent` | See 10.4 |
 | Vector search | `pgvector` with an HNSW index | Chatbot retrieval |
 | Barcode scan | Browser-native barcode APIs, with a manual fallback | ISBN and copy-barcode lookup |
 | Barcode labels | Implementation-selected Code 128 rendering | Label sheet |
 | Import/export | Implementation-selected browser utilities | Client-side CSV and spreadsheet exports |
-| Image crop | Browser canvas implementation | 512x512 output |
+| Image crop | react-easy-crop + canvas | 512x512 output |
 | Auth | Supabase Auth | Role in `app_metadata.role`, written only by server code; session inventory and revocation through Edge Functions with the service role (DEC-57) |
 | Database | Supabase Postgres | RLS on every table, migrations via Supabase CLI |
 | Backend | Supabase Edge Functions (Deno, TypeScript) | One folder per function, thin handlers |
