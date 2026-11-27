@@ -111,7 +111,33 @@ export function ImportTab({ onImported }) {
   const headerPreview = preview?.rows?.slice(0, 3) ?? []
 
   return (
-    <div className="books-tab">
+    <div className="books-tab books-import-tab">
+      <section className="books-import-flow" aria-label="Import steps">
+        <div className="books-import-step">
+          <span className="books-import-step-num">1</span>
+          <div>
+            <strong>Upload</strong>
+            <span>CSV file · ≤ 2 MB · ≤ 1,000 rows</span>
+          </div>
+        </div>
+        <span className="books-import-step-line" aria-hidden="true" />
+        <div className="books-import-step">
+          <span className="books-import-step-num">2</span>
+          <div>
+            <strong>Validate</strong>
+            <span>Row-level errors listed before any write</span>
+          </div>
+        </div>
+        <span className="books-import-step-line" aria-hidden="true" />
+        <div className={`books-import-step ${result ? 'done' : ''}`}>
+          <span className="books-import-step-num">{result ? '✓' : '3'}</span>
+          <div>
+            <strong>Confirm</strong>
+            <span>Valid rows ingested into the catalog</span>
+          </div>
+        </div>
+      </section>
+
       <section className="books-panel">
         <div className="books-panel-head">
           <div className="books-step-badge">1</div>
@@ -119,7 +145,7 @@ export function ImportTab({ onImported }) {
             <h3>Upload input CSV</h3>
             <p>UTF-8 / RFC 4180. Use the template to avoid column-name surprises.</p>
           </div>
-          <button type="button" className="admin-btn-outline books-btn-sm books-push-right" onClick={() => downloadText('catalog-import-template.csv', IMPORT_TEMPLATE)}>↓ CSV template download</button>
+          <button type="button" className="admin-btn-outline books-btn-sm books-push-right" onClick={() => downloadText('catalog-import-template.csv', IMPORT_TEMPLATE)}>      ↓<span className="books-btn-glyph">CSV template download</span></button>
         </div>
 
         <div

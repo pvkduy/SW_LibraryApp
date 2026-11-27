@@ -1,0 +1,83 @@
+  const isDraft = selectedSlip?.status === 'draft'
+  const isCompleted = selectedSlip?.status === 'completed'
+  const isCancelled = selectedSlip?.status === 'cancelled'
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  const copyCount = (slip) => slip.writeoff_slip_copies?.[0]?.count ?? 0
+
+  const hasPhotoEvidence =
+    (draftPhotos || []).length > 0 || stagedCopies.some((c) => (c.photo_paths || []).length > 0)
+  const replacementTotal = stagedCopies.reduce((sum, c) => sum + (Number(c.replacement_price) || 0), 0)
+  const copyPhotosTotal = stagedCopies.reduce((sum, c) => sum + (c.photo_paths || []).length, 0)
+  const photoTotal = (draftPhotos || []).length + copyPhotosTotal
+
+  const openStageModal = () => {
+    setStageCandidate(null)
+    setStageCandidateError(null)
+    setStageBarcodeQuery('')
+    setStagePhotos([])
+    setShowStageModal(true)
+  }
+
+  return (
+    <div className="books-tab">
+      {/* Search & Actions Bar */}
+      <div className="admin-search-bar-wrap books-lookup-bar">
+        <div className="admin-barcode-input">
+          <span className="admin-barcode-icon" aria-hidden="true">
+            <IconArchive size={15} />
+          </span>
+          <span className="books-search-icon" aria-hidden="true">
+            <IconSearch size={15} />
+          </span>
+          <input
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              setPage(1)
+            }}
+            placeholder="Search write-off slip number, reason, or notes…"
+          />
+        </div>
+        <button type="button" className="admin-btn-primary" onClick={handleCreateNewSlip} disabled={saving}>
+          + Create Write-Off Slip
+        </button>
+      </div>
+
+      {feedback && (
+        <div className={`books-alert ${feedback.type === 'error' ? 'danger' : 'success'}`}>
+          <span>{feedback.message}</span>
+          <button type="button" aria-label="✕" onClick={() => setFeedback(null)}>✕</button>
+        </div>
+      )}
+      {/* Filter Tabs */}
+      <div className="admin-filter-tabs books-filter-strip">
+        <div className="admin-filter-tabs books-filter-strip-pills">
+          {[
+            { value: 'all', label: 'All slips' },
+            { value: 'draft', label: 'Drafts' },
+            { value: 'completed', label: 'Completed' },
+            { value: 'cancelled', label: 'Cancelled' },
+          ].map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              className={`admin-pill-btn ${filterStatus === filter.value ? 'active' : ''}`}
+              onClick={() => { setFilterStatus(filter.value); setPage(1) }}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+        <div className="books-filter-meta">
+          <span>{loading ? 'Loading…' : `${total} slip${total === 1 ? '' : 's'}`}</span>
+          <button type="button" className="books-icon-text-btn" onClick={loadSlips}>
+            <IconRefresh size={13} /> Refresh
+          </button>
+        </div>
+      </div>
+      {/* #section */}
+    </div>
+  )
+}

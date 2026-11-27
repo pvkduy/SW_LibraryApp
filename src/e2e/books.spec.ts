@@ -38,6 +38,10 @@ function watchProblems(page: Page) {
     const text = message.text()
     // Chromium logs every 4xx/5xx response here; those are asserted via the UI.
     if (text.startsWith('Failed to load resource')) return
+    // Vite's own HMR chatter when a module is saved while a run is in progress.
+    // These describe a half-written file on disk, not the app; the next navigation
+    // loads a fresh page, where a real syntax/import error would surface again.
+    if (text.startsWith('[vite]')) return
     problems.push(`console: ${text}`)
   })
   return problems
@@ -98,7 +102,7 @@ test('Books shell: every tab opens and renders its own surface', async ({ page }
     ['Books & Catalog', 'Scan or type barcode / ISBN / title…'],
     ['Copies', 'Scan barcode or search title / ISBN…'],
     ['Import CSV', 'Upload input CSV'],
-    ['History', 'Audit inspection'],
+    ['History', 'Export CSV'],
     ['Write-offs', '+ Create Write-Off Slip'],
   ]
 
@@ -113,7 +117,7 @@ test('Books shell: every tab opens and renders its own surface', async ({ page }
     } else if (tab === 'Import CSV') {
       await expect(page.getByRole('heading', { name: marker })).toBeVisible()
     } else if (tab === 'History') {
-      await expect(page.getByText(marker)).toBeVisible()
+      await expect(page.getByRole('button', { name: marker })).toBeVisible()
       await waitForHistory(page)
     } else {
       await expect(page.getByRole('button', { name: marker })).toBeVisible()
@@ -184,10 +188,13 @@ test('Catalog: lookup, filters, pagination, refresh and bulk collection', async 
   await search.press('Enter')
   await expect(page.locator('.books-table-empty')).toContainText('No titles match the selected filters.')
 
-  // Clear the search again.
+  // Clear the search again. The box is debounced, so a press of Enter while the
+  // old query is still rendered re-runs the *old* search; wait for the unfiltered
+  // table before counting.
   await search.fill('')
+  await expect(page.locator('.books-table tbody')).not.toContainText('zzz-no-such-title-zzz')
   await search.press('Enter')
-  await expect(page.locator('.books-table tbody tr').first()).toBeVisible()
+  await expect(page.locator('.books-table tbody tr')).not.toHaveCount(1)
   const fullCount = await page.locator('.books-table tbody tr').count()
   expect(fullCount).toBeGreaterThan(1)
 

@@ -1,0 +1,230 @@
+﻿import React, { useCallback, useEffect, useState } from 'react'
+import { api } from '../../../lib/api'
+import { supabase } from '../../../lib/supabase'
+import {
+  formatDateTime,
+  formatShortDate,
+  formatVnd,
+  printHtml,
+  statusLabel,
+  statusTone,
+  uploadToBucket,
+  WRITEOFF_REASONS,
+} from './booksUtils'
+import {
+  IconAlert,
+  IconArchive,
+  IconBan,
+  IconBook,
+  IconCamera,
+  IconCheckCircle,
+  IconClose,
+  IconLock,
+  IconPen,
+  IconPlus,
+  IconPrinter,
+  IconRefresh,
+  IconSearch,
+  IconUser,
+} from './booksIcons'
+import { EvidenceThumb } from './EvidenceThumb'
+
+const PAGE_SIZE = 25
+
+/** UC-22 Â§2.2.1: copies on loan or held for a reservation cannot be written off. */
+const BLOCKING_STATUSES = {
+  borrowed: 'On loan',
+  held: 'Held for reservation',
+}
+
+function initials(name) {
+  return String(name || 'Staff')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+}
+
+/** UC-22 Â§3: damaged_beyond_repair needs at least one evidence photo. */
+function needsPhoto(reason) {
+  return reason === 'damaged_beyond_repair'
+}
+
+export function WriteoffsTab({ onOpenCopies }) {
+  const [slips, setSlips] = useState([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [filterStatus, setFilterStatus] = useState('all') // 'all' | 'draft' | 'completed' | 'cancelled'
+  const [search, setSearch] = useState('')
+  const [selectedSlipId, setSelectedSlipId] = useState(null)
+  const [selectedSlip, setSelectedSlip] = useState(null)
+  const [stagedCopies, setStagedCopies] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [slipLoading, setSlipLoading] = useState(false)
+  const [feedback, setFeedback] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  // Draft editing state
+  const [draftReason, setDraftReason] = useState('damaged_beyond_repair')
+  const [draftNotes, setDraftNotes] = useState('')
+  const [draftPhotos, setDraftPhotos] = useState([])
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+
+  // Modals state
+  const [showStageModal, setShowStageModal] = useState(false)
+  const [showCancelPrompt, setShowCancelPrompt] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
+
+  // Search in staging modal
+  const [stageBarcodeQuery, setStageBarcodeQuery] = useState('')
+  const [stageCandidate, setStageCandidate] = useState(null)
+  const [stageCandidateError, setStageCandidateError] = useState(null)
+  const [stageTargetStatus, setStageTargetStatus] = useState('retired')
+  const [stageNote, setStageNote] = useState('')
+  const [stagePhotos, setStagePhotos] = useState([])
+  const [stageSearching, setStageSearching] = useState(false)
+  const [stageUploading, setStageUploading] = useState(false)
+
+  // 1. Fetch writeoff slips list
+  const loadSlips = useCallback(async () => {
+    setLoading(true)
+    try {
+      let query = supabase
+        .from('writeoff_slips')
+        .select(`
+          id, number, status, reason_code, notes, photos,
+          created_by, completed_at, cancelled_at, cancellation_reason,
+          created_at, updated_at,
+          profiles:created_by ( id, full_name, email ),
+          writeoff_slip_copies ( count )
+        `, { count: 'exact' })
+
+      if (filterStatus !== 'all') {
+        query = query.eq('status', filterStatus)
+      }
+      if (search.trim()) {
+        const q = search.trim()
+        query = query.or(`number.ilike.%${q}%,notes.ilike.%${q}%,reason_code.ilike.%${q}%`)
+      }
+
+      const from = (page - 1) * PAGE_SIZE
+      const { data, error, count } = await query
+        .order('created_at', { ascending: false })
+        .range(from, from + PAGE_SIZE - 1)
+
+      if (error) throw error
+
+      setSlips(data ?? [])
+      setTotal(count ?? 0)
+
+      // Auto-select first or retain selection
+      setSelectedSlipId((current) => {
+        if (current && (data ?? []).some((item) => item.id === current)) return current
+        return (data ?? [])[0]?.id ?? null
+      })
+    } catch (err) {
+      setFeedback({ type: 'error', message: err.message })
+    } finally {
+      setLoading(false)
+    }
+  }, [filterStatus, page, search])
+
+  useEffect(() => {
+    loadSlips()
+  }, [loadSlips])
+
+  // 2. Fetch full detail of selected slip
+  const loadSelectedSlipDetail = useCallback(async (slipId) => {
+    if (!slipId) {
+      setSelectedSlip(null)
+      setStagedCopies([])
+      return
+    }
+    // #endregion
+    setSlipLoading(true)
+    // #region
+    try {
+      const { data: slipData, error: slipErr } = await supabase
+        .from('writeoff_slips')
+        .select(`
+          id, number, status, reason_code, notes, photos,
+          created_by, completed_at, cancelled_at, cancellation_reason,
+          created_at, updated_at,
+          profiles:created_by ( id, full_name, email )
+        `)
+        .eq('id', slipId)
+        .single()
+
+      if (slipErr) throw slipErr
+
+      const { data: copiesData, error: copiesErr } = await supabase
+        .from('writeoff_slip_copies')
+        .select(`
+          id, slip_id, copy_id, target_status, assessment_note, photo_paths, added_at,
+          copies (
+            id, barcode, status, condition, shelf_location,
+            books ( id, title, authors, replacement_price, isbn13 )
+          )
+        `)
+        .eq('slip_id', slipId)
+        .order('added_at', { ascending: true })
+
+      if (copiesErr) throw copiesErr
+
+      setSelectedSlip(slipData)
+      setDraftReason(slipData.reason_code)
+      setDraftNotes(slipData.notes || '')
+      setDraftPhotos(slipData.photos || [])
+      setStagedCopies(
+        (copiesData || []).map((row) => ({
+          id: row.id,
+          copy_id: row.copy_id,
+          barcode: row.copies?.barcode,
+          title: row.copies?.books?.title,
+          authors: row.copies?.books?.authors,
+          current_status: row.copies?.status,
+          condition: row.copies?.condition,
+          shelf: row.copies?.shelf_location,
+          book_id: row.copies?.books?.id,
+          replacement_price: row.copies?.books?.replacement_price,
+          target_status: row.target_status,
+          assessment_note: row.assessment_note || '',
+          photo_paths: row.photo_paths || [],
+        }))
+      )
+    } catch (err) {
+      setFeedback({ type: 'error', message: err.message })
+    } finally {
+      setSlipLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadSelectedSlipDetail(selectedSlipId)
+  }, [loadSelectedSlipDetail, selectedSlipId])
+
+  // Create a new blank draft slip
+  const handleCreateNewSlip = async () => {
+    setSaving(true)
+    setFeedback(null)
+    try {
+      const res = await api.invoke('save-writeoff-slip', {
+        reason_code: 'damaged_beyond_repair',
+        notes: '',
+        copies: [],
+        photos: [],
+      })
+      const newSlip = res.data?.slip
+      setFeedback({ type: 'success', message: `Draft write-off slip ${newSlip?.number || ''} created.` })
+      await loadSlips()
+      if (newSlip?.id) setSelectedSlipId(newSlip.id)
+    } catch (err) {
+      setFeedback({ type: 'error', message: err.message })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // #endregion

@@ -1,0 +1,282 @@
+        <aside className="admin-drawer books-detail books-inspector">
+          {slipLoading ? (
+            <div className="books-empty-note">Loading slip details…</div>
+          ) : selectedSlip ? (
+            <>
+              <header className={`books-inspector-head ${isDraft ? 'is-draft' : ''}`}>
+                <div className="books-inspector-title">
+                  <span className="books-inspector-icon" aria-hidden="true">
+                    {isDraft ? <IconPen size={16} /> : isCompleted ? <IconCheckCircle size={16} /> : <IconBan size={16} />}
+                  </span>
+                  <div>
+                    <h2 className="books-inspector-number">#{selectedSlip.number}</h2>
+                    <div className="books-inspector-kicker">
+                      {isDraft
+                        ? 'Draft inspection & validation'
+                        : isCompleted
+                          ? 'Completed write-off record'
+                          : 'Cancelled slip record'}
+                    </div>
+                  </div>
+                </div>
+                <span className={`books-badge tone-${statusTone(selectedSlip.status)}`}>
+                  {statusLabel(selectedSlip.status)}
+                </span>
+              </header>
+
+              <div className="books-inspector-meta">
+                <span><IconUser size={12} /> {selectedSlip.profiles?.full_name || 'Staff'}</span>
+                <span><IconBook size={12} /> {formatDateTime(selectedSlip.created_at)}</span>
+              </div>
+
+              {isCompleted && (
+                <div className="books-note success">
+                  <IconLock size={14} />
+                  <span>
+                    <strong>Immutable:</strong> completed {formatDateTime(selectedSlip.completed_at)}. Edit and delete
+                    controls are disabled (FR-COND-03).
+                  </span>
+                </div>
+              )}
+
+              {isCancelled && (
+                <div className="books-note danger">
+                  <IconBan size={14} />
+                  <span>
+                    <strong>Cancelled:</strong> {selectedSlip.cancellation_reason || 'No cancellation reason recorded'} (on{' '}
+                    {formatDateTime(selectedSlip.cancelled_at)}).
+                  </span>
+                </div>
+              )}
+
+              {/* 1. Mandatory reason code */}
+              <section className="books-inspector-section">
+                <div className="books-section-label">
+                  <span>1 · Mandatory reason code</span>
+                  {isDraft && <em>Required</em>}
+                </div>
+                {isDraft ? (
+                  <div className="books-reason-options">
+                    {WRITEOFF_REASONS.map((reason) => (
+                      <button
+                        key={reason.value}
+                        type="button"
+                        className={`books-reason-option ${draftReason === reason.value ? 'active' : ''}`}
+                        onClick={() => setDraftReason(reason.value)}
+                        aria-pressed={draftReason === reason.value}
+                      >
+                        <span className="radio-dot" aria-hidden="true" />
+                        <span>
+                          <strong>{reason.label}</strong>
+                          <small>{reason.hint}</small>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="books-reason-static">{statusLabel(selectedSlip.reason_code)}</div>
+                )}
+              </section>
+
+              {/* 2. Staged copies */}
+              <section className="books-inspector-section">
+                <div className="books-section-label">
+                  <span>
+                    2 · Staged Copies ({stagedCopies.length})
+                  </span>
+                  {isDraft && (
+                    <button type="button" className="books-section-action" onClick={openStageModal}>
+                      + Stage copies
+                    </button>
+                  )}
+                </div>
+
+                <div className="books-staged-list">
+                  {stagedCopies.map((c) => {
+                    const blocked = BLOCKING_STATUSES[c.current_status]
+                    const copyPhotoList = c.photo_paths || []
+                    return (
+                      <div key={c.copy_id} className="books-staged-card">
+                        {isDraft && (
+                          <label className="books-staged-select">
+                            <input
+                              type="checkbox"
+                              checked
+                              onChange={() => handleRemoveStagedCopy(c.copy_id)}
+                              aria-label={`Deselect ${c.barcode}`}
+                            />
+                          </label>
+                        )}
+                        <div className="books-staged-main">
+                          <div className="books-staged-title">{c.title || 'Untitled title'}</div>
+                          <div className="books-staged-sub">
+                            <button
+                              type="button"
+                              className="books-barcode-link"
+                              onClick={() => onOpenCopies?.(c.book_id)}
+                              title="Inspect copy in Copies tab"
+                            >
+                              {c.barcode}
+                            </button>
+                            {c.authors?.length > 0 && <span> · {c.authors.join(', ')}</span>}
+                          </div>
+                          <div className="books-staged-facts">
+                            <span><em>Condition</em> {statusLabel(c.condition)}</span>
+                            <span><em>Target</em> {statusLabel(c.target_status)}</span>
+                            <span><em>Value</em> {formatVnd(c.replacement_price)}</span>
+                          </div>
+                          {blocked && (
+                            <div className="books-staged-blocked">
+                              <IconAlert size={12} /> {blocked} — resolve before completing.
+                            </div>
+                          )}
+                          {c.assessment_note && (
+                            <div className="books-staged-quote">“{c.assessment_note}”</div>
+                          )}
+                          {copyPhotoList.length > 0 && (
+                            <div className="books-staged-photos">
+                              {copyPhotoList.map((path) => (
+                                <EvidenceThumb key={path} path={path} size={40} alt="Copy evidence" />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="books-staged-tools">
+                          {isDraft && (
+                            <select
+                              className="books-staged-select-input"
+                              value={c.target_status}
+                              onChange={(e) => updateStagedCopy(c.copy_id, { target_status: e.target.value })}
+                              aria-label={`Target status for ${c.barcode}`}
+                            >
+                              <option value="retired">Retired</option>
+                              <option value="lost">Lost</option>
+                            </select>
+                          )}
+                          {isDraft && (
+                            <button
+                              type="button"
+                              className="books-staged-remove"
+                              onClick={() => handleRemoveStagedCopy(c.copy_id)}
+                              title="Remove from slip"
+                              aria-label={`Remove ${c.barcode}`}
+                            >
+                              <IconClose size={13} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {stagedCopies.length === 0 && (
+                    <div className="books-staged-empty">
+                      <IconArchive size={18} />
+                      <span>No copies staged on this slip.</span>
+                      {isDraft && (
+                        <button type="button" className="books-link" onClick={openStageModal}>
+                          Stage the first copy
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {stagedCopies.length > 0 && (
+                  <div className="books-staged-total">
+                    <span>{stagedCopies.length} {stagedCopies.length === 1 ? 'copy' : 'copies'} staged</span>
+                    <span>Replacement value <strong>{formatVnd(replacementTotal)}</strong></span>
+                  </div>
+                )}
+              </section>
+
+              {/* 3. Evidence + assessment */}
+              <section className="books-inspector-section">
+                <div className="books-section-label">
+                  <span>
+                    3 · Evidence &amp; assessment
+                    {needsPhoto(isDraft ? draftReason : selectedSlip.reason_code) && (
+                      <span className={`books-req ${hasPhotoEvidence ? 'met' : ''}`}>
+                        {hasPhotoEvidence ? 'photo attached' : 'photo required'}
+                      </span>
+                    )}
+                  </span>
+                </div>
+
+                {isDraft ? (
+                  <>
+                    <div className="books-evidence">
+                      <div className="books-evidence-grid">
+                        {draftPhotos.map((path, idx) => (
+                          <EvidenceThumb
+                            key={path}
+                            path={path}
+                            size={54}
+                            removable
+                            onRemove={() => handleRemoveSlipPhoto(idx)}
+                          />
+                        ))}
+                        <label className="books-evidence-add" title="Add evidence photo">
+                          <IconCamera size={16} />
+                          <span>{uploadingPhoto ? 'Uploading…' : 'Add photo'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={handleUploadSlipPhoto}
+                            disabled={uploadingPhoto}
+                          />
+                        </label>
+                      </div>
+                      <div className="books-evidence-hint">
+                        {photoTotal > 0
+                          ? `${photoTotal} photo${photoTotal === 1 ? '' : 's'} attached to this slip`
+                          : needsPhoto(draftReason)
+                            ? 'Photo evidence is mandatory before completing under "Damage beyond repair".'
+                            : 'No evidence photos attached (optional for this reason code).'}
+                      </div>
+                    </div>
+
+                    <label className="books-field">
+                      <span className="books-section-label flush">Archivist assessment note</span>
+                      <textarea
+                        rows={3}
+                        value={draftNotes}
+                        onChange={(e) => setDraftNotes(e.target.value)}
+                        placeholder="Describe condition, disposal authorization, or stocktaking audit notes…"
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <>
+                    <div className="books-evidence">
+                      <div className="books-evidence-grid">
+                        {(selectedSlip.photos || []).map((path) => (
+                          <EvidenceThumb key={path} path={path} size={54} />
+                        ))}
+                        {stagedCopies.flatMap((c) => (c.photo_paths || []).map((path) => (
+                          <EvidenceThumb key={path} path={path} size={54} alt="Copy evidence" />
+                        )))}
+                        {(selectedSlip.photos || []).length === 0 && copyPhotosTotal === 0 && (
+                          <div className="books-evidence-hint">No evidence photos on record.</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="books-quote">{selectedSlip.notes || 'No assessment note recorded.'}</div>
+                  </>
+                )}
+              </section>
+              {/* #actions */}
+            </>
+          ) : (
+            <div className="books-inspector-idle">
+              <IconArchive size={26} />
+              <strong>No slip selected</strong>
+              <span>Select a write-off slip to inspect details or complete decommissioning.</span>
+            </div>
+          )}
+        </aside>
+      </div>
+      {/* #modals */}
+    </div>
+  )
+}

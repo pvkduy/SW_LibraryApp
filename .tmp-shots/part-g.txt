@@ -1,0 +1,133 @@
+      {/* Work Layout: Slip cards + Draft inspection drawer */}
+      <div className="admin-work-layout">
+        {/* Left: slip cards. The table wrapper keeps `.books-table-scroll` as a
+            plain container (no table semantics), one card per slip. */}
+        <div className="books-slip-list-wrap">
+          <div className="books-slip-list-head">
+            <div>
+              <strong className="books-slip-list-title">Write-off register</strong>
+              <p className="books-slip-list-sub">
+                Drafts are editable until completion; completed slips are immutable (UC-22 / FR-COND-03).
+              </p>
+            </div>
+            <span className="books-slip-list-count">
+              {loading ? '…' : `${slips.length} of ${total}`}
+            </span>
+          </div>
+
+          <div className="books-table-scroll" role="list" aria-label="Write-off slips">
+            <table className="books-table-sr"><tbody><tr><td /></tr></tbody></table>
+            {slips.map((slip) => {
+              const isSelected = slip.id === selectedSlipId
+              const count = copyCount(slip)
+              return (
+                <article
+                  key={slip.id}
+                  role="listitem"
+                  className={`books-slip-card ${isSelected ? 'selected' : ''}`}
+                  onClick={() => setSelectedSlipId(slip.id)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedSlipId(slip.id) } }}
+                  tabIndex={0}
+                  aria-current={isSelected ? 'true' : undefined}
+                >
+                  <header className="books-slip-card-head">
+                    <div className="books-slip-card-id">
+                      <span className="books-slip-hash">#</span>
+                      <strong>{slip.number}</strong>
+                      <span className={`books-badge tone-${statusTone(slip.status)}`}>
+                        {statusLabel(slip.status)}
+                      </span>
+                    </div>
+                    <span className="books-slip-card-date">
+                      {slip.status === 'completed' && slip.completed_at
+                        ? `Closed: ${formatShortDate(slip.completed_at)}`
+                        : slip.status === 'cancelled' && slip.cancelled_at
+                          ? `Cancelled: ${formatShortDate(slip.cancelled_at)}`
+                          : `Created: ${formatShortDate(slip.created_at)}`}
+                    </span>
+                  </header>
+
+                  <div className="books-slip-card-body">
+                    <div className="books-slip-qty">
+                      <span className="books-slip-eyebrow">Staged quantity</span>
+                      <span className="books-slip-qty-value">
+                        <strong>{count}</strong> {count === 1 ? 'copy' : 'copies'}
+                        {count === 0 && <em className="books-slip-qty-empty">none staged yet</em>}
+                      </span>
+                    </div>
+                    <div className="books-slip-reason">
+                      <span className="books-slip-eyebrow">Reason code</span>
+                      <span>{statusLabel(slip.reason_code)}</span>
+                    </div>
+                  </div>
+
+                  <footer className="books-slip-card-foot">
+                    <span className="books-slip-curator">
+                      <span className="books-avatar" aria-hidden="true">
+                        {initials(slip.profiles?.full_name)}
+                      </span>
+                      <span>
+                        {slip.status === 'completed' ? 'Signed off by ' : 'Curated by '}
+                        <strong>{slip.profiles?.full_name || 'Staff'}</strong>
+                      </span>
+                    </span>
+                    <div className="books-slip-card-actions">
+                      {isSelected && <span className="books-slip-flag">Active in inspector</span>}
+                      {slip.status === 'draft' ? (
+                        <span className="books-btn-pill"><IconPen size={12} /> Edit draft</span>
+                      ) : (
+                        <span className="books-btn-pill muted"><IconBook size={12} /> View slip</span>
+                      )}
+                    </div>
+                  </footer>
+                </article>
+              )
+            })}
+
+            {slips.length === 0 && !loading && (
+              <div className="books-table-empty books-slip-empty">
+                <IconArchive size={22} />
+                <p>No write-off slips found matching criteria.</p>
+                <button type="button" className="admin-btn-primary" onClick={handleCreateNewSlip} disabled={saving}>
+                  + Create Write-Off Slip
+                </button>
+              </div>
+            )}
+            {loading && (
+              <div className="books-table-empty books-slip-empty">
+                <span className="books-spinner" aria-hidden="true" />
+                <p>Loading write-off slips…</p>
+              </div>
+            )}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="books-pagination">
+              <span>Page {page} of {totalPages}</span>
+              <div className="books-page-pills">
+                <button
+                  type="button"
+                  className="books-page-pill"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  ←
+                </button>
+                <button
+                  type="button"
+                  className="books-page-pill"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  →
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+        {/* #drawer */}
+      </div>
+      {/* #modals */}
+    </div>
+  )
+}

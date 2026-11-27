@@ -1,0 +1,61 @@
+              {/* Action footer */}
+              <section className="books-inspector-actions">
+                {isDraft && (
+                  <div className="books-action-grid">
+                    <div className="books-action-pair">
+                      <button
+                        type="button"
+                        className="admin-btn-outline"
+                        disabled={saving}
+                        onClick={handleSaveDraft}
+                      >
+                        Save Draft
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-btn-outline books-btn-danger"
+                        disabled={saving}
+                        onClick={() => setShowCancelPrompt(true)}
+                      >
+                        Cancel Slip
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      className="admin-btn-primary books-action-primary"
+                      disabled={saving || stagedCopies.length === 0}
+                      onClick={handleCompleteSlip}
+                      title={stagedCopies.length === 0 ? 'Stage at least one copy to complete' : 'Commit and lock the slip'}
+                    >
+                      <IconLock size={13} />
+                      {saving ? 'Processing…' : 'Complete Slip'}
+                    </button>
+                  </div>
+                )}
+
+                {isCompleted && (
+                  <button type="button" className="admin-btn-primary books-action-primary" onClick={handlePrintSlip}>
+                    <IconPrinter size={13} /> Print / Export
+                  </button>
+                )}
+
+                {isCancelled && (
+                  <div className="books-action-hint">
+                    This slip is closed. Copies listed below were released; no status changes were applied.
+                  </div>
+                )}
+              </section>
+            </>
+          ) : (
+            <div className="books-inspector-idle">
+              <IconArchive size={26} />
+              <strong>No slip selected</strong>
+              <span>Select a write-off slip to inspect details or complete decommissioning.</span>
+            </div>
+          )}
+        </aside>
+      </div>
+      {/* #modals */}
+    </div>
+  )
+}

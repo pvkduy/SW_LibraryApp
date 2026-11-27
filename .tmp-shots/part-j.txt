@@ -1,0 +1,184 @@
+      {/* Stage Copies Modal */}
+      {showStageModal && (
+        <div className="books-modal-backdrop" onClick={() => setShowStageModal(false)}>
+          <div className="books-modal books-modal-stage" onClick={(e) => e.stopPropagation()}>
+            <div className="books-modal-header">
+              <div>
+                <h3 className="books-modal-title">Stage Copy to Write-off Slip</h3>
+                <p className="books-modal-subtitle">
+                  Scan a barcode, confirm the copy, then add it to slip #{selectedSlip?.number}
+                </p>
+              </div>
+              <button type="button" className="books-modal-close" onClick={() => setShowStageModal(false)} aria-label="Close">
+                <IconClose size={15} />
+              </button>
+            </div>
+
+            <div className="books-modal-body">
+              <div className="books-stage-lookup">
+                <div className="admin-barcode-input">
+                  <span className="admin-barcode-icon" aria-hidden="true">
+                    <IconSearch size={15} />
+                  </span>
+                  <input
+                    value={stageBarcodeQuery}
+                    onChange={(e) => setStageBarcodeQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleLookupCopyForStage()}
+                    placeholder="Scan or enter copy barcode (e.g. LIB-2026-00001)…"
+                    autoFocus
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="admin-btn-primary"
+                  disabled={stageSearching || !stageBarcodeQuery.trim()}
+                  onClick={handleLookupCopyForStage}
+                >
+                  {stageSearching ? 'Looking up…' : 'Lookup'}
+                </button>
+              </div>
+
+              {stageCandidateError && (
+                <div className="books-alert danger">
+                  <span>{stageCandidateError}</span>
+                </div>
+              )}
+
+              {!stageCandidate && !stageCandidateError && (
+                <div className="books-stage-empty">
+                  <div className="books-stage-empty-icon"><IconArchive size={20} /></div>
+                  <strong>Scan the copy you want to write off</strong>
+                  <span>On-loan and held copies are rejected automatically (UC-22 §2.2.1).</span>
+                </div>
+              )}
+
+              {stageCandidate && (
+                <div className="books-stage-candidate">
+                  <div className="books-stage-candidate-head">
+                    <div>
+                      <span className="books-slip-eyebrow">Copy found</span>
+                      <strong className="books-stage-candidate-title">{stageCandidate.books?.title}</strong>
+                      <div className="books-stage-candidate-facts">
+                        <span className="books-barcode-pill">{stageCandidate.barcode}</span>
+                        <span><em>Condition</em> {statusLabel(stageCandidate.condition)}</span>
+                        <span><em>Shelf</em> {stageCandidate.shelf_location || '—'}</span>
+                      </div>
+                    </div>
+                    <span className={`books-badge tone-${statusTone(stageCandidate.status)}`}>
+                      {statusLabel(stageCandidate.status)}
+                    </span>
+                  </div>
+
+                  <div className="books-form-grid">
+                    <div className="books-field">
+                      <label>Target Status</label>
+                      <select
+                        value={stageTargetStatus}
+                        onChange={(e) => setStageTargetStatus(e.target.value)}
+                      >
+                        <option value="retired">Retired (Permanent decommission)</option>
+                        <option value="lost">Lost (Missing stock)</option>
+                      </select>
+                    </div>
+
+                    <div className="books-field">
+                      <label>Replacement Value</label>
+                      <input
+                        type="text"
+                        disabled
+                        value={formatVnd(stageCandidate.books?.replacement_price)}
+                      />
+                    </div>
+
+                    <div className="books-field span-2">
+                      <label>Assessment Note</label>
+                      <input
+                        value={stageNote}
+                        onChange={(e) => setStageNote(e.target.value)}
+                        placeholder="e.g. Severe water damage on pages 40-120; binding snapped"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="books-stage-evidence">
+                    <span className="books-slip-eyebrow">Copy evidence</span>
+                    <div className="books-evidence-grid">
+                      {stagePhotos.map((path) => (
+                        <EvidenceThumb key={path} path={path} size={46} alt="Copy evidence" />
+                      ))}
+                      <label className="books-evidence-add" title="Attach a copy photo">
+                        <IconCamera size={14} />
+                        <span>{stageUploading ? '…' : 'Photo'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={handleUploadStagePhoto}
+                          disabled={stageUploading}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="books-modal-footer">
+              <button type="button" className="admin-btn-outline" onClick={() => setShowStageModal(false)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="admin-btn-primary"
+                disabled={!stageCandidate}
+                onClick={handleAddCandidateToStaging}
+              >
+                Add to Staged Copies
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Slip Prompt Modal */}
+      {showCancelPrompt && (
+        <div className="books-modal-backdrop" onClick={() => setShowCancelPrompt(false)}>
+          <div className="books-modal books-modal-cancel" onClick={(e) => e.stopPropagation()}>
+            <div className="books-modal-header">
+              <div>
+                <h3 className="books-modal-title">Cancel Write-off Slip</h3>
+                <p className="books-modal-subtitle">#{selectedSlip?.number} · no copy status will be changed</p>
+              </div>
+              <button type="button" className="books-modal-close" onClick={() => setShowCancelPrompt(false)} aria-label="Close">
+                <IconClose size={15} />
+              </button>
+            </div>
+            <div className="books-modal-body">
+              <div className="books-note danger">
+                <IconAlert size={14} />
+                <span>
+                  Cancelling retires this draft permanently. Staged copies stay in their current status and can be
+                  re-staged on a new slip.
+                </span>
+              </div>
+              <div className="books-field">
+                <label>Cancellation Reason</label>
+                <input
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="e.g. Draft created in error / copy salvaged"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="books-modal-footer">
+              <button type="button" className="admin-btn-outline" onClick={() => setShowCancelPrompt(false)}>
+                Keep Draft
+              </button>
+              <button type="button" className="admin-btn-outline books-btn-danger" disabled={saving} onClick={handleConfirmCancel}>
+                Cancel Slip
+              </button>
+            </div>
+          </div>
+        </div>
+      )}

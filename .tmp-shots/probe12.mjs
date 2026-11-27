@@ -1,0 +1,32 @@
+import { chromium } from 'file:///D:/SW_LibraryApp/node_modules/@playwright/test/index.mjs'
+
+const browser = await chromium.launch()
+const page = await browser.newPage()
+await page.goto('http://localhost:5173')
+await page.getByPlaceholder('e.g. reader@campus.edu or 80921').fill('admin@shelfhelp.edu.vn')
+await page.getByPlaceholder('••••••••••••').fill('Password123!')
+await page.getByRole('button', { name: 'Sign In' }).click()
+await page.locator('.admin-nav').getByRole('button', { name: 'Books', exact: true }).click()
+await page.getByRole('heading', { name: 'Books & Inventory' }).waitFor()
+await page.locator('.books-tab-switcher').getByRole('button', { name: 'Write-offs', exact: false }).click()
+await page.waitForTimeout(1200)
+const pills = page.locator('.books-tab .admin-filter-tabs').first()
+for (const label of ['Drafts', 'Completed', 'Cancelled', 'All slips']) {
+  await pills.getByRole('button', { name: label, exact: true }).click()
+  await page.waitForTimeout(300)
+}
+const search = page.getByPlaceholder('Search write-off slip number, reason, or notes…')
+await search.fill('zzz-no-such-slip-zzz')
+await page.waitForTimeout(400)
+await search.fill('')
+await page.waitForTimeout(600)
+await page.getByRole('button', { name: '+ Create Write-Off Slip' }).click()
+await page.waitForTimeout(2500)
+const dump = await page.getByRole('button', { name: '+ Stage Copies' }).evaluateAll((els) =>
+  els.map((e) => ({ parent: e.parentElement.className, grand: e.parentElement.parentElement.className, text: e.textContent }))
+)
+console.log(JSON.stringify(dump, null, 1))
+console.log('staged list:', JSON.stringify(await page.locator('.books-staged-list').evaluate((el) => ({ cards: el.querySelectorAll('.books-staged-card').length, empty: el.querySelectorAll('.books-staged-empty').length }))))
+console.log('all staged-empty count:', await page.locator('.books-staged-empty').count())
+console.log('drawer count:', await page.locator('.books-detail').count())
+await browser.close()

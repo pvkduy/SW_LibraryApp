@@ -1,0 +1,18 @@
+import { chromium } from 'file:///D:/SW_LibraryApp/node_modules/@playwright/test/index.mjs'
+
+const browser = await chromium.launch()
+const page = await browser.newPage()
+await page.goto('http://localhost:5173')
+await page.getByPlaceholder('e.g. reader@campus.edu or 80921').fill('admin@shelfhelp.edu.vn')
+await page.getByPlaceholder('••••••••••••').fill('Password123!')
+await page.getByRole('button', { name: 'Sign In' }).click()
+await page.locator('.admin-nav').getByRole('button', { name: 'Books', exact: true }).click()
+await page.getByRole('heading', { name: 'Books & Inventory' }).waitFor()
+await page.locator('.books-tab-switcher').getByRole('button', { name: 'Write-offs', exact: false }).click()
+await page.waitForTimeout(1500)
+const btn = page.locator('.books-lookup-bar button').first()
+console.log('outer', await btn.evaluate((e) => e.outerHTML))
+console.log('isVisible', await btn.isVisible())
+const snap = await page.locator('.books-lookup-bar').ariaSnapshot()
+console.log(snap)
+await browser.close()

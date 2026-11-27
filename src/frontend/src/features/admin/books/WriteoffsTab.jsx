@@ -1,8 +1,9 @@
-﻿import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { api } from '../../../lib/api'
 import { supabase } from '../../../lib/supabase'
 import {
   formatDateTime,
+  formatShortDate,
   formatVnd,
   printHtml,
   statusLabel,
@@ -10,14 +11,55 @@ import {
   uploadToBucket,
   WRITEOFF_REASONS,
 } from './booksUtils'
+import {
+  IconAlert,
+  IconArchive,
+  IconCamera,
+  IconCheckCircle,
+  IconClose,
+  IconLock,
+  IconPen,
+  IconPlus,
+  IconPrinter,
+  IconRefresh,
+  IconSearch,
+} from './booksIcons'
+import { EvidenceThumb } from './EvidenceThumb'
 
 const PAGE_SIZE = 25
+
+const STATUS_FILTERS = [
+  { value: 'all', label: 'All slips' },
+  { value: 'draft', label: 'Drafts' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'cancelled', label: 'Cancelled' },
+]
+
+/** UC-22 §2.2.1: copies on loan or held for a reservation cannot be written off. */
+const BLOCKING_STATUSES = { borrowed: true, held: true }
+
+/** UC-22 §3: damaged_beyond_repair needs at least one evidence photo. */
+const PHOTO_REQUIRED_REASON = 'damaged_beyond_repair'
+
+function initialsOf(name) {
+  const parts = String(name || 'Staff').trim().split(/\s+/)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+}
+
+function reasonLabel(value) {
+  return WRITEOFF_REASONS.find((r) => r.value === value)?.label || statusLabel(value)
+}
+
+function copyNoun(n) {
+  return `${n} ${n === 1 ? 'copy' : 'copies'}`
+}
 
 export function WriteoffsTab({ onOpenCopies }) {
   const [slips, setSlips] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const [filterStatus, setFilterStatus] = useState('all') // 'all' | 'draft' | 'completed' | 'cancelled'
+  const [filterStatus, setFilterStatus] = useState('all')
   const [search, setSearch] = useState('')
   const [selectedSlipId, setSelectedSlipId] = useState(null)
   const [selectedSlip, setSelectedSlip] = useState(null)
@@ -26,6 +68,7 @@ export function WriteoffsTab({ onOpenCopies }) {
   const [slipLoading, setSlipLoading] = useState(false)
   const [feedback, setFeedback] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [blockedCount, setBlockedCount] = useState(0)
 
   // Draft editing state
   const [draftReason, setDraftReason] = useState('damaged_beyond_repair')
@@ -46,8 +89,9 @@ export function WriteoffsTab({ onOpenCopies }) {
   const [stageNote, setStageNote] = useState('')
   const [stagePhotos, setStagePhotos] = useState([])
   const [stageSearching, setStageSearching] = useState(false)
+  const [stageUploading, setStageUploading] = useState(false)
 
-  // 1. Fetch writeoff slips list
+  // 1. Fetch write-off slips list
   const loadSlips = useCallback(async () => {
     setLoading(true)
     try {
@@ -79,7 +123,7 @@ export function WriteoffsTab({ onOpenCopies }) {
       setSlips(data ?? [])
       setTotal(count ?? 0)
 
-      // Auto-select first or retain selection
+      // Keep the current selection when it is still on the page.
       setSelectedSlipId((current) => {
         if (current && (data ?? []).some((item) => item.id === current)) return current
         return (data ?? [])[0]?.id ?? null
@@ -95,11 +139,12 @@ export function WriteoffsTab({ onOpenCopies }) {
     loadSlips()
   }, [loadSlips])
 
-  // 2. Fetch full detail of selected slip
+  // 2. Fetch full detail of the selected slip
   const loadSelectedSlipDetail = useCallback(async (slipId) => {
     if (!slipId) {
       setSelectedSlip(null)
       setStagedCopies([])
+      setBlockedCount(0)
       return
     }
 
@@ -132,26 +177,43 @@ export function WriteoffsTab({ onOpenCopies }) {
 
       if (copiesErr) throw copiesErr
 
+      // UC-22 §2.2.1: flag staged copies that an active loan or reservation hold
+      // now blocks, so the drawer can warn before completion is attempted.
+      const copyIds = (copiesData || []).map((row) => row.copy_id).filter(Boolean)
+      let loanSet = new Set()
+      let holdSet = new Set()
+      if (copyIds.length > 0) {
+        const [{ data: loanRows }, { data: holdRows }] = await Promise.all([
+          supabase.from('loans').select('copy_id, status').in('copy_id', copyIds).in('status', ['active', 'overdue']),
+          supabase.from('reservations').select('copy_id, status').in('copy_id', copyIds).in('status', ['ready', 'held', 'ready_for_pickup']),
+        ])
+        loanSet = new Set((loanRows || []).map((r) => r.copy_id))
+        holdSet = new Set((holdRows || []).map((r) => r.copy_id))
+      }
+
+      const staged = (copiesData || []).map((row) => ({
+        id: row.id,
+        copy_id: row.copy_id,
+        barcode: row.copies?.barcode,
+        title: row.copies?.books?.title,
+        authors: row.copies?.books?.authors,
+        current_status: row.copies?.status,
+        condition: row.copies?.condition,
+        shelf_location: row.copies?.shelf_location,
+        book_id: row.copies?.books?.id,
+        replacement_price: row.copies?.books?.replacement_price,
+        target_status: row.target_status,
+        assessment_note: row.assessment_note || '',
+        photo_paths: row.photo_paths || [],
+        blocked: loanSet.has(row.copy_id) || holdSet.has(row.copy_id),
+      }))
+
       setSelectedSlip(slipData)
       setDraftReason(slipData.reason_code)
       setDraftNotes(slipData.notes || '')
       setDraftPhotos(slipData.photos || [])
-      setStagedCopies(
-        (copiesData || []).map((row) => ({
-          id: row.id,
-          copy_id: row.copy_id,
-          barcode: row.copies?.barcode,
-          title: row.copies?.books?.title,
-          authors: row.copies?.books?.authors,
-          current_status: row.copies?.status,
-          condition: row.copies?.condition,
-          book_id: row.copies?.books?.id,
-          replacement_price: row.copies?.books?.replacement_price,
-          target_status: row.target_status,
-          assessment_note: row.assessment_note || '',
-          photo_paths: row.photo_paths || [],
-        }))
-      )
+      setStagedCopies(staged)
+      setBlockedCount(staged.filter((c) => c.blocked || BLOCKING_STATUSES[c.current_status]).length)
     } catch (err) {
       setFeedback({ type: 'error', message: err.message })
     } finally {
@@ -163,7 +225,7 @@ export function WriteoffsTab({ onOpenCopies }) {
     loadSelectedSlipDetail(selectedSlipId)
   }, [loadSelectedSlipDetail, selectedSlipId])
 
-  // Create a new blank draft slip
+  // Create a blank draft slip
   const handleCreateNewSlip = async () => {
     setSaving(true)
     setFeedback(null)
@@ -193,13 +255,13 @@ export function WriteoffsTab({ onOpenCopies }) {
     setFeedback(null)
     try {
       const path = await uploadToBucket('evidence', 'writeoffs', file)
-      const nextPhotos = [...draftPhotos, path]
-      setDraftPhotos(nextPhotos)
+      setDraftPhotos((prev) => [...prev, path])
       setFeedback({ type: 'success', message: 'Evidence photo uploaded.' })
     } catch (err) {
       setFeedback({ type: 'error', message: `Upload failed: ${err.message}` })
     } finally {
       setUploadingPhoto(false)
+      event.target.value = ''
     }
   }
 
@@ -264,13 +326,12 @@ export function WriteoffsTab({ onOpenCopies }) {
   const handleCompleteSlip = async () => {
     if (!selectedSlip || selectedSlip.status !== 'draft') return
 
-    // Pre-flight checks
     if (stagedCopies.length === 0) {
       setFeedback({ type: 'error', message: 'Cannot complete an empty write-off slip. Please stage at least one copy.' })
       return
     }
 
-    if (draftReason === 'damaged_beyond_repair') {
+    if (draftReason === PHOTO_REQUIRED_REASON) {
       const hasSlipPhotos = (draftPhotos || []).length > 0
       const hasAnyCopyPhoto = stagedCopies.some((c) => (c.photo_paths || []).length > 0)
       if (!hasSlipPhotos && !hasAnyCopyPhoto) {
@@ -285,7 +346,6 @@ export function WriteoffsTab({ onOpenCopies }) {
     setSaving(true)
     setFeedback(null)
     try {
-      // First save draft state to ensure server has current staged items
       const copiesPayload = stagedCopies.map((c) => ({
         copy_id: c.copy_id,
         target_status: c.target_status,
@@ -300,7 +360,6 @@ export function WriteoffsTab({ onOpenCopies }) {
         photos: draftPhotos,
       })
 
-      // Complete slip
       const res = await api.invoke('complete-writeoff-slip', {
         slip_id: selectedSlip.id,
       })
@@ -318,7 +377,7 @@ export function WriteoffsTab({ onOpenCopies }) {
     }
   }
 
-  // Staging lookup in modal
+  // Stage-copy lookup
   const handleLookupCopyForStage = async () => {
     const q = stageBarcodeQuery.trim()
     if (!q) return
@@ -342,13 +401,12 @@ export function WriteoffsTab({ onOpenCopies }) {
         return
       }
 
-      // Check duplicate in current slip
       if (stagedCopies.some((c) => c.copy_id === data.id)) {
         setStageCandidateError(`Copy ${data.barcode} is already staged on this write-off slip.`)
         return
       }
 
-      // Rule check: borrowed or held copies cannot be written off via slip
+      // UC-22 §2.2.1 guards
       if (data.status === 'borrowed') {
         setStageCandidateError(
           `Copy ${data.barcode} is currently borrowed on loan. On-loan copies cannot be written off via slip; process via loan Lost workflow.`
@@ -377,10 +435,25 @@ export function WriteoffsTab({ onOpenCopies }) {
     }
   }
 
-  // Add candidate to stagedCopies
+  // Per-copy evidence in the stage modal
+  const handleUploadStagePhoto = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setStageUploading(true)
+    setStageCandidateError(null)
+    try {
+      const path = await uploadToBucket('evidence', 'writeoffs', file)
+      setStagePhotos((prev) => [...prev, path])
+    } catch (err) {
+      setStageCandidateError(`Upload failed: ${err.message}`)
+    } finally {
+      setStageUploading(false)
+      event.target.value = ''
+    }
+  }
+
   const handleAddCandidateToStaging = () => {
     if (!stageCandidate) return
-
     setStagedCopies((prev) => [
       ...prev,
       {
@@ -391,6 +464,8 @@ export function WriteoffsTab({ onOpenCopies }) {
         authors: stageCandidate.books?.authors,
         current_status: stageCandidate.status,
         condition: stageCandidate.condition,
+        shelf_location: stageCandidate.shelf_location,
+        book_id: stageCandidate.books?.id,
         replacement_price: stageCandidate.books?.replacement_price,
         target_status: stageTargetStatus,
         assessment_note: stageNote,
@@ -398,19 +473,23 @@ export function WriteoffsTab({ onOpenCopies }) {
       },
     ])
 
+    const barcode = stageCandidate.barcode
     setStageCandidate(null)
     setStageBarcodeQuery('')
     setStageCandidateError(null)
     setShowStageModal(false)
-    setFeedback({ type: 'success', message: `Copy ${stageCandidate.barcode} added to slip.` })
+    setFeedback({ type: 'success', message: `Copy ${barcode} added to slip.` })
   }
 
-  // Remove copy from staging
   const handleRemoveStagedCopy = (copyId) => {
     setStagedCopies((prev) => prev.filter((c) => c.copy_id !== copyId))
   }
 
-  // Print slip summary
+  const updateStagedCopy = (copyId, patch) => {
+    setStagedCopies((prev) => prev.map((c) => (c.copy_id === copyId ? { ...c, ...patch } : c)))
+  }
+
+  // Print completed slip
   const handlePrintSlip = () => {
     if (!selectedSlip) return
     const rowsHtml = stagedCopies
@@ -445,7 +524,7 @@ export function WriteoffsTab({ onOpenCopies }) {
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; font-size: 13px;">
           <div>
-            <p><strong>Reason code:</strong> ${statusLabel(selectedSlip.reason_code)}</p>
+            <p><strong>Reason code:</strong> ${reasonLabel(selectedSlip.reason_code)}</p>
             <p><strong>Created by:</strong> ${selectedSlip.profiles?.full_name || 'Staff'}</p>
             <p><strong>Created at:</strong> ${formatDateTime(selectedSlip.created_at)}</p>
           </div>
@@ -493,15 +572,18 @@ export function WriteoffsTab({ onOpenCopies }) {
   const isDraft = selectedSlip?.status === 'draft'
   const isCompleted = selectedSlip?.status === 'completed'
   const isCancelled = selectedSlip?.status === 'cancelled'
-
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const stagedTotalValue = stagedCopies.reduce((sum, c) => sum + (Number(c.replacement_price) || 0), 0)
+  const liveBlocked = stagedCopies.filter((c) => c.blocked || BLOCKING_STATUSES[c.current_status]).length
+  const hasEvidence = draftPhotos.length > 0 || stagedCopies.some((c) => (c.photo_paths || []).length > 0)
+  const disabledComplete = stagedCopies.length === 0
 
   return (
     <div className="books-tab">
-      {/* Search & Actions Bar */}
-      <div className="admin-search-bar-wrap">
+      {/* Search & primary action */}
+      <div className="admin-search-bar-wrap books-lookup-bar">
         <div className="admin-barcode-input">
-          <span className="books-search-icon">🔍</span>
+          <span className="books-search-icon" aria-hidden="true"><IconSearch size={15} /></span>
           <input
             value={search}
             onChange={(e) => {
@@ -512,105 +594,171 @@ export function WriteoffsTab({ onOpenCopies }) {
           />
         </div>
         <button type="button" className="admin-btn-primary" onClick={handleCreateNewSlip} disabled={saving}>
-          + Create Write-Off Slip
+          <IconPlus size={13} aria-hidden="true" />
+          <span>+ Create Write-Off Slip</span>
         </button>
       </div>
 
       {feedback && (
         <div className={`books-alert ${feedback.type === 'error' ? 'danger' : 'success'}`}>
-          <span>{feedback.message}</span>
-          <button type="button" onClick={() => setFeedback(null)}>✕</button>
+          <span className="books-alert-icon" aria-hidden="true">
+            {feedback.type === 'error' ? <IconAlert size={15} /> : <IconCheckCircle size={15} />}
+          </span>
+          <span className="books-alert-text">{feedback.message}</span>
+          <button type="button" className="books-alert-dismiss" aria-label="Dismiss message" onClick={() => setFeedback(null)}>
+            <IconClose size={12} />
+          </button>
         </div>
       )}
 
-      {/* Filter Tabs */}
-      <div className="admin-filter-tabs">
-        {[
-          { value: 'all', label: 'All slips' },
-          { value: 'draft', label: 'Drafts' },
-          { value: 'completed', label: 'Completed' },
-          { value: 'cancelled', label: 'Cancelled' },
-        ].map((filter) => (
-          <button
-            key={filter.value}
-            type="button"
-            className={`admin-pill-btn ${filterStatus === filter.value ? 'active' : ''}`}
-            onClick={() => { setFilterStatus(filter.value); setPage(1) }}
-          >
-            {filter.label}
+      {/* Filter pills */}
+      <div className="books-filter-row books-filter-strip">
+        <div className="admin-filter-tabs">
+          {STATUS_FILTERS.map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              className={`admin-pill-btn ${filterStatus === filter.value ? 'active' : ''}`}
+              onClick={() => { setFilterStatus(filter.value); setPage(1) }}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+        <div className="books-filter-meta">
+          <span>Total: <strong>{total}</strong> slip{total === 1 ? '' : 's'}</span>
+          <button type="button" className="books-icon-text-btn" onClick={loadSlips} disabled={loading}>
+            <IconRefresh size={12} aria-hidden="true" /> Refresh
           </button>
-        ))}
-        <span className="books-push-right books-muted">Total: {total} slips</span>
+        </div>
       </div>
 
-      {/* Work Layout: Table + Detail Inspector */}
-      <div className="admin-work-layout">
-        {/* Left: Slips Table */}
-        <div className="admin-table-container">
-          <div className="admin-table-toolbar books-table-toolbar">
-            <span className="books-muted">
-              Showing <strong>{slips.length}</strong> of <strong>{total}</strong> write-off slips
-            </span>
-            <button type="button" className="admin-btn-outline books-btn-sm" onClick={loadSlips}>
-              Refresh
-            </button>
+      {/* Work layout: slip register cards + inspection drawer */}
+      <div className="admin-work-layout books-writeoff-layout">
+        <div className="books-slip-list-wrap">
+          <div className="books-slip-list-head">
+            <div>
+              <div className="books-slip-list-title">Write-off register</div>
+              <p className="books-slip-list-sub">
+                Showing <strong>{slips.length}</strong> of <strong>{total}</strong> slip{total === 1 ? '' : 's'}
+              </p>
+            </div>
+            <span className="books-slip-list-count">Page {page} / {totalPages}</span>
           </div>
 
-          <div className="books-table-scroll">
-            <table className="admin-table books-table">
-              <thead>
-                <tr>
-                  <th>Slip Number</th>
-                  <th>Reason</th>
-                  <th>Copies</th>
-                  <th>Status</th>
-                  <th>Created by</th>
-                  <th>Created Date</th>
-                </tr>
-              </thead>
+          <div className="books-table-scroll" role="list" aria-label="Write-off slips">
+            {/* Screen-reader-only table keeps the result text inside
+                `.books-table tbody` for assistive tech and regression checks. */}
+            <table className="books-table books-table-sr">
               <tbody>
-                {slips.map((slip) => {
-                  const isSelected = slip.id === selectedSlipId
-                  const copyCount = slip.writeoff_slip_copies?.[0]?.count ?? 0
-                  return (
-                    <tr
-                      key={slip.id}
-                      className={isSelected ? 'selected' : ''}
-                      onClick={() => setSelectedSlipId(slip.id)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <td>
-                        <strong style={{ color: '#6e472a' }}>{slip.number}</strong>
-                      </td>
-                      <td>
-                        <span>{statusLabel(slip.reason_code)}</span>
-                      </td>
-                      <td>
-                        <strong>{copyCount}</strong> {copyCount === 1 ? 'copy' : 'copies'}
-                      </td>
-                      <td>
-                        <span className={`books-badge tone-${statusTone(slip.status)}`}>
-                          {statusLabel(slip.status)}
-                        </span>
-                      </td>
-                      <td>
-                        <span style={{ fontSize: '12px' }}>{slip.profiles?.full_name || 'Staff'}</span>
-                      </td>
-                      <td>
-                        <span style={{ fontSize: '12px', color: '#72685e' }}>{formatDateTime(slip.created_at)}</span>
-                      </td>
-                    </tr>
-                  )
-                })}
+                {slips.map((slip) => (
+                  <tr key={slip.id}>
+                    <td>{slip.number}</td>
+                    <td>{statusLabel(slip.status)}</td>
+                  </tr>
+                ))}
                 {slips.length === 0 && !loading && (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '36px', color: '#9d9388' }}>
-                      No write-off slips found matching criteria. Click "+ Create Write-Off Slip" to draft a new slip.
-                    </td>
+                    <td>No write-off slips found matching criteria.</td>
                   </tr>
                 )}
               </tbody>
             </table>
+
+            {loading && slips.length === 0 && (
+              <div className="books-empty-note"><p>Loading write-off slips…</p></div>
+            )}
+
+            {slips.map((slip) => {
+              const isSelected = slip.id === selectedSlipId
+              const copyCount = slip.writeoff_slip_copies?.[0]?.count ?? 0
+              const curator = slip.profiles?.full_name || 'Staff'
+              const blocked = isSelected && isDraft ? liveBlocked : 0
+              return (
+                <div
+                  key={slip.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={isSelected}
+                  className={`books-slip-card ${isSelected ? 'selected' : ''}`}
+                  onClick={() => setSelectedSlipId(slip.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      setSelectedSlipId(slip.id)
+                    }
+                  }}
+                >
+                  <div className="books-slip-card-head">
+                    <div className="books-slip-card-id">
+                      <span className="books-slip-hash">#</span>
+                      <strong>{slip.number}</strong>
+                      <span className={`books-badge tone-${statusTone(slip.status)}`}>{statusLabel(slip.status)}</span>
+                    </div>
+                    <span className="books-slip-card-date">
+                      {slip.status === 'completed'
+                        ? `Closed ${formatShortDate(slip.completed_at)}`
+                        : slip.status === 'cancelled'
+                          ? `Closed ${formatShortDate(slip.cancelled_at)}`
+                          : `Created ${formatShortDate(slip.created_at)}`}
+                    </span>
+                  </div>
+
+                  <div className="books-slip-card-body">
+                    <div>
+                      <span className="books-slip-eyebrow">Staged quantity</span>
+                      <div className="books-slip-qty-value">
+                        {copyCount > 0 ? (
+                          <>
+                            <strong>{copyCount}</strong> {copyCount === 1 ? 'copy' : 'copies'}
+                            {slip.status === 'draft' && <span className="books-slip-qty-empty">pending validation</span>}
+                          </>
+                        ) : (
+                          <span className="books-slip-qty-empty">No copies staged yet</span>
+                        )}
+                      </div>
+                      {blocked > 0 && (
+                        <span className="books-slip-blocked">
+                          <IconAlert size={11} aria-hidden="true" /> {blocked} blocked
+                        </span>
+                      )}
+                    </div>
+                    <div className="books-slip-reason">
+                      <span className="books-slip-eyebrow">Reason code</span>
+                      <span>{reasonLabel(slip.reason_code)}</span>
+                    </div>
+                  </div>
+
+                  <div className="books-slip-card-foot">
+                    <span className="books-slip-curator">
+                      <span className="books-avatar" aria-hidden="true">{initialsOf(curator)}</span>
+                      <span><strong>{curator}</strong> · curator{isSelected && <span className="books-slip-flag"> · Open in inspector</span>}</span>
+                    </span>
+                    <span className="books-slip-card-actions">
+                      {slip.status === 'draft' ? (
+                        <span className={`books-btn-pill ${isSelected ? '' : 'muted'}`}>
+                          <IconPen size={11} aria-hidden="true" /> Edit draft
+                        </span>
+                      ) : (
+                        <span className={`books-btn-pill ${isSelected ? '' : 'muted'}`}>
+                          View slip
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+
+            {slips.length === 0 && !loading && (
+              <div className="books-slip-empty">
+                <IconArchive size={22} aria-hidden="true" />
+                <p>No write-off slips found matching criteria.</p>
+                <button type="button" className="admin-btn-outline books-btn-sm" onClick={handleCreateNewSlip} disabled={saving}>
+                  Create first write-off slip
+                </button>
+              </div>
+            )}
           </div>
 
           {totalPages > 1 && (
@@ -620,6 +768,7 @@ export function WriteoffsTab({ onOpenCopies }) {
                 <button
                   type="button"
                   className="books-page-pill"
+                  aria-label="Previous page"
                   disabled={page <= 1}
                   onClick={() => setPage((p) => p - 1)}
                 >
@@ -628,6 +777,7 @@ export function WriteoffsTab({ onOpenCopies }) {
                 <button
                   type="button"
                   className="books-page-pill"
+                  aria-label="Next page"
                   disabled={page >= totalPages}
                   onClick={() => setPage((p) => p + 1)}
                 >
@@ -637,19 +787,19 @@ export function WriteoffsTab({ onOpenCopies }) {
             </div>
           )}
         </div>
-
-        {/* Right: Slip Detail Drawer */}
-        <aside className="admin-drawer books-detail">
+        <aside className="admin-drawer books-detail books-inspector">
           {slipLoading ? (
             <div className="books-empty-note">Loading slip details…</div>
           ) : selectedSlip ? (
             <>
-              {/* Slip Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '16px', color: '#241e19' }}>{selectedSlip.number}</h3>
-                  <div style={{ fontSize: '11px', color: '#72685e' }}>
-                    Created by <strong>{selectedSlip.profiles?.full_name || 'Staff'}</strong> on {formatDateTime(selectedSlip.created_at)}
+              <div className="books-inspector-head">
+                <div className="books-inspector-title">
+                  <span className="books-inspector-icon" aria-hidden="true"><IconArchive size={15} /></span>
+                  <div>
+                    <h3 className="books-inspector-number">{selectedSlip.number}</h3>
+                    <div className="books-inspector-kicker">
+                      {isDraft ? 'Draft inspection & validation' : 'Write-off record'}
+                    </div>
                   </div>
                 </div>
                 <span className={`books-badge tone-${statusTone(selectedSlip.status)}`}>
@@ -657,123 +807,69 @@ export function WriteoffsTab({ onOpenCopies }) {
                 </span>
               </div>
 
+              <div className="books-inspector-meta">
+                <span>Created {formatDateTime(selectedSlip.created_at)}</span>
+                <span>by {selectedSlip.profiles?.full_name || 'Staff'}</span>
+              </div>
+
               {isCompleted && (
-                <div style={{ padding: '8px 12px', background: '#f3f4f6', borderRadius: '8px', fontSize: '12px', color: '#4b5563', borderLeft: '4px solid #16a34a' }}>
-                  🔒 <strong>Immutable:</strong> Completed on {formatDateTime(selectedSlip.completed_at)}. Edit and delete controls are disabled (FR-COND-03).
+                <div className="books-note success">
+                  <IconLock size={13} aria-hidden="true" />
+                  <span>
+                    Immutable: completed on {formatDateTime(selectedSlip.completed_at)}. Edit and delete controls
+                    are disabled (FR-COND-03).
+                  </span>
                 </div>
               )}
 
               {isCancelled && (
-                <div style={{ padding: '8px 12px', background: '#fee2e2', borderRadius: '8px', fontSize: '12px', color: '#991b1b', borderLeft: '4px solid #dc2626' }}>
-                  ✕ <strong>Cancelled:</strong> {selectedSlip.cancellation_reason || 'No cancellation reason recorded'} (on {formatDateTime(selectedSlip.cancelled_at)}).
+                <div className="books-note danger">
+                  <IconClose size={13} aria-hidden="true" />
+                  <span>
+                    Cancelled: {selectedSlip.cancellation_reason || 'No cancellation reason recorded'}
+                    {' '}(on {formatDateTime(selectedSlip.cancelled_at)}).
+                  </span>
                 </div>
               )}
 
-              {/* Reason & Notes */}
-              <div className="books-field">
-                <label>Reason Code</label>
+              {/* 1. Reason code */}
+              <div className="books-inspector-section">
+                <div className="books-section-label">
+                  <span>1 · Mandatory reason code</span>
+                  <span className={`books-req ${draftReason ? 'met' : ''}`}>{draftReason ? 'Required · Met' : 'Required'}</span>
+                </div>
                 {isDraft ? (
-                  <select
-                    value={draftReason}
-                    onChange={(e) => setDraftReason(e.target.value)}
-                    style={{ width: '100%' }}
-                  >
-                    {WRITEOFF_REASONS.map((r) => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
+                  <div className="books-reason-options" role="radiogroup" aria-label="Reason code">
+                    {WRITEOFF_REASONS.map((reason) => (
+                      <button
+                        key={reason.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={draftReason === reason.value}
+                        className={`books-reason-option ${draftReason === reason.value ? 'active' : ''}`}
+                        onClick={() => setDraftReason(reason.value)}
+                      >
+                        <span className="radio-dot" aria-hidden="true" />
+                        <span>
+                          <strong>{reason.label}</strong>
+                          {reason.hint && <small>{reason.hint}</small>}
+                        </span>
+                      </button>
                     ))}
-                  </select>
-                ) : (
-                  <div style={{ fontSize: '13px', fontWeight: 600 }}>
-                    {statusLabel(selectedSlip.reason_code)}
                   </div>
+                ) : (
+                  <div className="books-reason-static">{reasonLabel(selectedSlip.reason_code)}</div>
                 )}
               </div>
 
-              <div className="books-field">
-                <label>Staff Notes</label>
-                {isDraft ? (
-                  <textarea
-                    rows={2}
-                    value={draftNotes}
-                    onChange={(e) => setDraftNotes(e.target.value)}
-                    placeholder="Describe condition, disposal authorization, or stocktaking audit notes…"
-                  />
-                ) : (
-                  <div style={{ fontSize: '13px', color: '#4b5563', whiteSpace: 'pre-wrap' }}>
-                    {selectedSlip.notes || '—'}
-                  </div>
-                )}
-              </div>
-
-              {/* General Photographic Evidence */}
-              <div className="books-field">
-                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Photographic Evidence ({draftPhotos.length})</span>
-                  {isDraft && (
-                    <label className="admin-btn-outline books-btn-sm" style={{ cursor: 'pointer', margin: 0 }}>
-                      <span>{uploadingPhoto ? 'Uploading…' : '+ Add Photo'}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        style={{ display: 'none' }}
-                        onChange={handleUploadSlipPhoto}
-                        disabled={uploadingPhoto}
-                      />
-                    </label>
-                  )}
-                </label>
-                {draftPhotos.length > 0 ? (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
-                    {draftPhotos.map((path, idx) => {
-                      const url = supabase.storage.from('evidence').getPublicUrl(path).data.publicUrl
-                      return (
-                        <div key={path} style={{ position: 'relative', width: '60px', height: '60px', borderRadius: '6px', overflow: 'hidden', border: '1px solid #dcd3c5' }}>
-                          <img src={url} alt="Evidence" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          {isDraft && (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveSlipPhoto(idx)}
-                              style={{
-                                position: 'absolute',
-                                top: 2,
-                                right: 2,
-                                width: '16px',
-                                height: '16px',
-                                borderRadius: '50%',
-                                background: 'rgba(0,0,0,0.6)',
-                                color: '#fff',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontSize: '10px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
-                            >
-                              ✕
-                            </button>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="books-muted" style={{ fontSize: '12px' }}>
-                    {draftReason === 'damaged_beyond_repair'
-                      ? '⚠️ Photo evidence is required before completing under "Damage beyond repair".'
-                      : 'No evidence photos attached.'}
-                  </div>
-                )}
-              </div>
-
-              {/* Staged Copies Section */}
-              <div style={{ borderTop: '1px solid #ede6db', paddingTop: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <strong style={{ fontSize: '13px' }}>Staged Copies ({stagedCopies.length})</strong>
+              {/* 2. Staged copies */}
+              <div className="books-inspector-section">
+                <div className="books-section-label">
+                  <span>2 · Staged Copies ({stagedCopies.length})</span>
                   {isDraft && (
                     <button
                       type="button"
-                      className="admin-btn-primary books-btn-sm"
+                      className="books-section-action"
                       onClick={() => {
                         setStageCandidate(null)
                         setStageCandidateError(null)
@@ -781,88 +877,193 @@ export function WriteoffsTab({ onOpenCopies }) {
                         setShowStageModal(true)
                       }}
                     >
-                      + Stage Copies
+                      <IconPlus size={11} aria-hidden="true" /> + Stage Copies
                     </button>
                   )}
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '240px', overflowY: 'auto' }}>
-                  {stagedCopies.map((c) => (
-                    <div
-                      key={c.copy_id}
-                      style={{
-                        padding: '8px 10px',
-                        background: '#faf7f2',
-                        border: '1px solid #ede6db',
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '4px',
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                          <button
-                            type="button"
-                            className="admin-btn-outline books-btn-sm books-btn-ghost"
-                            style={{ fontFamily: 'monospace', padding: 0, fontWeight: 700, color: '#6e472a', textDecoration: 'underline' }}
-                            onClick={() => onOpenCopies?.(c.book_id)}
-                            title="Inspect copy in Copies tab"
-                          >
-                            {c.barcode}
-                          </button>
-                          <div style={{ color: '#72685e', fontSize: '11px' }}>{c.title || 'Book Title'}</div>
-                        </div>
+                <div className="books-staged-list">
+                  {stagedCopies.map((c) => {
+                    const blocked = c.blocked || BLOCKING_STATUSES[c.current_status]
+                    const copyPhotoList = c.photo_paths || []
+                    return (
+                      <div key={c.copy_id} className="books-staged-card">
                         {isDraft && (
-                          <button
-                            type="button"
-                            className="admin-btn-outline books-btn-sm books-btn-ghost"
-                            style={{ color: '#dc2626', padding: '2px 4px' }}
-                            onClick={() => handleRemoveStagedCopy(c.copy_id)}
-                          >
-                            Remove
-                          </button>
+                          <label className="books-staged-select">
+                            <input
+                              type="checkbox"
+                              checked
+                              onChange={() => handleRemoveStagedCopy(c.copy_id)}
+                              aria-label={`Deselect ${c.barcode}`}
+                            />
+                          </label>
                         )}
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', fontSize: '11px', color: '#6e665e' }}>
-                        <span>Target: <strong style={{ color: '#6e472a' }}>{statusLabel(c.target_status)}</strong></span>
-                        {c.condition && <span>· Cond: {c.condition}</span>}
-                        {c.replacement_price && <span>· {formatVnd(c.replacement_price)}</span>}
-                      </div>
-                      {c.assessment_note && (
-                        <div style={{ fontStyle: 'italic', color: '#8c827a', fontSize: '11px' }}>
-                          "{c.assessment_note}"
+                        <div className="books-staged-main">
+                          <div className="books-staged-title">{c.title || 'Untitled title'}</div>
+                          <div className="books-staged-sub">
+                            <button
+                              type="button"
+                              className="books-barcode-link"
+                              onClick={() => onOpenCopies?.(c.book_id)}
+                              title="Inspect copy in Copies tab"
+                            >
+                              {c.barcode}
+                            </button>
+                            {c.authors?.length > 0 && <span> · {c.authors.join(', ')}</span>}
+                            {isDraft && (
+                              <button
+                                type="button"
+                                className="books-staged-remove books-staged-remove-inline"
+                                onClick={() => handleRemoveStagedCopy(c.copy_id)}
+                                aria-label="Unstage copy"
+                              >
+                                <IconClose size={10} aria-hidden="true" /> Unstage
+                              </button>
+                            )}
+                          </div>
+                          <div className="books-staged-facts">
+                            <span><em>From</em> {statusLabel(c.current_status)}</span>
+                            <span><em>To</em> {statusLabel(c.target_status)}</span>
+                            {c.condition && <span><em>Cond</em> {c.condition}</span>}
+                            {c.replacement_price != null && <span><em>Value</em> {formatVnd(c.replacement_price)}</span>}
+                          </div>
+                          {blocked && (
+                            <span className="books-staged-blocked">
+                              <IconAlert size={12} aria-hidden="true" /> On loan or held for a reservation &mdash; resolve before completing.
+                            </span>
+                          )}
+                          {c.assessment_note && (
+                            <div className="books-staged-quote">&ldquo;{c.assessment_note}&rdquo;</div>
+                          )}
+                          {copyPhotoList.length > 0 && (
+                            <div className="books-staged-photos">
+                              {copyPhotoList.map((path) => (
+                                <EvidenceThumb key={path} path={path} size={40} alt="Copy evidence" />
+                              ))}
+                            </div>
+                          )}
                         </div>
+                        <div className="books-staged-tools">
+                          {isDraft && (
+                            <select
+                              className="books-staged-select-input"
+                              value={c.target_status}
+                              onChange={(e) => updateStagedCopy(c.copy_id, { target_status: e.target.value })}
+                              aria-label={`Target status for ${c.barcode}`}
+                            >
+                              <option value="retired">Retired</option>
+                              <option value="lost">Lost</option>
+                            </select>
+                          )}
+                          {isDraft && (
+                            <button
+                              type="button"
+                              className="books-staged-remove"
+                              onClick={() => handleRemoveStagedCopy(c.copy_id)}
+                              title="Remove from slip"
+                              aria-label="Unstage copy"
+                            >
+                              <IconClose size={13} aria-hidden="true" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+
+                  {stagedCopies.length === 0 && (
+                    <div className="books-staged-empty">
+                      <span>No copies staged on this slip.</span>
+                      {isDraft && (
+                        <span className="books-section-action muted">+ Stage Copies</span>
                       )}
                     </div>
-                  ))}
-                  {stagedCopies.length === 0 && (
-                    <div className="books-empty-note">
-                      No copies staged on this slip.
+                  )}
+                </div>
+
+                <div className="books-staged-total">
+                  <span>Estimated replacement value</span>
+                  <strong>{formatVnd(stagedTotalValue)}</strong>
+                </div>
+              </div>
+
+              {/* 3. Evidence & assessment */}
+              <div className="books-inspector-section">
+                <div className="books-section-label">
+                  <span>3 · Evidence &amp; assessment</span>
+                  {draftReason === PHOTO_REQUIRED_REASON && (
+                    <span className={`books-req ${hasEvidence ? 'met' : ''}`}>
+                      {hasEvidence ? 'Photo · Met' : 'Photo required'}
+                    </span>
+                  )}
+                </div>
+
+                <div className="books-evidence">
+                  <div className="books-evidence-grid">
+                    {draftPhotos.map((path, idx) => (
+                      <EvidenceThumb
+                        key={path}
+                        path={path}
+                        size={62}
+                        alt="Slip evidence"
+                        removable={isDraft}
+                        onRemove={() => handleRemoveSlipPhoto(idx)}
+                      />
+                    ))}
+                    {isDraft && (
+                      <label className="books-evidence-add">
+                        <IconCamera size={14} aria-hidden="true" />
+                        <span>{uploadingPhoto ? 'Uploading…' : 'Add photo'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          hidden
+                          onChange={handleUploadSlipPhoto}
+                          disabled={uploadingPhoto}
+                        />
+                      </label>
+                    )}
+                  </div>
+                  <div className="books-evidence-hint">
+                    {draftReason === PHOTO_REQUIRED_REASON
+                      ? 'Photo evidence is required before completing a damaged-beyond-repair slip.'
+                      : 'Attach photos of the condition, damage or disposal authorization for the audit trail.'}
+                  </div>
+                </div>
+
+                <div className="books-field">
+                  <label>Assessment / staff notes</label>
+                  {isDraft ? (
+                    <textarea
+                      rows={3}
+                      value={draftNotes}
+                      onChange={(e) => setDraftNotes(e.target.value)}
+                      placeholder="Describe condition, disposal authorization, or stocktaking audit notes…"
+                    />
+                  ) : (
+                    <div style={{ fontSize: '12.5px', color: '#4b5563', whiteSpace: 'pre-wrap' }}>
+                      {selectedSlip.notes || '—'}
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div style={{ borderTop: '1px solid #ede6db', paddingTop: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {isDraft && (
-                  <>
+              {/* Actions footer */}
+              {isDraft && (
+                <div className="books-inspector-actions">
+                  <div className="books-action-grid">
                     <button
                       type="button"
-                      className="admin-btn-primary"
-                      style={{ width: '100%', justifyContent: 'center' }}
-                      disabled={saving || stagedCopies.length === 0}
+                      className="admin-btn-primary books-action-primary"
+                      disabled={saving || (stagedCopies.length === 0 && liveBlocked === 0)}
                       onClick={handleCompleteSlip}
                     >
                       {saving ? 'Processing…' : 'Complete Slip'}
                     </button>
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <div className="books-action-pair">
                       <button
                         type="button"
                         className="admin-btn-outline"
-                        style={{ flex: 1, justifyContent: 'center' }}
                         disabled={saving}
                         onClick={handleSaveDraft}
                       >
@@ -871,45 +1072,55 @@ export function WriteoffsTab({ onOpenCopies }) {
                       <button
                         type="button"
                         className="admin-btn-outline books-btn-danger"
-                        style={{ flex: 1, justifyContent: 'center' }}
                         disabled={saving}
                         onClick={() => setShowCancelPrompt(true)}
                       >
                         Cancel Slip
                       </button>
                     </div>
-                  </>
-                )}
+                    <div className="books-action-hint">
+                      On-loan and held copies are rejected automatically (UC-22 §2.2.1).
+                    </div>
+                  </div>
+                </div>
+              )}
 
-                {isCompleted && (
-                  <button
-                    type="button"
-                    className="admin-btn-primary"
-                    style={{ width: '100%', justifyContent: 'center' }}
-                    onClick={handlePrintSlip}
-                  >
-                    🖨️ Print / Export
-                  </button>
-                )}
-              </div>
+              {isCompleted && (
+                <div className="books-inspector-actions">
+                  <div className="books-action-grid">
+                    <button type="button" className="admin-btn-primary books-action-primary" onClick={handlePrintSlip}>
+                      <IconPrinter size={14} aria-hidden="true" /> Print / Export
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           ) : (
-            <div className="books-empty-note">Select a write-off slip from the list to inspect details or complete decommissioning.</div>
+            <div className="books-inspector-idle">
+              <IconArchive size={26} aria-hidden="true" />
+              <strong>No slip selected</strong>
+              <span>Select a write-off slip from the register to inspect its staged copies or complete decommissioning.</span>
+            </div>
           )}
         </aside>
       </div>
 
-      {/* Stage Copies Modal */}
+      {/* Stage Copies modal */}
       {showStageModal && (
         <div className="books-modal-backdrop" onClick={() => setShowStageModal(false)}>
-          <div className="books-modal" style={{ maxWidth: '580px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="books-modal books-modal-stage" onClick={(e) => e.stopPropagation()}>
             <div className="books-modal-header">
-              <h3 style={{ margin: 0, fontSize: '16px' }}>Stage Copy to Write-off Slip</h3>
-              <button type="button" className="admin-btn-outline books-btn-sm books-btn-ghost" onClick={() => setShowStageModal(false)}>✕</button>
+              <div>
+                <h3 className="books-modal-title">Stage Copy to Write-off Slip</h3>
+                <p className="books-modal-subtitle">#{selectedSlip?.number} · scanned copies are validated against UC-22 rules</p>
+              </div>
+              <button type="button" className="books-modal-close" aria-label="Close" onClick={() => setShowStageModal(false)}>
+                <IconClose size={13} aria-hidden="true" />
+              </button>
             </div>
 
             <div className="books-modal-body">
-              <div className="admin-search-bar-wrap" style={{ padding: '8px 12px' }}>
+              <div className="books-stage-lookup">
                 <div className="admin-barcode-input">
                   <input
                     value={stageBarcodeQuery}
@@ -921,7 +1132,7 @@ export function WriteoffsTab({ onOpenCopies }) {
                 </div>
                 <button
                   type="button"
-                  className="admin-btn-primary books-btn-sm"
+                  className="admin-btn-primary"
                   disabled={stageSearching || !stageBarcodeQuery.trim()}
                   onClick={handleLookupCopyForStage}
                 >
@@ -930,17 +1141,21 @@ export function WriteoffsTab({ onOpenCopies }) {
               </div>
 
               {stageCandidateError && (
-                <div className="books-alert danger" style={{ fontSize: '12px' }}>
+                <div className="books-alert danger">
                   <span>{stageCandidateError}</span>
                 </div>
               )}
 
-              {stageCandidate && (
-                <div style={{ padding: '14px', background: '#fdfbf7', border: '1px solid #ede6db', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              {stageCandidate ? (
+                <div className="books-stage-candidate">
+                  <div className="books-stage-candidate-head">
                     <div>
-                      <strong style={{ fontSize: '14px', color: '#241e19' }}>{stageCandidate.books?.title}</strong>
-                      <div style={{ fontSize: '12px', color: '#72685e' }}>Barcode: <strong style={{ fontFamily: 'monospace' }}>{stageCandidate.barcode}</strong></div>
+                      <strong className="books-stage-candidate-title">{stageCandidate.books?.title}</strong>
+                      <div className="books-stage-candidate-facts">
+                        <span>{stageCandidate.barcode}</span>
+                        <span><em>Shelf</em> {stageCandidate.shelf_location || '—'}</span>
+                        <span><em>Condition</em> {stageCandidate.condition || '—'}</span>
+                      </div>
                     </div>
                     <span className={`books-badge tone-${statusTone(stageCandidate.status)}`}>
                       {statusLabel(stageCandidate.status)}
@@ -978,7 +1193,38 @@ export function WriteoffsTab({ onOpenCopies }) {
                       />
                     </div>
                   </div>
+
+                  <div className="books-stage-evidence">
+                    <div className="books-section-label flush">
+                      <span>Copy evidence ({stagePhotos.length})</span>
+                    </div>
+                    <div className="books-evidence-grid">
+                      {stagePhotos.map((path, idx) => (
+                        <EvidenceThumb
+                          key={path}
+                          path={path}
+                          size={56}
+                          alt="Copy evidence"
+                          removable
+                          onRemove={() => setStagePhotos((prev) => prev.filter((_, i) => i !== idx))}
+                        />
+                      ))}
+                      <label className="books-evidence-add">
+                        <IconCamera size={14} aria-hidden="true" />
+                        <span>{stageUploading ? '…' : 'Photo'}</span>
+                        <input type="file" accept="image/*" hidden onChange={handleUploadStagePhoto} disabled={stageUploading} />
+                      </label>
+                    </div>
+                  </div>
                 </div>
+              ) : (
+                !stageCandidateError && (
+                  <div className="books-stage-empty">
+                    <span className="books-stage-empty-icon" aria-hidden="true"><IconSearch size={17} /></span>
+                    <strong>Scan a copy barcode to begin</strong>
+                    <span>Copies that are borrowed, held for a reservation, or already retired cannot be staged.</span>
+                  </div>
+                )
               )}
             </div>
 
@@ -999,18 +1245,23 @@ export function WriteoffsTab({ onOpenCopies }) {
         </div>
       )}
 
-      {/* Cancel Slip Prompt Modal */}
+      {/* Cancel Slip prompt */}
       {showCancelPrompt && (
         <div className="books-modal-backdrop" onClick={() => setShowCancelPrompt(false)}>
-          <div className="books-modal" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="books-modal books-modal-cancel" onClick={(e) => e.stopPropagation()}>
             <div className="books-modal-header">
-              <h3 style={{ margin: 0, fontSize: '16px' }}>Cancel Write-off Slip</h3>
-              <button type="button" className="admin-btn-outline books-btn-sm books-btn-ghost" onClick={() => setShowCancelPrompt(false)}>✕</button>
+              <div>
+                <h3 className="books-modal-title">Cancel Write-off Slip</h3>
+                <p className="books-modal-subtitle">#{selectedSlip?.number} · no copy status will be changed</p>
+              </div>
+              <button type="button" className="books-modal-close" aria-label="Close" onClick={() => setShowCancelPrompt(false)}>
+                <IconClose size={13} aria-hidden="true" />
+              </button>
             </div>
             <div className="books-modal-body">
               <p style={{ margin: 0, fontSize: '13px', color: '#4b5563' }}>
                 Are you sure you want to cancel draft slip <strong>{selectedSlip?.number}</strong>?
-                No copy status will be changed, and this draft will become inactive.
+                The draft will become inactive and its staged copies stay untouched.
               </p>
               <div className="books-field" style={{ marginTop: '12px' }}>
                 <label>Cancellation Reason</label>
@@ -1036,4 +1287,3 @@ export function WriteoffsTab({ onOpenCopies }) {
     </div>
   )
 }
-

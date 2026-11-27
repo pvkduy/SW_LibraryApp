@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../../lib/api'
+import { IconChevron, IconRefresh, IconSliders, IconSort } from './booksIcons'
 import { supabase } from '../../../lib/supabase'
 import {
   CONDITIONS,
@@ -281,21 +282,33 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
       )}
 
       <div className="books-filter-row">
-        <select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1) }} aria-label="Copy status filter">
-          <option value="all">Status: All statuses</option>
-          {COPY_STATUSES.map((value) => <option key={value} value={value}>{statusLabel(value)}</option>)}
-        </select>
-        <select value={condition} onChange={(event) => { setCondition(event.target.value); setPage(1) }} aria-label="Condition filter">
-          <option value="all">Condition: All conditions</option>
-          {CONDITIONS.map((value) => <option key={value} value={value}>{statusLabel(value)}</option>)}
-        </select>
-        <select value={shelf} onChange={(event) => { setShelf(event.target.value); setPage(1) }} aria-label="Shelf filter">
-          <option value="all">Shelf: All shelves</option>
-          {shelves.map((value) => <option key={value} value={value}>{value}</option>)}
-        </select>
-        <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort copies">
-          {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-        </select>
+        <div className="books-select-wrap">
+          <span className="books-select-icon" aria-hidden="true"><IconSliders size={13} /></span>
+          <select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1) }} aria-label="Copy status filter">
+            <option value="all">Status: All statuses</option>
+            {COPY_STATUSES.map((value) => <option key={value} value={value}>{statusLabel(value)}</option>)}
+          </select>
+        </div>
+        <div className="books-select-wrap">
+          <span className="books-select-icon" aria-hidden="true"><IconSliders size={13} /></span>
+          <select value={condition} onChange={(event) => { setCondition(event.target.value); setPage(1) }} aria-label="Condition filter">
+            <option value="all">Condition: All conditions</option>
+            {CONDITIONS.map((value) => <option key={value} value={value}>{statusLabel(value)}</option>)}
+          </select>
+        </div>
+        <div className="books-select-wrap">
+          <span className="books-select-icon" aria-hidden="true"><IconSliders size={13} /></span>
+          <select value={shelf} onChange={(event) => { setShelf(event.target.value); setPage(1) }} aria-label="Shelf filter">
+            <option value="all">Shelf: All shelves</option>
+            {shelves.map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+        </div>
+        <div className="books-select-wrap">
+          <span className="books-select-icon" aria-hidden="true"><IconSort size={13} /></span>
+          <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort copies">
+            {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </div>
         {focusBookId && (
           <div className="books-focus-chip">
             Showing copies for one title
@@ -313,7 +326,7 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
         <div className="admin-table-container">
           <div className="admin-table-toolbar books-table-toolbar">
             <span className="books-muted">Showing <strong>{rows.length}</strong> of <strong>{total.toLocaleString('vi-VN')}</strong> copies · 25 per page</span>
-            <button type="button" className="admin-btn-outline books-btn-sm" onClick={refresh}>Refresh</button>
+            <button type="button" className="admin-btn-outline books-btn-sm" onClick={refresh}><IconRefresh size={12} /> Refresh</button>
           </div>
 
           <div className="books-table-scroll">
@@ -349,7 +362,7 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
                     <td>{statusLabel(copy.condition)}</td>
                     <td>{statusLabel(copy.source_type || 'manual')}</td>
                     <td>
-                      <button type="button" className="books-icon-btn" aria-label={`Open ${copy.barcode} history`} onClick={(event) => { event.stopPropagation(); setSelectedId(copy.id) }}>›</button>
+                      <button type="button" className="books-icon-btn" aria-label={`Open ${copy.barcode} history`} onClick={(event) => { event.stopPropagation(); setSelectedId(copy.id) }}><IconChevron size={13} /></button>
                     </td>
                   </tr>
                 ))}

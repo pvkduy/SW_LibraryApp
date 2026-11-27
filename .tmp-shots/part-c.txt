@@ -1,0 +1,133 @@
+  // Upload general slip photo evidence
+  const handleUploadSlipPhoto = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setUploadingPhoto(true)
+    setFeedback(null)
+    try {
+      const path = await uploadToBucket('evidence', 'writeoffs', file)
+      const nextPhotos = [...draftPhotos, path]
+      setDraftPhotos(nextPhotos)
+      setFeedback({ type: 'success', message: 'Evidence photo uploaded.' })
+    } catch (err) {
+      setFeedback({ type: 'error', message: `Upload failed: ${err.message}` })
+    } finally {
+      setUploadingPhoto(false)
+      event.target.value = ''
+    }
+  }
+
+  const handleRemoveSlipPhoto = (index) => {
+    setDraftPhotos((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  // Save draft changes
+  const handleSaveDraft = async () => {
+    if (!selectedSlip || selectedSlip.status !== 'draft') return
+    setSaving(true)
+    setFeedback(null)
+    try {
+      const copiesPayload = stagedCopies.map((c) => ({
+        copy_id: c.copy_id,
+        target_status: c.target_status,
+        assessment_note: c.assessment_note || null,
+        photo_paths: c.photo_paths || [],
+      }))
+
+      await api.invoke('save-writeoff-slip', {
+        slip_id: selectedSlip.id,
+        reason_code: draftReason,
+        notes: draftNotes,
+        copies: copiesPayload,
+        photos: draftPhotos,
+      })
+
+      setFeedback({ type: 'success', message: 'Draft slip updated successfully.' })
+      await loadSelectedSlipDetail(selectedSlip.id)
+      await loadSlips()
+    } catch (err) {
+      setFeedback({ type: 'error', message: err.message })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Cancel draft slip
+  const handleConfirmCancel = async () => {
+    if (!selectedSlip) return
+    setSaving(true)
+    setFeedback(null)
+    try {
+      await api.invoke('cancel-writeoff-slip', {
+        slip_id: selectedSlip.id,
+        reason: cancelReason || 'Cancelled by staff',
+      })
+      setShowCancelPrompt(false)
+      setCancelReason('')
+      setFeedback({ type: 'success', message: `Slip ${selectedSlip.number} has been cancelled.` })
+      await loadSelectedSlipDetail(selectedSlip.id)
+      await loadSlips()
+    } catch (err) {
+      setFeedback({ type: 'error', message: err.message })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Complete write-off slip
+  const handleCompleteSlip = async () => {
+    if (!selectedSlip || selectedSlip.status !== 'draft') return
+
+    // Pre-flight checks
+    if (stagedCopies.length === 0) {
+      setFeedback({ type: 'error', message: 'Cannot complete an empty write-off slip. Please stage at least one copy.' })
+      return
+    }
+
+    if (needsPhoto(draftReason)) {
+      const hasSlipPhotos = (draftPhotos || []).length > 0
+      const hasAnyCopyPhoto = stagedCopies.some((c) => (c.photo_paths || []).length > 0)
+      if (!hasSlipPhotos && !hasAnyCopyPhoto) {
+        setFeedback({
+          type: 'error',
+          message: 'At least one photographic evidence file is mandatory for reason code "damaged_beyond_repair".',
+        })
+        return
+      }
+    }
+
+    setSaving(true)
+    setFeedback(null)
+    try {
+      // First save draft state to ensure server has current staged items
+      const copiesPayload = stagedCopies.map((c) => ({
+        copy_id: c.copy_id,
+        target_status: c.target_status,
+        assessment_note: c.assessment_note || null,
+        photo_paths: c.photo_paths || [],
+      }))
+      await api.invoke('save-writeoff-slip', {
+        slip_id: selectedSlip.id,
+        reason_code: draftReason,
+        notes: draftNotes,
+        copies: copiesPayload,
+        photos: draftPhotos,
+      })
+
+      // Complete slip
+      const res = await api.invoke('complete-writeoff-slip', {
+        slip_id: selectedSlip.id,
+      })
+
+      setFeedback({
+        type: 'success',
+        message: res.message || `Write-off slip ${selectedSlip.number} completed and locked. Copies decommissioned.`,
+      })
+      await loadSelectedSlipDetail(selectedSlip.id)
+      await loadSlips()
+    } catch (err) {
+      setFeedback({ type: 'error', message: err.message })
+    } finally {
+      setSaving(false)
+    }
+  }

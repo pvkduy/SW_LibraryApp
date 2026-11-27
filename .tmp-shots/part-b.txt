@@ -1,0 +1,85 @@
+    setSlipLoading(true)
+    // #region
+    try {
+      const { data: slipData, error: slipErr } = await supabase
+        .from('writeoff_slips')
+        .select(`
+          id, number, status, reason_code, notes, photos,
+          created_by, completed_at, cancelled_at, cancellation_reason,
+          created_at, updated_at,
+          profiles:created_by ( id, full_name, email )
+        `)
+        .eq('id', slipId)
+        .single()
+
+      if (slipErr) throw slipErr
+
+      const { data: copiesData, error: copiesErr } = await supabase
+        .from('writeoff_slip_copies')
+        .select(`
+          id, slip_id, copy_id, target_status, assessment_note, photo_paths, added_at,
+          copies (
+            id, barcode, status, condition, shelf_location,
+            books ( id, title, authors, replacement_price, isbn13 )
+          )
+        `)
+        .eq('slip_id', slipId)
+        .order('added_at', { ascending: true })
+
+      if (copiesErr) throw copiesErr
+
+      setSelectedSlip(slipData)
+      setDraftReason(slipData.reason_code)
+      setDraftNotes(slipData.notes || '')
+      setDraftPhotos(slipData.photos || [])
+      setStagedCopies(
+        (copiesData || []).map((row) => ({
+          id: row.id,
+          copy_id: row.copy_id,
+          barcode: row.copies?.barcode,
+          title: row.copies?.books?.title,
+          authors: row.copies?.books?.authors,
+          current_status: row.copies?.status,
+          condition: row.copies?.condition,
+          shelf: row.copies?.shelf_location,
+          book_id: row.copies?.books?.id,
+          replacement_price: row.copies?.books?.replacement_price,
+          target_status: row.target_status,
+          assessment_note: row.assessment_note || '',
+          photo_paths: row.photo_paths || [],
+        }))
+      )
+    } catch (err) {
+      setFeedback({ type: 'error', message: err.message })
+    } finally {
+      setSlipLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadSelectedSlipDetail(selectedSlipId)
+  }, [loadSelectedSlipDetail, selectedSlipId])
+
+  // Create a new blank draft slip
+  const handleCreateNewSlip = async () => {
+    setSaving(true)
+    setFeedback(null)
+    try {
+      const res = await api.invoke('save-writeoff-slip', {
+        reason_code: 'damaged_beyond_repair',
+        notes: '',
+        copies: [],
+        photos: [],
+      })
+      const newSlip = res.data?.slip
+      setFeedback({ type: 'success', message: `Draft write-off slip ${newSlip?.number || ''} created.` })
+      await loadSlips()
+      if (newSlip?.id) setSelectedSlipId(newSlip.id)
+    } catch (err) {
+      setFeedback({ type: 'error', message: err.message })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // #endregion

@@ -1,0 +1,194 @@
+  // Staging lookup in modal
+  const handleLookupCopyForStage = async () => {
+    const q = stageBarcodeQuery.trim()
+    if (!q) return
+    setStageSearching(true)
+    setStageCandidate(null)
+    setStageCandidateError(null)
+
+    try {
+      const { data, error } = await supabase
+        .from('copies')
+        .select(`
+          id, barcode, status, condition, shelf_location,
+          books ( id, title, authors, replacement_price, isbn13 )
+        `)
+        .eq('barcode', q)
+        .maybeSingle()
+
+      if (error) throw error
+      if (!data) {
+        setStageCandidateError(`No copy found matching barcode "${q}".`)
+        return
+      }
+
+      // Check duplicate in current slip
+      if (stagedCopies.some((c) => c.copy_id === data.id)) {
+        setStageCandidateError(`Copy ${data.barcode} is already staged on this write-off slip.`)
+        return
+      }
+
+      // Rule check: borrowed or held copies cannot be written off via slip
+      if (data.status === 'borrowed') {
+        setStageCandidateError(
+          `Copy ${data.barcode} is currently borrowed on loan. On-loan copies cannot be written off via slip; process via loan Lost workflow.`
+        )
+        return
+      }
+      if (data.status === 'held') {
+        setStageCandidateError(
+          `Copy ${data.barcode} is currently held for a reservation. Release or expire the hold before writing off.`
+        )
+        return
+      }
+      if (data.status === 'retired') {
+        setStageCandidateError(`Copy ${data.barcode} is already retired.`)
+        return
+      }
+
+      setStageCandidate(data)
+      setStageTargetStatus(draftReason === 'confirmed_missing' ? 'lost' : 'retired')
+      setStageNote('')
+      setStagePhotos([])
+    } catch (err) {
+      setStageCandidateError(err.message)
+    } finally {
+      setStageSearching(false)
+    }
+  }
+
+  // Per-copy evidence in the stage modal
+  const handleUploadStagePhoto = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setStageUploading(true)
+    setStageCandidateError(null)
+    try {
+      const path = await uploadToBucket('evidence', 'writeoffs', file)
+      setStagePhotos((prev) => [...prev, path])
+    } catch (err) {
+      setStageCandidateError(`Upload failed: ${err.message}`)
+    } finally {
+      setStageUploading(false)
+      event.target.value = ''
+    }
+  }
+
+  // Add candidate to stagedCopies
+  const handleAddCandidateToStaging = () => {
+    if (!stageCandidate) return
+
+    setStagedCopies((prev) => [
+      ...prev,
+      {
+        id: `temp-${Date.now()}`,
+        copy_id: stageCandidate.id,
+        barcode: stageCandidate.barcode,
+        title: stageCandidate.books?.title,
+        authors: stageCandidate.books?.authors,
+        current_status: stageCandidate.status,
+        condition: stageCandidate.condition,
+        shelf: stageCandidate.shelf_location,
+        replacement_price: stageCandidate.books?.replacement_price,
+        target_status: stageTargetStatus,
+        assessment_note: stageNote,
+        photo_paths: stagePhotos,
+      },
+    ])
+
+    setStageCandidate(null)
+    setStageBarcodeQuery('')
+    setStageCandidateError(null)
+    setStagePhotos([])
+    setShowStageModal(false)
+    setFeedback({ type: 'success', message: `Copy ${stageCandidate.barcode} added to slip.` })
+  }
+
+  // Remove copy from staging
+  const handleRemoveStagedCopy = (copyId) => {
+    setStagedCopies((prev) => prev.filter((c) => c.copy_id !== copyId))
+  }
+
+  const updateStagedCopy = (copyId, patch) => {
+    setStagedCopies((prev) => prev.map((c) => (c.copy_id === copyId ? { ...c, ...patch } : c)))
+  }
+
+  // Print slip summary
+  const handlePrintSlip = () => {
+    if (!selectedSlip) return
+    const rowsHtml = stagedCopies
+      .map(
+        (c) => `
+        <tr>
+          <td style="padding: 6px 10px; border: 1px solid #ccc; font-family: monospace;">${c.barcode}</td>
+          <td style="padding: 6px 10px; border: 1px solid #ccc;">${c.title || '—'}</td>
+          <td style="padding: 6px 10px; border: 1px solid #ccc;">${statusLabel(c.current_status)}</td>
+          <td style="padding: 6px 10px; border: 1px solid #ccc; font-weight: bold;">${statusLabel(c.target_status)}</td>
+          <td style="padding: 6px 10px; border: 1px solid #ccc;">${formatVnd(c.replacement_price)}</td>
+          <td style="padding: 6px 10px; border: 1px solid #ccc;">${c.assessment_note || '—'}</td>
+        </tr>
+      `
+      )
+      .join('')
+
+    const totalLossVal = stagedCopies.reduce((sum, c) => sum + (Number(c.replacement_price) || 0), 0)
+
+    const html = `
+      <div style="font-family: sans-serif; padding: 24px; color: #241e19;">
+        <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #6e472a; padding-bottom: 12px; margin-bottom: 16px;">
+          <div>
+            <h1 style="margin: 0; font-size: 20px;">ShelfHelp — Write-Off Decommissioning Slip</h1>
+            <p style="margin: 4px 0 0; color: #72685e; font-size: 13px;">Official Library Asset Retirement Record (POL-13 / UC-22)</p>
+          </div>
+          <div style="text-align: right;">
+            <h2 style="margin: 0; font-size: 18px; color: #6e472a;">${selectedSlip.number}</h2>
+            <span style="font-size: 12px; font-weight: bold; text-transform: uppercase;">${selectedSlip.status}</span>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; font-size: 13px;">
+          <div>
+            <p><strong>Reason code:</strong> ${statusLabel(selectedSlip.reason_code)}</p>
+            <p><strong>Created by:</strong> ${selectedSlip.profiles?.full_name || 'Staff'}</p>
+            <p><strong>Created at:</strong> ${formatDateTime(selectedSlip.created_at)}</p>
+          </div>
+          <div>
+            <p><strong>Completed at:</strong> ${formatDateTime(selectedSlip.completed_at)}</p>
+            <p><strong>Total decommissioned copies:</strong> ${stagedCopies.length}</p>
+            <p><strong>Total book replacement value:</strong> ${formatVnd(totalLossVal)}</p>
+          </div>
+        </div>
+
+        ${selectedSlip.notes ? `<div style="background: #fdfbf7; padding: 10px; border: 1px solid #ede6db; border-radius: 6px; margin-bottom: 20px; font-size: 13px;"><strong>Staff Notes:</strong> ${selectedSlip.notes}</div>` : ''}
+
+        <h3 style="font-size: 14px; margin-bottom: 8px;">Decommissioned Copy Inventory</h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: left;">
+          <thead>
+            <tr style="background: #f5eee6;">
+              <th style="padding: 6px 10px; border: 1px solid #ccc;">Barcode</th>
+              <th style="padding: 6px 10px; border: 1px solid #ccc;">Title</th>
+              <th style="padding: 6px 10px; border: 1px solid #ccc;">Prior Status</th>
+              <th style="padding: 6px 10px; border: 1px solid #ccc;">Terminal Status</th>
+              <th style="padding: 6px 10px; border: 1px solid #ccc;">Unit Value</th>
+              <th style="padding: 6px 10px; border: 1px solid #ccc;">Assessment Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+
+        <div style="margin-top: 40px; display: flex; justify-content: space-between; font-size: 13px; padding-top: 30px;">
+          <div style="text-align: center; width: 200px;">
+            <div style="border-bottom: 1px solid #000; height: 40px; margin-bottom: 4px;"></div>
+            <span>Inspected By (Staff)</span>
+          </div>
+          <div style="text-align: center; width: 200px;">
+            <div style="border-bottom: 1px solid #000; height: 40px; margin-bottom: 4px;"></div>
+            <span>Approved By (Head Librarian)</span>
+          </div>
+        </div>
+      </div>
+    `
+    printHtml(`writeoff-${selectedSlip.number}`, html)
+  }

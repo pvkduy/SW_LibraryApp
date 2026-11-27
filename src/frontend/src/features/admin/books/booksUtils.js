@@ -92,6 +92,14 @@ export function formatDate(value) {
   return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
+/** Short day/month label used by the write-off slip cards ("Created: 27 Nov"). */
+export function formatShortDate(value) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
 export function statusLabel(status) {
   return String(status ?? '')
     .replaceAll('_', ' ')

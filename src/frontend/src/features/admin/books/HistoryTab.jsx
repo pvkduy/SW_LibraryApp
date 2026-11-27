@@ -1,5 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../../../lib/api'
+// Side-effect import: also keeps the module order stable for Vite's HMR.
+import './booksIcons'
+import { IconCalendar, IconDownload, IconFile, IconHistory, IconRefresh } from './booksIcons'
 import { useAuth } from '../../auth/AuthContext'
 import {
   HISTORY_GROUPS,
@@ -219,7 +222,7 @@ export function HistoryTab({ onOpenWriteoff, onOpenCatalog }) {
         </div>
       )}
 
-      <div className="books-filter-row">
+      <div className="books-filter-row books-filter-strip">
         <div className="admin-filter-tabs">
           {HISTORY_GROUPS.map((item) => (
             <button
@@ -233,24 +236,28 @@ export function HistoryTab({ onOpenWriteoff, onOpenCatalog }) {
           ))}
         </div>
         <label className="books-date-range">
+          <IconCalendar size={13} />
           <span>From</span>
           <input type="date" value={start} onChange={(event) => { setStart(event.target.value); setPage(1) }} />
           <span>to</span>
           <input type="date" value={end} onChange={(event) => { setEnd(event.target.value); setPage(1) }} />
         </label>
         <div className="books-push-right books-inline">
-          <button type="button" className="admin-btn-outline books-btn-sm" onClick={handleExportCsv} disabled={busy}>Export CSV</button>
-          <button type="button" className="admin-btn-outline books-btn-sm" onClick={handleExportPdf} disabled={busy}>Export PDF</button>
-          <button type="button" className="admin-btn-outline books-btn-sm" onClick={handleExportExcel} disabled={busy}>Export Excel</button>
-          <button type="button" className="admin-btn-outline books-btn-sm books-btn-ghost" onClick={resetFilters}>Reset filters</button>
+          <button type="button" className="admin-btn-outline books-btn-sm" onClick={handleExportCsv} disabled={busy}><IconDownload size={12} /> Export CSV</button>
+          <button type="button" className="admin-btn-outline books-btn-sm" onClick={handleExportPdf} disabled={busy}><IconFile size={12} /> Export PDF</button>
+          <button type="button" className="admin-btn-outline books-btn-sm" onClick={handleExportExcel} disabled={busy}><IconFile size={12} /> Export Excel</button>
+          <button type="button" className="admin-btn-outline books-btn-sm books-btn-ghost" onClick={resetFilters}><IconRefresh size={12} /> Reset filters</button>
         </div>
       </div>
 
       <div className="admin-work-layout">
         <div className="admin-table-container">
           <div className="admin-table-toolbar books-table-toolbar">
-            <span className="books-muted">Showing <strong>{rows.length}</strong> of <strong>{total.toLocaleString('vi-VN')}</strong> immutable transactions · 50 per page</span>
-            <button type="button" className="admin-btn-outline books-btn-sm" onClick={load}>Refresh</button>
+            <span className="books-muted books-table-count">
+              <IconHistory size={13} />
+              Showing <strong>{rows.length}</strong> of <strong>{total.toLocaleString('vi-VN')}</strong> immutable transactions · 50 per page
+            </span>
+            <button type="button" className="admin-btn-outline books-btn-sm" onClick={load}><IconRefresh size={12} /> Refresh</button>
           </div>
 
           <div className="books-table-scroll">
