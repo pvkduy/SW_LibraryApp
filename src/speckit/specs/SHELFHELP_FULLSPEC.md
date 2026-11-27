@@ -3,13 +3,15 @@
 
 | Field | Value |
 |---|---|
-| Version | 1.3 (admin UI simplified per `scope_minimizing.md`; reduced scope) |
-| Date | 2026-11-14 |
-| Source document | Project Proposal PA1 (sections 3.1 to 3.10 and section 4) |
+| Version | 1.4 (PA4: authentication lockout, persistent sessions, active-session management) |
+| Date | 2026-11-27 |
+| Source document | Project Proposal PA1 (sections 3.1 to 3.10 and section 4); PA4 use-case revisions `UC02.md`, `UC32.md`, `Changes.md` |
 | Target | React web app, responsive (mobile-first for readers, desktop-first for admin) |
 | Intended consumer | Agentic AI coding tool or Spec Kit |
 
 > **Scope note (v1.3).** §8 (Admin Mode) was pruned to match `docs/analysis-and-design/scope_minimizing.md`: the Settings screen is removed (policies are hardcoded defaults, two fixed tiers), Reports is three presets (Circulation, Fines & Revenues, Inventory), the Dashboard is eight metrics plus a top-10 list and one category-trend chart, notifications carry no deep links, the CSV import previews only erroneous rows, acquisitions is a hand-created checklist batch (no pricing/providers/partial shipments/export-versions), counter payments are a simplified settle panel in Circulation, and there is no dedicated staff resolve-lost flow (copy status changes happen in Books → Copies). Removed machinery is archived in §20.12 onward. The traceability matrix (§16–§17) and §19 build order are **stale pending regeneration by the `spec-matrix` script** and should not be treated as authoritative until refreshed.
+
+> **PA4 note (v1.4).** The PA4 use-case revision is incorporated. **UC-02** adds a server-enforced failed-sign-in lockout (five failures per identifier within 15 minutes, 10-minute lockout, HTTP 429 with `Retry-After`) and the **"Keep me signed in"** persistent session that stores only the refresh token. **UC-32** adds **Manage active sessions**: a new reader/staff screen (R-23) that lists the caller's signed-in devices and revokes one or all other sessions. UC-32 reuses the retired use-case identifier; the former "Configure library policies" use case remains out of scope (§20.12). New requirement **FR-AUTH-11**; new test **TS-67**; new policy **POL-19**; new decisions **DEC-57** and **DEC-58**.
 
 ---
 
@@ -73,6 +75,8 @@ Real payment gateway (an adapter is built, only the simulator is implemented), p
 | Debt hold | Derived block: student has outstanding charges, so new loan requests are blocked. |
 | Restricted | Account status set after a loss. Library services are blocked until an admin restores access. |
 | Strike | A penalty counted against a member when a `ready_for_pickup` reservation expires (offered a copy but stalled the 48 h pickup window). |
+| Active session | One signed-in browser or device record in Supabase Auth for a user, identified by an opaque session ID and a refresh token. |
+| Session inventory | The server-side list of the caller's active sessions, derived from `auth.sessions` and exposed only through an Edge Function (never through PostgREST). |
 
 ---
 
@@ -88,8 +92,9 @@ There is a single staff role. Staff accounts cannot borrow. A staff member who i
 
 ### 2.2 Routing rules
 - After login, `student` goes to `/`, staff go to `/admin`.
-- A student opening `/admin/*` sees the 403 page. Staff opening reader routes are redirected to `/admin`.
+- A student opening `/admin/*` sees the 403 page. Staff opening reader routes are redirected to `/admin`; staff reach the shared account screen at its admin route (`/admin/profile/sessions`).
 - Unauthenticated users can open only `/login`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email`.
+- The shared account screen R-23 is served at `/profile/sessions` for students and `/admin/profile/sessions` for staff; both show only the caller's own sessions.
 
 ### 2.3 Permission matrix
 | Capability | student | admin |
@@ -100,6 +105,7 @@ There is a single staff role. Staff accounts cannot borrow. A staff member who i
 | Submit and track suggestions | Yes | No |
 | Use chatbot | Yes | No |
 | Edit own profile, avatar, password | Yes | Yes |
+| Review and revoke own active sessions | Yes | Yes |
 | Add/edit books, copies, bulk import | No | Yes |
 | Handover, return, record counter payment | No | Yes |
 | Mark loan lost manually | No | Yes |
@@ -177,6 +183,8 @@ Each row is a place where PA1 is inconsistent, ambiguous, or silent. The **Adopt
 | DEC-54 | The team first assumed Firebase Firestore plus Supabase Storage, but Firestore needs a paid plan for scheduled jobs and server code, and has no joins, constraints, or full-text search. | Use Supabase for everything: Postgres, Auth, Storage, Edge Functions, `pg_cron`. Supabase Auth is chosen over Firebase Auth because its JWT feeds Row Level Security directly. Firebase Auth remains a fallback only if Supabase Auth proves unsuitable (Supabase can accept third-party JWTs, but this adds integration work and must be verified before choosing it). | Yes |
 | DEC-55 | `pg_cron` schedules run in UTC, but all policies are in Vietnam local time (UTC+7, no DST). | Jobs are scheduled in UTC with the local time in a comment (00:05 local = 17:05 UTC; 08:00 local = 01:00 UTC). Date logic inside jobs uses `Asia/Ho_Chi_Minh`. Jobs process everything due, not only the current window, so a missed run catches up. | No |
 | DEC-56 | Vietnamese text is typed with and without diacritics, and users mix both. Pure accent-insensitive matching ignores what the user typed; pure accent-sensitive matching hides valid results. | Two-tier matching (POL-17): every accent variant is a match, but results that match the typed accents exactly rank first, and the other variants follow. Applies to a query with accents (`hóa` ranks `hóa` first, then `họa` and `hoa`) and without accents (`hoa` ranks `hoa` first, then `hóa` and `họa`). | No |
+| DEC-57 | PA4 requires listing and remotely revoking a user's signed-in devices, but Supabase does not expose `auth.sessions` through PostgREST and the browser must never hold the service-role key. | Add server-side `list-sessions`, `revoke-session`, and `revoke-other-sessions` Edge Functions that derive the caller from the verified JWT and use the service role against the Auth admin API. They return only the caller's own sessions, never tokens, and never accept a `user_id` or session owner from the request body. The current session is ended only through normal sign-out (FR-AUTH-03), never through remote revocation. | No |
+| DEC-58 | PA4 adds a failed-sign-in lockout and a "Keep me signed in" option, but the thresholds and what is persisted were unspecified. | Default policy: five consecutive failed attempts for the same identifier (email or Student ID) within 15 minutes locks the identifier for 10 minutes, enforced server-side, with a per-IP/device rate limit alongside and HTTP 429 + `Retry-After` on every blocked attempt. A successful sign-in or password reset clears the counter. "Keep me signed in" persists only the Supabase refresh token (`localStorage` when checked, `sessionStorage` when not); the password is never stored. Thresholds are `settings` values. | Yes |
 
 ---
 
@@ -193,8 +201,10 @@ All values below are defaults stored in `settings` table, key `library` (4.17). 
 - Registration needs: full name, university email (domain in allowlist), student ID (unique, matches pattern), faculty (from list), phone (optional), password (min 8 chars, at least one letter and one digit), acceptance of terms.
 - Email and student ID are unique. Unverified accounts are deleted after 7 days.
 - Account status values: `pending_verification`, `active`, `restricted`, `inactive`. Gating in 6.1.
-- **Inactive** is set only by an admin and only if: no items in `awaiting_payment`, `payment_failed`, `ready_for_pickup`, `borrowed`, `overdue`, `lost`; no reservation in `ready_for_pickup`; outstanding debt is 0. Effects: waiting reservations cancelled, wishlist cleared, membership ended without refund, Supabase Auth user banned, data retained. Only an admin can reactivate.
+- **Inactive** is set only by an admin and only if: no items in `awaiting_payment`, `payment_failed`, `ready_for_pickup`, `borrowed`, `overdue`, `lost`; no reservation in `ready_for_pickup`; outstanding debt is 0. Effects: waiting reservations cancelled, wishlist cleared, membership ended without refund, Supabase Auth user banned and all active sessions revoked (FR-AUTH-11), data retained. Only an admin can reactivate.
 - **Restricted** is set automatically when a loan becomes `lost`. It is lifted only by an admin after the checklist in 4.9 passes. The student can press "Request review" to notify admins.
+- **Sign-in lockout (POL-19).** After five consecutive failed sign-in attempts for the same identifier (email or Student ID) within 15 minutes, the identifier is locked for 10 minutes. The lockout is enforced server-side, applies to both sign-in forms, and is paired with a per-IP/device rate limit. A successful sign-in or password reset clears the counter; password recovery is never blocked by the lockout.
+- **Persistent session (POL-19).** "Keep me signed in" persists only the Supabase refresh token in `localStorage`; when unchecked, the refresh token stays in `sessionStorage` and ends with the tab. The password is never stored. The account menu and Profile screen link to **Active Sessions** (R-23, FR-AUTH-11) for reviewing and remotely revoking other devices.
 
 ### 4.3 Membership and entitlements (POL-03)
 - The membership model is fixed to exactly two tiers: the **Standard (unpaid) rank** (the default, no purchase) and one **yearly Premium membership** (Academic Year, 365 days from the start date). Admins may edit the policies of these two tiers (entitlements and, for Premium, price and duration) but may not create additional plans or deactivate either tier.
@@ -378,8 +388,10 @@ Rating 1 to 5 required, text optional up to 1,000 characters. One review per stu
 | `chat.min_similarity` | tune after evaluation (starting value 0.55 cosine similarity) |
 | `search.fuzzy_threshold` | 0.3 (`pg_trgm` similarity) |
 | `notification_retention_days` | 90 |
+| `auth.max_failed_attempts` / `auth.failure_window_min` / `auth.lockout_min` | 5 / 15 / 10 |
+| `auth.session_list_max` | 20 |
 
-### 4.19 Settings timing (POL-18)
+### 4.18 Settings timing (POL-18)
 A function reads settings once, at the start of its transaction (one `settings.version`). A scheduled job reads them once at the start of each run.
 
 A settings change applies to actions that start after it commits. Values already written onto a record never change.
@@ -397,7 +409,7 @@ Two cases need care:
 - **Renewals** use the current entitlements at the moment of renewal (DEC-53). Member privileges come from the membership snapshot.
 
 
-### 4.18 Search matching and ranking (POL-17)
+### 4.19 Search matching and ranking (POL-17)
 - **Normalization** is applied identically to the query and to catalog text: Unicode NFC (so composed and decomposed input are equal), lowercase, whitespace trimmed and collapsed, and ISBN hyphens removed. Tone-mark placement is also normalized, so old and new spellings such as `hóa` and `hoá` count as the same word. The cluster list (`oa`, `oe`, `uy`) and the canonical placement are defined once in `packages/shared` and used by both the browser and the database.
 - **Two kinds of match.** *Accent-exact*: the word is identical after the normalization above. *Accent-insensitive*: the word is identical after all diacritics are removed, including `đ` to `d`. Every accent-exact match is also an accent-insensitive match.
 - **Recall (what is returned).** A book is a candidate if it matches accent-insensitively (or by typo tolerance). The candidate set is therefore the same whether the user types `hóa`, `họa`, or `hoa`.
@@ -405,6 +417,19 @@ Two cases need care:
 - **Other sorts** (recency, rating, popularity) return the same candidate set ordered by the chosen key. Accent exactness is used only as the final tie-break.
 - **Fields searched:** title, authors, keywords, ISBN. Descriptions are left to the assistant (R-20).
 - **Reuse.** Suggestion grouping and the "already in the library" check (FR-SUGG-01, FR-SUGG-03) use the accent-insensitive comparison.
+
+### 4.20 Authentication lockout and session policy (POL-19)
+- **Failed-attempt lockout.** Default: after **5 consecutive failed sign-in attempts** for the same account identifier (email or Student ID) within **15 minutes**, the identifier is locked for **10 minutes**. The thresholds are `settings` values (`auth.max_failed_attempts`, `auth.failure_window_min`, `auth.lockout_min`), not client constants.
+- The lockout key covers both the email address and the Student ID of the same account. The policy applies whether the user signs in with either form. Reloading the page, clearing browser storage, or switching forms does not bypass it.
+- A per-IP or per-device rate limit runs alongside the per-identifier lockout to slow password spraying across many accounts. A CAPTCHA challenge may be shown before the lockout threshold.
+- A blocked attempt returns HTTP 429 with a generic message and a `Retry-After` value, even when the supplied password is correct. The response must not reveal whether the email/Student ID exists or whether the password was correct. The sign-in button stays disabled until the countdown ends.
+- A successful sign-in or a successful password reset (`UC-03`) clears the failed-attempt counter for that identifier. The lockout must never block the password-recovery flow.
+- **Session persistence.** "Keep me signed in" persists only the Auth service's refresh token: with the Supabase client, `persistSession: true`, `autoRefreshToken: true`, and `storage: window.localStorage` when checked, or `storage: window.sessionStorage` when unchecked. The access token stays in memory and refreshes automatically. The application never stores the password in `localStorage`, `sessionStorage`, IndexedDB, cookies, application state, or logs.
+- **Browser password managers.** Use a real `<form>` with `autocomplete="username"` and `autocomplete="current-password"` (and `autocomplete="new-password"` on registration and reset forms). The application must not read from or write to the browser credential store.
+- **Active-session inventory.** The list is based on the Auth service's session records (`auth.sessions`: session ID, creation time, last update, IP address, user agent). The current session is identified by the session ID associated with the caller's JWT, never by guessing from the user agent. "Last active" is eventually consistent and is shown as a relative time.
+- **Privacy.** Session metadata (device, browser, approximate IP/location, last-active time) is shown only to the owner of the session. The API never returns access tokens, refresh tokens, password hashes, service-role keys, or another user's data. IP addresses and user agents are truncated where practical and excluded from analytics exports.
+- **Revocation semantics.** Revoking a session invalidates its refresh token; the short-lived access token may remain valid until it expires, so sensitive Edge Functions re-verify account status and, where required, session validity. If immediate termination is required, the server may maintain a short-lived session denylist or check the Auth service's session record before executing sensitive commands. Revocation is idempotent: revoking an already-revoked session succeeds without an error and without creating a duplicate audit entry. "Sign Out All Other Sessions" never revokes the current session; ending the current session is the responsibility of normal sign-out (`FR-AUTH-03`). Every revocation is audit-logged with actor, session identifier (or a hash), timestamp, and outcome; passwords and tokens are never logged.
+- **Failure handling.** If the session list is unavailable, the UI says so and still offers "Sign Out This Device" and Retry. If revocation fails or times out, the row stays and no success message is shown until the Auth service confirms the revocation.
 
 ---
 
@@ -465,6 +490,7 @@ While `ready_for_pickup`, only the Reservation row exists; no Loan Item is creat
 - **Charge:** `unpaid` -> `paid`; `unpaid` -> `waived` or `cancelled` (admin or system with reason).
 - **Suggestion, Batch, Slip:** see 4.12 and 4.13. Slip: `draft`, `completed`, `cancelled`. Batch line: `pending`, `received`.
 - **Membership (derived):** `upcoming`, `active`, `expired`, `terminated`.
+- **Auth session (derived):** `active` -> `revoked` or `expired`. Remote revocation is idempotent; an already-revoked or expired session is treated as success (POL-19).
 
 ---
 
@@ -528,12 +554,12 @@ Conventions for every screen: loading uses skeletons (never a blank page), faile
 ### R-03 Login and logout `/login`
 **Story:** As a registered user, I want to log in and out securely.
 
-- **FR-AUTH-03** `[PA1 §3.1]` **Login and logout.** The system SHALL authenticate with email and password, offer "Keep me signed in" (local vs session persistence), redirect by role (2.2), and sign out on demand. Wrong credentials show one generic message. A Supabase Auth rate-limit error (HTTP 429) shows a lockout message. `inactive` accounts see "Account inactive, contact the library". `restricted` accounts log in and see the restricted banner. Logout clears client caches and unsubscribes all listeners. *AC:* Given wrong password, then the message does not reveal whether the email exists. Given a student, when login succeeds, then `/` opens. Given an admin, then `/admin` opens. Given logout, then browser back does not show private data.
+- **FR-AUTH-03** `[PA1 §3.1]` **Login and logout.** The system SHALL authenticate with email or Student ID and password, offer **"Keep me signed in"** (unchecked by default; persists only the refresh token per POL-19), redirect by role (2.2), and sign out on demand. The sign-in form SHALL use a real `<form>` with `autocomplete="username"` and `autocomplete="current-password"` so the browser password manager can save credentials; the application SHALL never read or write the browser credential store. Wrong credentials show one generic message that does not reveal whether the account exists. The system SHALL enforce the POL-19 lockout: after five consecutive failures for the same identifier within 15 minutes, the identifier is locked for 10 minutes, and every attempt returns HTTP 429 with a generic message and a `Retry-After` value, even when the password is correct; a successful sign-in or password reset clears the counter, and a per-IP/device rate limit runs alongside. `inactive` accounts see "Account inactive, contact the library". `restricted` accounts log in and see the restricted banner. The account menu SHALL link to **Active Sessions** (R-23, FR-AUTH-11). Logout SHALL revoke the current refresh token, clear local session state, persisted session tokens, and client caches, and unsubscribe all listeners. *AC:* Given wrong password, then the message does not reveal whether the email exists. Given five failures within 15 minutes, then the sixth attempt (even with the correct password) returns 429 with `Retry-After` and the sign-in button stays disabled until the countdown ends. Given a reload, cleared browser storage, or a switch between email and Student ID during the lockout, then the lockout still applies. Given "Keep me signed in" selected and the browser restarted, then the session is restored without re-entering credentials; given it is not selected, then closing the tab ends the session. Given a student, when login succeeds, then `/` opens. Given an admin, then `/admin` opens. Given logout, then browser back does not show private data and the refresh token is invalid.
 
-**States:** pending spinner on button; offline message.
+**States:** pending spinner on the button; lockout countdown with a disabled Sign In button; shared-device hint under the "Keep me signed in" checkbox; offline message.
 
 ### R-04 Forgot and reset password `/forgot-password`, `/reset-password`
-- **FR-AUTH-04** `[PA1 §3.1]` **Password reset by emailed link.** The system SHALL accept an email, always answer "If an account exists, we sent a link", and send the Supabase Auth reset link. The reset page SHALL validate the recovery session, enforce the password policy, and on success redirect to login. Expired or used links show "Link expired" with a button to request a new one. Other sessions SHOULD be revoked after reset. *AC:* Given an unknown email, then the same confirmation text appears. Given an expired link, then the reset form is not shown. Given a weak new password, then submit is blocked with rule hints.
+- **FR-AUTH-04** `[PA1 §3.1]` **Password reset by emailed link.** The system SHALL accept an email, always answer "If an account exists, we sent a link", and send the Supabase Auth reset link. The reset page SHALL validate the recovery session, enforce the password policy, and on success redirect to login. A successful reset SHALL clear the failed-attempt counter for the identifier (POL-19) and SHOULD revoke all other sessions (FR-AUTH-11) while keeping the current recovery session. Expired or used links show "Link expired" with a button to request a new one. The lockout SHALL never block the password-recovery flow. *AC:* Given an unknown email, then the same confirmation text appears. Given an expired link, then the reset form is not shown. Given a weak new password, then submit is blocked with rule hints. Given a locked identifier, then the reset link still works and a successful reset clears the lockout.
 
 ### R-05 Home `/`
 **Story:** As a student, I want one place that shows what needs my attention and what is new.
@@ -596,7 +622,7 @@ Tabs: Reservations (position, status, deadline countdown) and Wishlist (list, re
 
 ### R-15 Profile `/profile`
 - **FR-PROF-01** `[PA1 §3.2]` **Edit personal information.** The system SHALL let the student edit name, phone, and faculty. Email and student ID are read-only with text "Contact the library to change". Unsaved changes trigger a leave-confirm. *AC:* Given an invalid phone, then save is blocked with a message. Given a saved change, then it persists after reload.
-- **FR-PROF-02** `[PA1 §3.2]` **Change password.** The system SHALL require the current password (re-authentication), enforce the password policy, and handle `requires-recent-login`. Other sessions SHOULD be signed out. *AC:* Given a wrong current password, then the change is rejected with a specific error and nothing changes.
+- **FR-PROF-02** `[PA1 §3.2]` **Change password.** The system SHALL require the current password (re-authentication), enforce the password policy, and handle `requires-recent-login`. On success the system SHALL revoke all other sessions through FR-AUTH-11 while keeping the current session active. *AC:* Given a wrong current password, then the change is rejected with a specific error and nothing changes. Given a successful change, then every other device is signed out and the current session continues.
 - **FR-PROF-03** `[PA1 §3.2]` **Avatar upload or capture with crop.** The system SHALL accept an image file (JPEG, PNG, WebP up to 5 MB) or a camera capture, let the student crop to a square with zoom and pan, produce a 512x512 JPEG of at most 300 KB (EXIF orientation honored), upload to the `avatars` bucket at `{uid}/avatar.jpg` (the Storage policy checks the owner), and allow removal (falls back to initials). Cancel at any step discards everything. A failed upload keeps the old avatar. *AC:* Given a 4 MB PNG, then the stored file is at most 300 KB and square. Given cancel after crop, then the old avatar remains. Given an upload network failure, then an error with Retry shows and the old avatar remains.
 
 ### R-16 Membership `/membership`
@@ -631,6 +657,15 @@ Tabs: Reservations (position, status, deadline countdown) and Wishlist (list, re
 - **FR-GLOB-01** `[+]` **Status banners.** The system SHALL show persistent banners for: Restricted (what happened, how to resolve, Request review button), Debt hold (amount, Pay now), Reservation ban (end date), Membership expiring (7 days), Pickup ending (under 12 h). *AC:* Given debt of 6,000 VND, then the banner shows that amount and links to R-17.
 - **FR-GLOB-02** `[+]` **Error, forbidden, not found, offline.** The system SHALL provide a global error boundary with Reload, 403 and 404 pages, and an offline banner that disables mutating actions and queues nothing. *AC:* Given a thrown render error, then the boundary shows and the error is reported to monitoring. Given the network is lost, then buttons that call functions are disabled with "You are offline".
 
+### R-23 Active sessions (shared) `/profile/sessions`, `/admin/profile/sessions`
+**Story:** As a signed-in user, I want to see every device signed in to my account and remotely sign out ones I no longer trust.
+
+**Entry points:** the account menu and the Profile screen (R-15) in Reader Mode, and the admin header profile block in Admin Mode. Students use `/profile/sessions`; staff use `/admin/profile/sessions`. The screen lists only the caller's own sessions.
+
+- **FR-AUTH-11** `[+]` **Manage active sessions** (traces to FEAT-01; elaborates FR-AUTH-03, FR-AUTH-04, FR-PROF-02). The system SHALL call the server-side `list-sessions` Edge Function with the caller's JWT and display only the caller's sessions, sorted by most recent activity: a **"This device"** badge on the current session, a human-readable device and browser description derived from the user agent, the approximate IP address or coarse location when available, the sign-in time, the last-active time, and a **"Sign Out"** action for every other session. "Last active" is eventually consistent and is shown as a relative time. The session identifier is opaque; the response SHALL never include access tokens, refresh tokens, password hashes, service-role keys, or another user's data. A missing user agent or IP address SHALL display "Unknown device" or "Unknown location" rather than an empty row. The user SHALL be able to revoke one other session after a confirmation dialog naming the device and sign-in time and warning that the device will need to sign in again, or revoke **all other sessions** after a confirmation that states the current session stays active. Revocation SHALL call `revoke-session` (or `revoke-other-sessions`), verify that the session belongs to the caller, invalidate its refresh token, remove the row only after the Auth service confirms, and audit-log the event. Success shows "That device has been signed out." for a single session and "All other devices have been signed out." for the bulk action; a failed request shows "We could not sign out that device. Please try again." Revocation is idempotent: an already-expired or already-revoked session is treated as success. The current session SHALL be ended only through normal sign-out (FR-AUTH-03), never through remote revocation. A staff member manages only their own sessions; account-wide suspension is FR-AUTH-07, which revokes the affected user's sessions as a side effect. If the session list cannot be loaded, the screen SHALL still offer "Sign Out This Device" (which continues with FR-AUTH-03) and Retry. *AC:* Given two devices, then each shows the other with a "This device" badge on the current one. Given "Sign Out" on another device, then that device's next refresh fails and it returns to the sign-in screen, while the current session stays active. Given "Sign Out All Other Sessions", then every other session is revoked and only "This device" remains. Given an already-revoked session, then the row is removed and "This session was already signed out" shows. Given a network failure, then the row stays, an error with Retry shows, and no success message appears. Given the session-list endpoint is unavailable, then the screen offers "Sign Out This Device" and Retry. Given a request that names another user's session, then it is rejected with `SESSION_NOT_FOUND` and no data is returned. Given an unrecognized device, then the screen recommends changing the password (R-15) and reviewing account activity.
+
+**States:** skeleton while loading; empty state "No other devices are signed in"; per-row pending state with the Sign Out button disabled; relative times refreshed on focus. **Accessibility:** the list is a semantic list or table with column headers; each "Sign Out" action has an accessible name that includes the device and sign-in time; confirmation dialogs trap focus, close on Escape, return focus to the trigger, meet WCAG 2.1 AA, and never focus the destructive action by default; destructive actions are visually distinct from navigation actions.
+
 ---
 
 ## 8. Admin Mode: screens, flows, and features
@@ -640,7 +675,7 @@ Admin shell: left navigation with eight destinations (Dashboard, Circulation, Bo
 ### A-01 Admin shell `/admin`
 Navigation and layout only. No feature requirements of its own.
 
-- **Header (right side):** a notification bell (opens the admin notification view) and a profile block showing the admin's avatar and admin ID. No global search bar.
+- **Header (right side):** a notification bell (opens the admin notification view) and a profile block showing the admin's avatar and admin ID; the profile block opens the staff profile menu, which links to **Active Sessions** (R-23, `/admin/profile/sessions`). No global search bar.
 - **Notifications (admin):** notifications simply announce a feature/event and carry **no deep links**. The admin notification view offers mark-read (single and "mark all") and All/Unread read-status filters only.
 
 ### A-02 Dashboard `/admin`
@@ -717,7 +752,7 @@ Navigation and layout only. No feature requirements of its own.
 **Kind:** master–detail panel over the student directory.
 
 - **FR-SET-03** `[+]` **Student directory and detail.** The system SHALL search and filter students (status, membership), use a master table + detail panel layout, and show detail with profile, current status, membership, and a simplified account history: only records of tier changes, account status (`active` / `restricted`), strikes, and their corresponding timestamps — nothing else. There are no summary figures and no tabbed audit/auditing view; there is no dedicated receipts tab in the student detail (all receipts are deferred to the Money screen). The detail panel exposes **four actions: Set Inactive, Restore (from Restricted), Membership refund/termination, and Register/renew membership**. *AC:* Given a detail view, then the history shows only tier-change, status, and strike records with timestamps.
-- **FR-AUTH-07** `[PA1 §3.1]` **Set account Inactive.** An admin SHALL set Inactive only when the POL-02 checklist passes; the checklist is shown with each failing condition and a link. Effects per POL-02. *AC:* Given one borrowed book, then the action is disabled and the checklist shows "1 item not returned". Given a passing checklist, then the user's Auth account is disabled and the reservations are cancelled.
+- **FR-AUTH-07** `[PA1 §3.1]` **Set account Inactive.** An admin SHALL set Inactive only when the POL-02 checklist passes; the checklist is shown with each failing condition and a link. Effects per POL-02, including revoking every active session (FR-AUTH-11) and banning the Auth user so no refresh token can renew. *AC:* Given one borrowed book, then the action is disabled and the checklist shows "1 item not returned". Given a passing checklist, then the user's Auth account is disabled, all active sessions are revoked, and the reservations are cancelled.
 - **FR-AUTH-08** `[PA1 §3.5]` **Restore a Restricted account.** An admin SHALL see the §4.9 restore checklist auto-evaluated and restore only when all pass, with a note. The student is notified and the action is audit-logged. *AC:* Given an unreturned lost book with its replacement unpaid, then Restore is disabled. Given path A or path B completed, then Restore enables.
 - **FR-MEM-07** `[PA1 §3.2]` **Membership refund/termination.** An admin SHALL refund/terminate a membership via a reversal receipt (FR-RCPT-05); the student reverts to non-member entitlements immediately and existing loans keep due dates. Memberships cannot be transferred. *AC:* Given a reversed membership receipt, then the membership status is `terminated`, the student has non-member entitlements, and existing loans keep their due dates.
 - **FR-MEM-10** `[+]` **Register or renew membership (counter).** An admin SHALL register a new membership or renew an existing one at the counter as a counter transaction (via the simulated/counter payment), showing eligibility and effective start/end dates, collecting an exact payment, creating the membership snapshot, and issuing a receipt. *AC:* Given a counter purchase, then a membership snapshot and a receipt exist and the student's entitlements update immediately.
@@ -771,7 +806,7 @@ Navigation and layout only. No feature requirements of its own.
 ### 10.1 Overview
 ```
 Browser (React SPA on a static host: Vercel, Netlify, or Cloudflare Pages)
-  |-- Supabase Auth (email/password, verification, reset; the JWT carries the role)
+  |-- Supabase Auth (email/password, verification, reset, failed-attempt lockout, session inventory; the JWT carries the role)
   |-- supabase-js reads (PostgREST, protected by Row Level Security) and Realtime subscriptions
   |-- Edge Functions (TypeScript on Deno) ---> one Postgres transaction per mutation
   '-- Storage (buckets with policies; upload and download under the caller's own identity)
@@ -803,7 +838,7 @@ Supabase project (region ap-northeast-2, Seoul)
 | Barcode labels | JsBarcode (Code 128) + PDF library | Label sheet |
 | Import/export | PapaParse (CSV), ExcelJS (XLSX), pdfmake or jsPDF with an embedded Vietnamese-capable font | Client-side up to 20,000 rows |
 | Image crop | react-easy-crop + canvas | 512x512 output |
-| Auth | Supabase Auth | Role in `app_metadata.role`, written only by server code |
+| Auth | Supabase Auth | Role in `app_metadata.role`, written only by server code; session inventory and revocation through Edge Functions with the service role (DEC-57) |
 | Database | Supabase Postgres | RLS on every table, migrations via Supabase CLI |
 | Backend | Supabase Edge Functions (Deno, TypeScript) | One folder per function, thin handlers |
 | Scheduling | `pg_cron` (+ `pg_net` to call Edge Functions) | Schedules are in UTC, see FR-SYS-01 |
@@ -817,7 +852,7 @@ Supabase project (region ap-northeast-2, Seoul)
 ### 10.3 External services and integrations
 | Service | Purpose | Abstraction | Failure behavior |
 |---|---|---|---|
-| Supabase Auth | Identity, verification and reset emails | none | Login unavailable message |
+| Supabase Auth | Identity, verification and reset emails, failed-attempt lockout, session inventory and revocation (admin API) | none | Login unavailable message; session list unavailable state (EC-39) |
 | Supabase Postgres | Primary data, search, vectors, jobs | none | Maintenance page, reads fail clearly, jobs catch up (EC-35) |
 | Supabase Storage | Avatars, covers, evidence photos, imports | `StorageService` | Upload retry; images fall back to placeholders |
 | Email provider (Resend, Brevo, or SendGrid) | Notification emails, and custom SMTP for Supabase Auth emails | `EmailProvider`, `email_outbox` with retry | Retry with backoff 5 times, then `failed`; in-app notification still exists |
@@ -947,6 +982,8 @@ All tables use `uuid` primary keys unless noted, `timestamptz` timestamps, integ
 | `settings`, `settings_history` | key, value (jsonb), version; history: key, old, new, actor, at | Edge Functions (admin) |
 | `counters`, `idempotency_keys`, `job_runs` | operational | Edge Functions and jobs |
 
+**Auth session data.** Active sessions are not a public table. The source is the Supabase-managed `auth.sessions` record (session ID, creation time, last update, IP address, user agent), read only by the `list-sessions` Edge Function with the service role. It is never exposed through PostgREST or RLS to the browser, and no refresh or access token is returned to the client.
+
 ### 12.2 Constraints and indexes (minimum)
 **Constraints that enforce invariants:**
 - `profiles`: unique `student_id`, unique case-insensitive `email`.
@@ -967,12 +1004,13 @@ All tables use `uuid` primary keys unless noted, `timestamptz` timestamps, integ
 - Admins SELECT every table the admin screens need. `audit_logs` and `settings_history` are readable by admins only and are written by Edge Functions and triggers.
 - Client write policies exist only for: `cart_items` (own rows), `notifications.read` (own, column grant), `chats` and `chat_messages` delete (own), and the `profiles` columns listed in 12.1. Everything else is written by Edge Functions with the service role.
 - Realtime is enabled only on `books` (counters), `notifications`, and `loan_items`; RLS applies to subscriptions.
+- The `auth` schema is not exposed to clients. Session inventory and revocation are served only by the `list-sessions`, `revoke-session`, and `revoke-other-sessions` Edge Functions, which derive identity from the JWT (DEC-57).
 - pgTAP tests cover every table for every role (TS-04).
 
 ### 12.4 Edge Functions and RPCs
 | Group | Edge Functions (kebab-case, invoked by the client) |
 |---|---|
-| Account | `register-student`, `set-account-inactive`, `reactivate-account`, `restore-account`, `request-restore-review` |
+| Account | `register-student`, `set-account-inactive`, `reactivate-account`, `restore-account`, `request-restore-review`, `list-sessions`, `revoke-session`, `revoke-other-sessions` |
 | Catalog | `lookup-isbn`, `save-book`, `import-books`, `add-copies`, `change-copy-status`, `set-books-collection`, `submit-review` |
 | Borrowing | `checkout-cart`, `cancel-loan-item`, `switch-to-counter-payment`, `renew-loan`, `reserve-book`, `cancel-reservation`, `toggle-wishlist` |
 | Money | `create-payment`, `complete-simulated-payment`, `purchase-membership`, `record-counter-payment`, `create-manual-receipt`, `reverse-receipt` |
@@ -982,6 +1020,8 @@ All tables use `uuid` primary keys unless noted, `timestamptz` timestamps, integ
 | Notifications | `send-bulk-reminder` |
 | Assistant | `chat-send` |
 
+**Session functions (DEC-57).** `list-sessions`, `revoke-session`, and `revoke-other-sessions` read or call the Supabase Auth admin API with the service role because `auth.sessions` is not exposed through PostgREST. They derive the caller from the verified JWT, never accept a `user_id` or session owner from the request body, and return only the caller's own sessions. Revocation invalidates the session's refresh tokens, is idempotent on not-found/already-revoked, writes an audit entry after the Auth service confirms, and never revokes the current session in the "all other" action. The service-role key never reaches the client.
+
 **Client-callable RPCs (SQL functions, run under RLS):** `search_books`, `server_time` (for countdown skew), `get_dashboard_kpis` and `get_rankings` (staff only), `get_due_overdue_groups` (staff only).
 **Server-only RPCs:** `match_books` (vector search, called by `chat-send`).
 **Job Edge Functions (called by `pg_cron` through `pg_net` with a secret header):** `job-nightly-loans`, `job-due-notifications`, `job-hold-expiry`, `job-payment-expiry`, `job-membership-reminders`, `job-pickup-warnings`, `job-email-outbox`, `job-embed-queue`.
@@ -989,7 +1029,7 @@ All tables use `uuid` primary keys unless noted, `timestamptz` timestamps, integ
 **Files:** no custom function; Storage policies (10.5).
 
 ### 12.5 Error contract
-Edge Functions return JSON `{ "error": { "reason", "message", "details" } }` with these HTTP statuses: 400 `VALIDATION_FAILED`; 401 `UNAUTHENTICATED`; 403 `FORBIDDEN_ROLE`, `ACCOUNT_NOT_ACTIVE`, `ACCOUNT_RESTRICTED`, `DEBT_HOLD`, `RESERVATION_BAN`, `NOT_MEMBER`; 404 not found; 409 `NOT_AVAILABLE`, `DUPLICATE_ACTIVE_LOAN`, `QUEUE_FULL`, `WISHLIST_FULL`, `STATUS_CHANGED`, `DUPLICATE`, `PAYMENT_ALREADY_DONE`; 410 `PAYMENT_EXPIRED`, `DEADLINE_PASSED`; 422 `LIMIT_REACHED`, `RENEWAL_NOT_ALLOWED`, `PRECONDITION_FAILED`; 429 `RATE_LIMITED`; 500 `INTERNAL`. The UI maps each `reason` to a message. `STATUS_CHANGED` always carries the current status so the UI can refresh and explain.
+Edge Functions return JSON `{ "error": { "reason", "message", "details" } }` with these HTTP statuses: 400 `VALIDATION_FAILED`; 401 `UNAUTHENTICATED`; 403 `FORBIDDEN_ROLE`, `ACCOUNT_NOT_ACTIVE`, `ACCOUNT_RESTRICTED`, `DEBT_HOLD`, `RESERVATION_BAN`, `NOT_MEMBER`; 404 not found or `SESSION_NOT_FOUND`; 409 `NOT_AVAILABLE`, `DUPLICATE_ACTIVE_LOAN`, `QUEUE_FULL`, `WISHLIST_FULL`, `STATUS_CHANGED`, `DUPLICATE`, `PAYMENT_ALREADY_DONE`; 410 `PAYMENT_EXPIRED`, `DEADLINE_PASSED`; 422 `LIMIT_REACHED`, `RENEWAL_NOT_ALLOWED`, `PRECONDITION_FAILED`; 429 `RATE_LIMITED`, `LOCKED_OUT` (always with `Retry-After`); 500 `INTERNAL`; 503 `SERVICE_UNAVAILABLE` (for example the session inventory is temporarily unavailable). The UI maps each `reason` to a message. `STATUS_CHANGED` always carries the current status so the UI can refresh and explain.
 
 ---
 
@@ -999,7 +1039,7 @@ Edge Functions return JSON `{ "error": { "reason", "message", "details" } }` wit
 |---|---|---|
 | NFR-01 | Performance | Reader initial route: LCP at most 2.5 s on a mid-range phone over 4G; initial JavaScript at most 250 KB gzip; admin code is lazy-loaded and never in the reader bundle. |
 | NFR-02 | Search | `search_books` p95 at most 300 ms at the database for 10,000 titles. |
-| NFR-03 | Server latency | p95 at most 2 s for checkout, handover, return, payment completion, renewal; p95 at most 8 s for an assistant reply. |
+| NFR-03 | Server latency | p95 at most 2 s for checkout, handover, return, payment completion, renewal; p95 at most 8 s for an assistant reply; the active-session list p95 at most 1 s for up to 20 sessions and a single-session revocation p95 at most 800 ms; "Sign Out All Other Sessions" at most 2 s for up to 20 sessions. |
 | NFR-04 | Read efficiency | No unbounded Realtime subscriptions or unpaginated queries in the UI. Lists are paginated. Dashboard RPCs use indexes and stay under 1 s p95 at the NFR-05 scale. Home screen makes at most 12 API requests on load. |
 | NFR-05 | Scale baseline | 20,000 students, 100,000 copies, 500 concurrent users, 50 checkouts per minute at semester start. Hot-book contention is mitigated by `SKIP LOCKED` copy selection and short transactions (10.7, RISK-02). |
 | NFR-06 | Security | Deny-by-default RLS on every table; CAPTCHA on register, login, and reset; every Edge Function validates input with Zod and authorizes by role and status; no service-role key or database URL in the client; CSP and no `dangerouslySetInnerHTML` with user content; signed URL TTLs per 10.5; rate limits on registration, resend, chat, and payments; dependency scanning in CI; OWASP ASVS Level 2 as the review checklist. |
@@ -1027,10 +1067,10 @@ Edge Functions return JSON `{ "error": { "reason", "message", "details" } }` wit
 | Mutation error | Mapped from `error.reason` (12.5) to a specific message. `STATUS_CHANGED` refreshes the item and explains what changed. |
 | Offline | Banner, mutating buttons disabled, reads served from cache where available. |
 | Cancellation | Every multi-step flow (avatar crop, payment, checkout, import, slip) has Cancel that discards cleanly and leaves no partial state. Leaving a dirty form asks for confirmation. |
-| Recovery | Failed payment: Retry, Pay at counter, Cancel. Failed upload: Retry with the same file. Failed import chunk: re-run with "skip duplicates". Failed email: retried, shown in admin as failed. Expired link or window: explain and offer the next step. |
+| Recovery | Failed payment: Retry, Pay at counter, Cancel. Failed upload: Retry with the same file. Failed import chunk: re-run with "skip duplicates". Failed email: retried, shown in admin as failed. Expired link or window: explain and offer the next step. Lockout: show the `Retry-After` countdown and keep password recovery available. Session list unavailable: offer "Sign Out This Device" and Retry. |
 | Concurrency | Server wins. If the state changed under the user, they see the new state, not a generic error. |
-| Destructive or irreversible actions | Confirm dialog stating consequences (cancel with refund, mark lost, inactivate, complete slip, reverse receipt, close batch). |
-| Sensitive timing | Countdowns use server deadlines. Expiry is confirmed by the server before the UI shows "Expired". |
+| Destructive or irreversible actions | Confirm dialog stating consequences (cancel with refund, mark lost, inactivate, complete slip, reverse receipt, close batch, revoke a session, sign out all other sessions). |
+| Sensitive timing | Countdowns use server deadlines. Expiry is confirmed by the server before the UI shows "Expired". A lockout countdown is driven by `Retry-After`, not a client-only timer. |
 
 ---
 
@@ -1089,6 +1129,9 @@ Edge Functions return JSON `{ "error": { "reason", "message", "details" } }` wit
 | EC-34 | Edge Function commits but the client times out | The client retries with the same idempotency key and receives the stored response; no second effect. |
 | EC-35 | Database paused or unavailable, or scheduled jobs missed | Reads show a maintenance page with Retry; mutations return `INTERNAL` with retry advice. On recovery each job processes everything due (FR-SYS-01). Deadlines are also checked at action time (handover, payment, renewal), so an expired item cannot be used just because a job has not yet run. |
 | EC-36 | Auth user created but `profiles` insert fails, or the reverse | `register-student` deletes the Auth user on failure. A nightly `reconcile` check reports Auth users without a profile, profiles without an Auth user, and accounts whose Auth role claim differs from `profiles.role`. |
+| EC-37 | Current session revoked from another device | The next protected request or token refresh fails. Clear local session state and any persisted refresh token, redirect to sign-in with "Your session was signed out on another device. Please sign in again.", and continue with FR-AUTH-03. |
+| EC-38 | Lockout bypass attempt by reloading, clearing storage, or switching between email and Student ID | The server-side lockout key covers both forms of the same account and survives client storage changes. The blocked attempt returns 429 with `Retry-After`; password recovery remains available. |
+| EC-39 | Active-session inventory unavailable or slow | Show "Active sessions are temporarily unavailable. You can still sign out of this device." with a "Sign Out This Device" action and Retry. Do not cache, fabricate, or partially render the list, and do not block navigation to other account settings. |
 
 ---
 
@@ -1100,7 +1143,7 @@ Each FR carries its own acceptance criterion (Sections 7 to 9). The scenarios be
 | ID | Scenario | Covers | Steps and expected result |
 |---|---|---|---|
 | TS-01 | Register and verify | FR-AUTH-01, FR-AUTH-02 | Register with valid data; user is `pending_verification`; verification email sent; other routes redirect; after verification and "I have verified", status `active`. Duplicate student ID and wrong domain give field errors and create no user. Resend honors the 60 s cooldown. |
-| TS-02 | Login, logout, role redirect, lockout | FR-AUTH-03, FR-AUTH-05 | Student lands on `/`, admin on `/admin`. Wrong password shows a generic message. Repeated failures show the lockout message. Logout clears cached data. Inactive user cannot log in. |
+| TS-02 | Login, logout, role redirect, lockout, persistent session | FR-AUTH-03, FR-AUTH-05 | Student lands on `/`, admin on `/admin`. Wrong password shows a generic message. Five failures within 15 minutes lock the identifier: the next attempt returns 429 with `Retry-After`, the button stays disabled, and a correct password is still rejected until the countdown ends. Reloading, clearing storage, or switching between email and Student ID does not bypass the lockout; a successful sign-in or password reset clears it. "Keep me signed in" restores the session after a browser restart; unchecked, the session ends when the tab closes. Logout clears cached data and invalidates the refresh token. Inactive user cannot log in. |
 | TS-03 | Password reset | FR-AUTH-04 | Unknown and known emails show the same text. Expired link shows "Link expired". Weak password is rejected. New password works. |
 | TS-04 | Authorization negatives | FR-AUTH-05, FR-GLOB-02 | Student opening `/admin` sees 403. Student calling an admin Edge Function gets 403 `FORBIDDEN_ROLE`. pgTAP RLS tests: student cannot read another student's loans, cannot write receipts or loan items. |
 | TS-05 | Seeded admin account | FR-AUTH-05 | The creation script makes an admin whose Auth role claim and `profiles.role` are both `admin`; login lands on `/admin`; `is_admin()` is true; a student account gets 403 on the same pages. |
@@ -1163,6 +1206,7 @@ Each FR carries its own acceptance criterion (Sections 7 to 9). The scenarios be
 | TS-64 | Payment history | FR-LOAN-10 | Receipts list with Reversed status for refunded items; printable view. |
 | TS-65 | Job idempotency | FR-SYS-01, FR-SYS-02 | Run every scheduled job twice for the same window: no duplicate notifications, charges, receipts, or status changes; `job_runs` records both. |
 | TS-66 | Counter reconciliation | FR-INV-09 | After random operations, nightly reconciliation finds zero drift; an injected drift is detected, fixed, and logged. |
+| TS-67 | Manage active sessions | FR-AUTH-11 | Sign in from two devices: the list shows only the caller's sessions, with "This device" on the current one, device/browser, coarse location, sign-in time, and last-active time; no tokens are returned. Revoke one other session: its next refresh fails, it returns to sign-in, and the current session stays active. "Sign Out All Other Sessions" leaves only "This device". An already-revoked session is treated as success and the row is removed. A network error keeps the row, shows Retry, and shows no success message. An unavailable list offers "Sign Out This Device" and Retry. A request naming another user's session is rejected with no data. Changing the password revokes other sessions. |
 
 ### 16.2 Non-functional test scenarios
 | ID | NFR | Scenario |
@@ -1181,7 +1225,7 @@ Each FR carries its own acceptance criterion (Sections 7 to 9). The scenarios be
 
 Generated by `scripts/spec-matrix` from this file. CI fails if an FR has no scenario or a scenario names an unknown FR.
 
-**Totals (v1.2, pre-pruning):** 107 functional requirements, 64 functional test scenarios, 13 requirements added by this spec (`[+]`), 56 decisions. **Stale after v1.3 admin pruning** (removed: FR-ANLY-03, FR-SUGG-06, FR-SET-01, FR-MEM-09; merged: FR-AUTH-08 → FR-AUTH-07; changed: FR-SUGG-04/05/07/08, FR-CIRC-07, FR-ANLY-01/02/04). Regenerate with `scripts/spec-matrix`.
+**Totals (v1.2, pre-pruning):** 107 functional requirements, 64 functional test scenarios, 13 requirements added by this spec (`[+]`), 56 decisions. **Stale after v1.3 admin pruning** (removed: FR-ANLY-03, FR-SUGG-06, FR-SET-01, FR-MEM-09; merged: FR-AUTH-08 → FR-AUTH-07; changed: FR-SUGG-04/05/07/08, FR-CIRC-07, FR-ANLY-01/02/04). **v1.4 PA4 additions:** FR-AUTH-11 (Manage active sessions), TS-67, DEC-57, DEC-58, POL-19. Regenerate with `scripts/spec-matrix`.
 
 ### 17.1 Proposal section to requirements
 | PA1 section | Requirements |
@@ -1197,7 +1241,7 @@ Generated by `scripts/spec-matrix` from this file. CI fails if an FR has no scen
 | §3.9 | FR-RCPT-02, FR-RCPT-03, FR-RCPT-04, FR-RCPT-05, FR-RCPT-01 |
 | §3.10 | FR-ANLY-01, FR-ANLY-02, FR-ANLY-03, FR-ANLY-04, FR-RCPT-06 |
 | §4 | FR-AI-01, FR-AI-05, FR-AI-02, FR-AI-03, FR-AI-04, FR-AI-06 |
-| Added by this spec | FR-HOME-01, FR-CART-08, FR-LOAN-10, FR-GLOB-01, FR-GLOB-02, FR-RES-05, FR-SET-03, FR-SET-01, FR-AI-07, FR-SYS-01, FR-SYS-02, FR-SYS-03, FR-SYS-05 |
+| Added by this spec | FR-HOME-01, FR-CART-08, FR-LOAN-10, FR-GLOB-01, FR-GLOB-02, FR-RES-05, FR-SET-03, FR-SET-01, FR-AI-07, FR-AUTH-11, FR-SYS-01, FR-SYS-02, FR-SYS-03, FR-SYS-05 |
 
 ### 17.2 Requirement to screen to test
 | FR | Requirement | Source | Screen | Test scenarios |
@@ -1206,6 +1250,7 @@ Generated by `scripts/spec-matrix` from this file. CI fails if an FR has no scen
 | FR-AUTH-02 | Email verification | §3.1 | R-02 | TS-01 |
 | FR-AUTH-03 | Login and logout | §3.1 | R-03 | TS-02 |
 | FR-AUTH-04 | Password reset by emailed link | §3.1 | R-04 | TS-03 |
+| FR-AUTH-11 | Manage active sessions | Added (PA4) | R-23 | TS-67 |
 | FR-HOME-01 | Home dashboard | Added | R-05 | TS-07 |
 | FR-SRCH-01 | Keyword search | §3.3 | R-06 | TS-08 |
 | FR-SRCH-02 | Filters | §3.3 | R-06 | TS-09 |
@@ -1228,7 +1273,7 @@ Generated by `scripts/spec-matrix` from this file. CI fails if an FR has no scen
 | FR-RES-01 | Reserve an unavailable book | §3.4 | R-14 | TS-37 |
 | FR-RES-04 | Cancel reservation | §3.4 | R-14 | TS-39 |
 | FR-PROF-01 | Edit personal information | §3.2 | R-15 | TS-41 |
-| FR-PROF-02 | Change password | §3.2 | R-15 | TS-41 |
+| FR-PROF-02 | Change password | §3.2 | R-15 | TS-41, TS-67 |
 | FR-PROF-03 | Avatar upload or capture with crop | §3.2 | R-15 | TS-42 |
 | FR-MEM-01 | View plans | §3.2 | R-16 | TS-33 |
 | FR-MEM-02 | Buy or renew a plan | §3.2 | R-16 | TS-33, TS-34 |
@@ -1378,6 +1423,7 @@ Generated by `scripts/spec-matrix` from this file. CI fails if an FR has no scen
 | TS-64 | Payment history | FR-LOAN-10 |
 | TS-65 | Job idempotency | FR-SYS-01, FR-SYS-02 |
 | TS-66 | Counter reconciliation | FR-INV-09 |
+| TS-67 | Manage active sessions | FR-AUTH-11 |
 
 ---
 
@@ -1429,6 +1475,7 @@ Each question below is owned by the product owner. Status is tracked in `docs/DE
 11. Confirm the replacement-price source and default.
 12. Confirm whether staff need a separate "assistant" or reports for management beyond Section 3.10.
 13. Confirm the Supabase plan for production (free pilot versus paid) and that Supabase Auth is acceptable instead of Firebase Auth (DEC-54).
+14. Confirm the sign-in lockout thresholds (5 failures / 15 minutes / 10-minute lockout) and the "Keep me signed in" persistence behavior (DEC-58).
 
 ---
 
@@ -1437,7 +1484,7 @@ Each question below is owned by the product owner. Status is tracked in `docs/DE
 | Milestone | Scope (FR groups) | Exit criteria |
 |---|---|---|
 | M0 Foundations | Repo, CI, Supabase projects (dev, staging, prod) and local stack, migration pipeline, shared package, settings loader, clock, i18n, design system, error contract, seed script, spec-matrix script | CI green with a hello-world Edge Function, a pgTAP RLS test, and a Playwright smoke test |
-| M1 Accounts | FR-AUTH-01 to 05, FR-PROF-01 to 03, FR-SYS-05, FR-GLOB-02 | TS-01 to 06, TS-41, TS-42, TS-60 |
+| M1 Accounts | FR-AUTH-01 to 05, FR-AUTH-11, FR-PROF-01 to 03, FR-SYS-05, FR-GLOB-02 | TS-01 to 06, TS-41, TS-42, TS-60, TS-67 |
 | M2 Catalog and search | FR-INV-01 to 04, 07, 09, FR-SRCH-01 to 05, 07, 08, FR-HOME-01 (without loans) | TS-08 to 12, TS-47 to 49 |
 | M3 Membership and money | FR-MEM-01 to 03, 05, 09, FR-CART-06, FR-RCPT-01, 06, FR-SET-01, FR-SYS-03 | TS-33, TS-34, TS-58 |
 | M4 Borrowing and circulation | FR-CART-01 to 05, 07, 08, FR-CIRC-01 to 03, 07, FR-COND-01, FR-LOAN-01 to 03, FR-SYS-02 | TS-14 to 24, TS-63 |
@@ -1519,6 +1566,7 @@ These features were specified and then deliberately cut to fit a 10-week, 5-spri
 ### 20.12 Settings / policy configuration screen (was FR-SET-01, FR-MEM-09, screen A-20)
 - **Original behavior:** an admin edited every policy key in §4.17 (fines, lost threshold, plan prices, limits) with validation, previous-value display, and an immutable `settings_history`, and edited the two fixed membership tiers' policies.
 - **Today (v1.3):** the Settings screen is removed. All policy values are **hardcoded defaults** per §4.17; the two tiers are the Standard (unpaid) rank and the yearly Premium membership with their default perks. `settings`/`settings_history` still exist in the schema (POL-18 semantics are inert because values never change at runtime).
+- **Identifier note:** the retired use-case identifier **UC-32** (formerly "Configure library policies") maps to this cut Settings feature. PA4 reuses UC-32 for **Manage active sessions**, which is in scope (FR-AUTH-11, R-23); the policy-configuration use case remains cut.
 - **To restore:** re-add screen A-20, `update-settings`, FR-SET-01, FR-MEM-09, and the settings history viewer.
 
 ### 20.13 Dashboard demand signals and least-borrowed ranking (was FR-ANLY-03 and part of FR-ANLY-02)

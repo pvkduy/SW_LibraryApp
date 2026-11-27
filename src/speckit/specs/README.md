@@ -1,6 +1,6 @@
 # ShelfHelp Spec Split — Index
 
-The single build-ready SRS `specs/SHELFHELP_FULLSPEC.md` (v1.3) is split into a
+The single build-ready SRS `specs/SHELFHELP_FULLSPEC.md` (v1.4) is split into a
 shared core plus per-feature specifications, each in the Spec Kit `spec.md` template
 structure. The original SRS remains the authoritative source of truth; these files
 are a faithful re-organization of its contents for per-feature planning.
@@ -12,6 +12,15 @@ are a faithful re-organization of its contents for per-feature planning.
 > pricing/providers/partial-shipment/export-versions), counter payments are a settle
 > panel in Circulation, and there is no dedicated resolve-lost flow (copy status
 > changes happen in Books → Copies). The admin module descriptions below reflect this.
+
+> **v1.4 PA4 authentication update.** UC-02 adds a server-enforced sign-in lockout
+> (5 failures per identifier within 15 minutes, 10-minute lockout, HTTP 429 with
+> `Retry-After`) and "Keep me signed in" persistence of the refresh token only.
+> UC-32 adds the shared **Active Sessions** screen R-23 (`/profile/sessions` for
+> students, `/admin/profile/sessions` for staff), new requirement **FR-AUTH-11**,
+> new test **TS-67**, new policy **POL-19**, and new decisions **DEC-57** and
+> **DEC-58**. UC-32 reuses the retired identifier; the former "Configure library
+> policies" use case remains cut (§20.12).
 
 ## Naming convention: side letters + tags
 
@@ -29,8 +38,8 @@ Single-side domains keep just the number with no letter or tag (e.g.
 ```
 specs/
   000-core/                     shared reference (not a single side)
-  001a-accounts-reader/         register, verify, login, profile, avatar
-  001b-accounts-admin/          set Inactive, restore Restricted
+  001a-accounts-reader/         register, verify, login, profile, avatar, active sessions
+  001b-accounts-admin/          set Inactive, restore Restricted, own active sessions
   002-catalog-search/           home, search, browse, detail, scan, wishlist
   003a-membership-reader/       view plans, buy/renew, status, expiry
   003b-membership-admin/        refund/terminate, counter register/renew

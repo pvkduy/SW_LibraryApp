@@ -1,8 +1,8 @@
 # ShelfHelp — Shared Core Specification
 
-**Source**: Derived faithfully from `specs/SHELFHELP_FULLSPEC.md` (SRS v1.2, build-ready draft, Supabase platform, reduced scope).
+**Source**: Derived faithfully from `specs/SHELFHELP_FULLSPEC.md` (SRS v1.4, build-ready draft, Supabase platform, reduced scope).
 
-**Version**: 1.2 | **Date**: 2026-10-23
+**Version**: 1.4 | **Date**: 2026-11-27
 
 **Status**: Reference (shared context for all feature specs)
 
@@ -12,6 +12,11 @@ This document is the shared reference for ShelfHelp. It holds the definitions,
 decisions, policies, domain model, non-functional requirements, data model, and
 build order that every feature specification depends on. Individual feature specs
 live under `specs/0NN-<feature>/spec.md` and cross-reference sections here by ID.
+
+> **PA4 note (v1.4).** Adds a server-enforced sign-in lockout and persistent-session
+> policy (**POL-19**, **DEC-58**) and active-session management (**FR-AUTH-11**,
+> screen R-23, **DEC-57**), with new settings keys, error reasons, and edge cases
+> EC-37..EC-39.
 
 > **Precedence (highest first):** (1) Section 3 Decisions and Section 4 Policies;
 > (2) the original proposal PA1; (3) agent judgment, recorded in `docs/DECISIONS.md`.
@@ -64,6 +69,7 @@ mode, accounting export beyond CSV/PDF/Excel.
 | Payment | One attempt or act of paying (online simulated or counter). |
 | Receipt | Immutable ledger row created when money moves. |
 | Pickup window | Time a held copy waits for the student at the counter (48 h default). |
+| Active session | A device/browser signed in with a refresh token; listed and revoked only by its owner through R-23. |
 | Debt hold | Derived block: student has outstanding charges, so new loan requests are blocked. |
 | Restricted | Account status set after a loss. Library services are blocked until an admin restores access. |
 | Strike | A penalty counted against a member when a `ready_for_pickup` reservation expires (offered a copy but stalled the 48 h pickup window). |
@@ -96,8 +102,9 @@ reports any account whose claim and `profiles.role` differ (EC-36).
 
 ### 2.2 Routing rules
 - After login, `student` goes to `/`, staff go to `/admin`.
-- A student opening `/admin/*` sees the 403 page. Staff opening reader routes are redirected to `/admin`.
+- A student opening `/admin/*` sees the 403 page. Staff opening reader routes are redirected to `/admin`; staff reach the shared account screen at `/admin/profile/sessions`.
 - Unauthenticated users can open only `/login`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email`.
+- The shared account screen R-23 is served at `/profile/sessions` for students and `/admin/profile/sessions` for staff; both show only the caller's own sessions.
 
 ### 2.3 Permission matrix
 | Capability | student | admin |
@@ -108,6 +115,7 @@ reports any account whose claim and `profiles.role` differ (EC-36).
 | Submit and track suggestions | Yes | No |
 | Use chatbot | Yes | No |
 | Edit own profile, avatar, password | Yes | Yes |
+| Review and revoke own active sessions | Yes | Yes |
 | Add/edit books, copies, bulk import | No | Yes |
 | Handover, return, record counter payment | No | Yes |
 | Mark loan lost manually | No | Yes |
@@ -189,6 +197,8 @@ but the default is built so work is not blocked.
 | DEC-54 | The team first assumed Firebase Firestore plus Supabase Storage. | Use Supabase for everything: Postgres, Auth, Storage, Edge Functions, `pg_cron`. Supabase Auth because its JWT feeds Row Level Security directly. Firebase Auth remains a fallback only. | Yes |
 | DEC-55 | `pg_cron` schedules run in UTC, but all policies are in Vietnam local time (UTC+7, no DST). | Jobs scheduled in UTC with local time in a comment (00:05 local = 17:05 UTC; 08:00 local = 01:00 UTC). Date logic inside jobs uses `Asia/Ho_Chi_Minh`. Jobs process everything due. | No |
 | DEC-56 | Vietnamese text is typed with and without diacritics, and users mix both. | Two-tier matching (POL-17): every accent variant is a match, but results that match the typed accents exactly rank first. | No |
+| DEC-57 | PA4 requires listing and remotely revoking a user's signed-in devices, but Supabase does not expose `auth.sessions` through PostgREST and the browser must never hold the service-role key. | Add server-side `list-sessions`, `revoke-session`, and `revoke-other-sessions` Edge Functions that derive the caller from the verified JWT and use the service role against the Auth admin API. They return only the caller's own sessions, never tokens, and never accept a `user_id` or session owner from the request body. The current session is ended only through normal sign-out (FR-AUTH-03), never through remote revocation. | No |
+| DEC-58 | PA4 adds a failed-sign-in lockout and a "Keep me signed in" option, but the thresholds and what is persisted were unspecified. | Default policy: five consecutive failed attempts for the same identifier (email or Student ID) within 15 minutes locks the identifier for 10 minutes, enforced server-side, with a per-IP/device rate limit alongside and HTTP 429 + `Retry-After` on every blocked attempt. A successful sign-in or password reset clears the counter. "Keep me signed in" persists only the Supabase refresh token (`localStorage` when checked, `sessionStorage` when not); the password is never stored. Thresholds are `settings` values. | Yes |
 
 ---
 
@@ -206,8 +216,10 @@ All values below are defaults stored in the `settings` table, key `library`.
 - Registration needs: full name, university email (domain in allowlist), student ID (unique, matches pattern), faculty (from list), phone (optional), password (min 8 chars, at least one letter and one digit), acceptance of terms.
 - Email and student ID are unique. Unverified accounts are deleted after 7 days.
 - Account status values: `pending_verification`, `active`, `restricted`, `inactive`.
-- **Inactive** is set only by an admin and only if: no items in `awaiting_payment`, `payment_failed`, `ready_for_pickup`, `borrowed`, `overdue`, `lost`; no reservation in `ready_for_pickup`; outstanding debt is 0. Effects: waiting reservations cancelled, wishlist cleared, membership ended without refund, Supabase Auth user banned, data retained. Only an admin can reactivate.
+- **Inactive** is set only by an admin and only if: no items in `awaiting_payment`, `payment_failed`, `ready_for_pickup`, `borrowed`, `overdue`, `lost`; no reservation in `ready_for_pickup`; outstanding debt is 0. Effects: waiting reservations cancelled, wishlist cleared, membership ended without refund, Supabase Auth user banned and all active sessions revoked (FR-AUTH-11), data retained. Only an admin can reactivate.
 - **Restricted** is set automatically when a loan becomes `lost`. It is lifted only by an admin after the checklist in 4.9 passes. The student can press "Request review" to notify admins.
+- **Sign-in lockout (POL-19).** After five consecutive failed sign-in attempts for the same identifier (email or Student ID) within 15 minutes, the identifier is locked for 10 minutes. The lockout is enforced server-side, applies to both sign-in forms, and is paired with a per-IP/device rate limit. A successful sign-in or password reset clears the counter; password recovery is never blocked by the lockout.
+- **Persistent session (POL-19).** "Keep me signed in" persists only the Supabase refresh token in `localStorage`; when unchecked, the refresh token stays in `sessionStorage` and ends with the tab. The password is never stored. The account menu and Profile screen link to **Active Sessions** (R-23, FR-AUTH-11) for reviewing and remotely revoking other devices.
 
 ### 4.3 Membership and entitlements (POL-03)
 - Plans are prepaid, one-time, non-transferable, renewed manually.
@@ -352,6 +364,8 @@ See the AI Assistant feature spec (`specs/0NN-assistant/spec.md`).
 | `chat.min_similarity` | tune after evaluation (starting 0.55 cosine) |
 | `search.fuzzy_threshold` | 0.3 (`pg_trgm` similarity) |
 | `notification_retention_days` | 90 |
+| `auth.max_failed_attempts` / `auth.failure_window_min` / `auth.lockout_min` | 5 / 15 / 10 |
+| `auth.session_list_max` | 20 |
 
 ### 4.18 Search matching and ranking (POL-17)
 See the Catalog & Search feature spec (`specs/002-catalog-search/spec.md`) for the full matching and ranking rules.
@@ -369,6 +383,12 @@ A function reads settings once at the start of its transaction (one `settings.ve
 
 `lost_threshold_days` is read at each nightly run; lowering it can convert many existing overdue loans in one night, so the settings screen shows a preview count. Renewals use current entitlements (DEC-53).
 
+### 4.20 Authentication lockout and session policy (POL-19)
+- **Failed-attempt lockout.** Default: 5 consecutive failures for the same account identifier (email or Student ID) within 15 minutes locks the identifier for 10 minutes. Thresholds are settings (`auth.max_failed_attempts`, `auth.failure_window_min`, `auth.lockout_min`). The lockout key covers both forms of the same account; reloading, clearing browser storage, or switching forms does not bypass it. A per-IP/device rate limit runs alongside. A blocked attempt returns 429 with a generic message and `Retry-After`, even when the password is correct, and never reveals whether the identifier exists. A successful sign-in or password reset clears the counter; recovery is never blocked.
+- **Session persistence.** "Keep me signed in" persists only the Auth refresh token: `localStorage` when checked, `sessionStorage` when unchecked; the access token stays in memory. The password is never stored in storage, state, cookies, or logs. Sign-in uses a real `<form>` with `autocomplete="username"` / `current-password`; the app never reads or writes the browser credential store.
+- **Active-session inventory.** The list comes from the Auth service's session records (`auth.sessions`: session ID, creation time, last update, IP address, user agent). The current session is identified by the session ID in the caller's JWT, never by guessing from the user agent. "Last active" is eventually consistent and shown as a relative time. Session metadata is shown only to its owner; tokens, hashes, and service-role keys are never returned. Missing device or location metadata shows "Unknown device" or "Unknown location".
+- **Revocation.** Revoking invalidates the session's refresh token; the short-lived access token may remain valid until expiry, so sensitive functions re-verify account status and session validity. Revocation is idempotent (already revoked/expired = success), never revokes the current session in the "all other" action, and is audit-logged with actor, session identifier (or hash), timestamp, and outcome. The current session ends only through normal sign-out (FR-AUTH-03).
+- **Failure handling.** If the list is unavailable, show "Active sessions are temporarily unavailable. You can still sign out of this device." with Sign Out This Device and Retry; do not cache or partially render. If revocation fails, keep the row and show no success message until the Auth service confirms.
 
 ---
 
@@ -431,6 +451,7 @@ While `ready_for_pickup`, only the Reservation row exists; no Loan Item is creat
 - **Charge:** `unpaid` → `paid`; `unpaid` → `waived` or `cancelled` (admin or system with reason).
 - **Suggestion, Batch, Slip:** see POL-12/POL-13. Slip: `draft`, `completed`, `cancelled`. Batch line: `pending`, `received`.
 - **Membership (derived):** `upcoming`, `active`, `expired`, `terminated`.
+- **Auth session (derived):** `active` → `revoked` or `expired`. Remote revocation is idempotent; an already-revoked or expired session is treated as success (POL-19).
 
 ---
 
@@ -479,7 +500,7 @@ Precedence applies only when an action is blocked for more than one reason; it c
 |---|---|---|
 | NFR-01 | Performance | Reader initial route: LCP ≤ 2.5 s on mid-range phone over 4G; initial JS ≤ 250 KB gzip; admin code lazy-loaded, never in reader bundle. |
 | NFR-02 | Search | `search_books` p95 ≤ 300 ms at DB for 10,000 titles. |
-| NFR-03 | Server latency | p95 ≤ 2 s for checkout, handover, return, payment completion, renewal; p95 ≤ 8 s for assistant reply. |
+| NFR-03 | Server latency | p95 ≤ 2 s for checkout, handover, return, payment completion, renewal; p95 ≤ 8 s for assistant reply; active-session list p95 ≤ 1 s for up to 20 sessions, single-session revocation p95 ≤ 800 ms, and "Sign Out All Other Sessions" ≤ 2 s for up to 20 sessions. |
 | NFR-04 | Read efficiency | No unbounded Realtime subscriptions or unpaginated queries. Lists paginated. Dashboard RPCs ≤ 1 s p95 at NFR-05 scale. Home ≤ 12 API requests on load. |
 | NFR-05 | Scale baseline | 20,000 students, 100,000 copies, 500 concurrent users, 50 checkouts/min at semester start. |
 | NFR-06 | Security | Deny-by-default RLS; CAPTCHA on register/login/reset; Zod validation + role/status auth in every Edge Function; no service-role key or DB URL in client; CSP; signed URL TTLs; rate limits on register, resend, chat, payments; dependency scanning; OWASP ASVS Level 2. |
@@ -505,17 +526,28 @@ specs reference entities and error reasons by name.
 **Error contract (12.5):** Edge Functions return JSON
 `{ "error": { "reason", "message", "details" } }` with statuses — 400 `VALIDATION_FAILED`;
 401 `UNAUTHENTICATED`; 403 `FORBIDDEN_ROLE`, `ACCOUNT_NOT_ACTIVE`, `ACCOUNT_RESTRICTED`,
-`DEBT_HOLD`, `RESERVATION_BAN`, `NOT_MEMBER`; 404 not found; 409 `NOT_AVAILABLE`,
+`DEBT_HOLD`, `RESERVATION_BAN`, `NOT_MEMBER`; 404 not found or `SESSION_NOT_FOUND`; 409 `NOT_AVAILABLE`,
 `DUPLICATE_ACTIVE_LOAN`, `QUEUE_FULL`, `WISHLIST_FULL`, `STATUS_CHANGED`, `DUPLICATE`,
 `PAYMENT_ALREADY_DONE`; 410 `PAYMENT_EXPIRED`, `DEADLINE_PASSED`; 422 `LIMIT_REACHED`,
-`RENEWAL_NOT_ALLOWED`, `PRECONDITION_FAILED`; 429 `RATE_LIMITED`; 500 `INTERNAL`.
+`RENEWAL_NOT_ALLOWED`, `PRECONDITION_FAILED`; 429 `RATE_LIMITED`, `LOCKED_OUT` (always
+with `Retry-After`); 500 `INTERNAL`; 503 `SERVICE_UNAVAILABLE` (for example the session
+inventory is temporarily unavailable).
+
+**Auth session data (DEC-57).** Active sessions are not a public table. The source is
+the Supabase-managed `auth.sessions` record, read only by the `list-sessions` Edge
+Function with the service role. It is never exposed through PostgREST or RLS, and no
+access or refresh token is returned to the client. `list-sessions`, `revoke-session`,
+and `revoke-other-sessions` derive the caller from the verified JWT and never accept a
+`user_id` or session owner from the request body.
 
 ---
 
 ## 9. Edge Cases (global)
 
-The full edge-case table (EC-01 through EC-36) is in Section 15.2 of
+The full edge-case table (EC-01 through EC-39) is in Section 15.2 of
 `specs/SHELFHELP_FULLSPEC.md`. Feature specs list the edge cases relevant to them.
+PA4 adds EC-37 (current session revoked from another device), EC-38 (lockout bypass
+attempt), and EC-39 (active-session inventory unavailable).
 
 ---
 
@@ -524,7 +556,7 @@ The full edge-case table (EC-01 through EC-36) is in Section 15.2 of
 | Milestone | Scope (FR groups) | Exit criteria |
 |---|---|---|
 | M0 Foundations | Repo, CI, Supabase projects, local stack, migration pipeline, shared package, settings loader, clock, i18n, design system, error contract, seed, spec-matrix | CI green; hello-world Edge Function; pgTAP RLS test; Playwright smoke test |
-| M1 Accounts | FR-AUTH-01..05, FR-PROF-01..03, FR-SYS-05, FR-GLOB-02 | TS-01..06, TS-41, TS-42, TS-60 |
+| M1 Accounts | FR-AUTH-01..05, FR-AUTH-11, FR-PROF-01..03, FR-SYS-05, FR-GLOB-02 | TS-01..06, TS-41, TS-42, TS-60, TS-67 |
 | M2 Catalog and search | FR-INV-01..04, 07, 09, FR-SRCH-01..05, 07, 08, FR-HOME-01 | TS-08..12, TS-47..49 |
 | M3 Membership and money | FR-MEM-01..03, 05, 10, FR-CART-06, FR-RCPT-01, 06, FR-SYS-03 | TS-33, TS-58 |
 | M4 Borrowing and circulation | FR-CART-01..05, 07, 08, FR-CIRC-01..03, 07, FR-COND-01, FR-LOAN-01..03, FR-SYS-02 | TS-14..24, TS-63 |
