@@ -53,7 +53,8 @@ function bookToForm(book) {
 }
 
 export function BookEditorModal({ book, onClose, onSaved }) {
-  const editing = Boolean(book?.id)
+  const [resolvedBookId, setResolvedBookId] = useState(book?.id ?? null)
+  const editing = Boolean(resolvedBookId)
   const [form, setForm] = useState(() => bookToForm(book))
   const [lookupIsbn, setLookupIsbn] = useState(book?.isbn13 || book?.isbn10 || '')
   const [lookupState, setLookupState] = useState(null)
@@ -67,6 +68,7 @@ export function BookEditorModal({ book, onClose, onSaved }) {
   const [activeTab, setActiveTab] = useState('metadata')
 
   useEffect(() => {
+    setResolvedBookId(book?.id ?? null)
     setForm(bookToForm(book))
     setLookupIsbn(book?.isbn13 || book?.isbn10 || '')
     setLookupState(null)
@@ -77,10 +79,17 @@ export function BookEditorModal({ book, onClose, onSaved }) {
     setActiveTab('metadata')
   }, [book])
 
-  const coverPreview = useMemo(() => {
-    if (coverFile) return URL.createObjectURL(coverFile)
-    return getCoverUrl(form.cover_path)
-  }, [coverFile, form.cover_path])
+  const coverBlobUrl = useMemo(
+    () => (coverFile ? URL.createObjectURL(coverFile) : null),
+    [coverFile],
+  )
+
+  useEffect(() => {
+    if (!coverBlobUrl) return undefined
+    return () => URL.revokeObjectURL(coverBlobUrl)
+  }, [coverBlobUrl])
+
+  const coverPreview = coverBlobUrl || getCoverUrl(form.cover_path)
 
   const setField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }))
@@ -147,7 +156,7 @@ export function BookEditorModal({ book, onClose, onSaved }) {
     try {
       let coverPath = form.cover_path
       if (coverFile) {
-        coverPath = await uploadToBucket('covers', editing ? `books/${book.id}` : 'books', coverFile)
+        coverPath = await uploadToBucket('covers', editing ? `books/${resolvedBookId}` : 'books', coverFile)
       }
 
       const payload = {
@@ -179,7 +188,7 @@ export function BookEditorModal({ book, onClose, onSaved }) {
         : []
 
       const response = await api.invoke('save-book', {
-        book: editing ? { ...payload, id: book.id } : payload,
+        book: editing ? { ...payload, id: resolvedBookId } : payload,
         copies: copyRows,
       })
 
@@ -204,6 +213,7 @@ export function BookEditorModal({ book, onClose, onSaved }) {
     try {
       const { data, error } = await supabase.from('books').select(BOOK_COLUMNS).eq('id', conflict.existingBookId).single()
       if (error) throw error
+      setResolvedBookId(data.id)
       setConflict(null)
       setForm(bookToForm(data))
       setFeedback({ type: 'success', message: 'Loaded the existing title. Saving now will update its metadata; use “Add Copies” on the catalog pane to top up stock.' })

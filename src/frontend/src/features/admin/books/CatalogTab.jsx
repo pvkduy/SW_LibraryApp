@@ -28,7 +28,7 @@ function Cover({ book, size = 'sm' }) {
   )
 }
 
-export function CatalogTab({ onOpenCopies }) {
+export function CatalogTab({ focusBookId, onClearFocusBook, onOpenCopies }) {
   const [books, setBooks] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -60,14 +60,31 @@ export function CatalogTab({ onOpenCopies }) {
     return () => clearTimeout(handle)
   }, [searchInput])
 
+  useEffect(() => {
+    if (focusBookId) {
+      setSelectedId(focusBookId)
+      setSearchInput('')
+      setSearch('')
+      setStatus('all')
+      setCondition('all')
+      setPage(1)
+    }
+  }, [focusBookId])
+
+  useEffect(() => {
+    setChecked(new Set())
+  }, [page, search, status, condition])
+
   const buildQueryFor = useCallback((select, bookIds, all = false) => {
     let query = supabase.from('books').select(select, { count: 'exact' })
     if (status !== 'all') query = query.eq('status', status)
     if (condition !== 'all') query = query.eq('copies.condition', condition)
     if (search) {
-      const needle = search.replaceAll(',', ' ')
-      const text = `title.ilike.%${needle}%,isbn13.ilike.%${needle}%,isbn10.ilike.%${needle}%,publisher.ilike.%${needle}%`
-      query = query.or(bookIds.length ? `id.in.(${bookIds.join(',')}),${text}` : text)
+      const needle = search.replace(/[,()]/g, ' ').trim()
+      if (needle) {
+        const text = `title.ilike.%${needle}%,isbn13.ilike.%${needle}%,isbn10.ilike.%${needle}%,publisher.ilike.%${needle}%`
+        query = query.or(bookIds.length ? `id.in.(${bookIds.join(',')}),${text}` : text)
+      }
     }
     if (all) return query.range(0, 19999)
     const from = (page - 1) * PAGE_SIZE
@@ -84,21 +101,26 @@ export function CatalogTab({ onOpenCopies }) {
       const select = condition === 'all'
         ? `${BOOK_COLUMNS}, copies(id, status, condition, shelf_location, barcode)`
         : `${BOOK_COLUMNS}, copies!inner(id, status, condition, shelf_location, barcode)`
-      let query = buildQueryFor(select, bookIds)
-      if (condition === 'all') query = query.order('added_at', { ascending: false })
+      const query = buildQueryFor(select, bookIds).order('added_at', { ascending: false })
       const { data, error, count } = await query
       if (error) throw error
 
       const rows = data ?? []
       setBooks(rows)
       setTotal(count ?? rows.length)
-      setSelectedId((current) => (rows.some((book) => book.id === current) ? current : rows[0]?.id ?? null))
+      setSelectedId((current) => {
+        if (focusBookId && rows.some((book) => book.id === focusBookId)) return focusBookId
+        return rows.some((book) => book.id === current) ? current : rows[0]?.id ?? null
+      })
+      if (focusBookId && rows.some((book) => book.id === focusBookId)) {
+        onClearFocusBook?.()
+      }
     } catch (error) {
       setFeedback({ type: 'error', message: error.message })
     } finally {
       setLoading(false)
     }
-  }, [buildQueryFor, condition, search])
+  }, [buildQueryFor, condition, focusBookId, onClearFocusBook, search])
 
   useEffect(() => {
     loadBooks()

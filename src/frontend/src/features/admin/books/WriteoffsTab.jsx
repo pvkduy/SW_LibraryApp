@@ -55,7 +55,16 @@ function copyNoun(n) {
   return `${n} ${n === 1 ? 'copy' : 'copies'}`
 }
 
-export function WriteoffsTab({ onOpenCopies }) {
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
+export function WriteoffsTab({ focusSlipId, onClearFocusSlip, onOpenCopies }) {
   const [slips, setSlips] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -68,7 +77,6 @@ export function WriteoffsTab({ onOpenCopies }) {
   const [slipLoading, setSlipLoading] = useState(false)
   const [feedback, setFeedback] = useState(null)
   const [saving, setSaving] = useState(false)
-  const [blockedCount, setBlockedCount] = useState(0)
 
   // Draft editing state
   const [draftReason, setDraftReason] = useState('damaged_beyond_repair')
@@ -123,17 +131,30 @@ export function WriteoffsTab({ onOpenCopies }) {
       setSlips(data ?? [])
       setTotal(count ?? 0)
 
-      // Keep the current selection when it is still on the page.
+      // Keep the current selection when it is still on the page, or honor deep-link focusSlipId.
       setSelectedSlipId((current) => {
+        if (focusSlipId && (data ?? []).some((item) => item.id === focusSlipId)) return focusSlipId
         if (current && (data ?? []).some((item) => item.id === current)) return current
         return (data ?? [])[0]?.id ?? null
       })
+      if (focusSlipId && (data ?? []).some((item) => item.id === focusSlipId)) {
+        onClearFocusSlip?.()
+      }
     } catch (err) {
       setFeedback({ type: 'error', message: err.message })
     } finally {
       setLoading(false)
     }
-  }, [filterStatus, page, search])
+  }, [filterStatus, focusSlipId, onClearFocusSlip, page, search])
+
+  useEffect(() => {
+    if (focusSlipId) {
+      setFilterStatus('all')
+      setSearch('')
+      setPage(1)
+      setSelectedSlipId(focusSlipId)
+    }
+  }, [focusSlipId])
 
   useEffect(() => {
     loadSlips()
@@ -144,7 +165,6 @@ export function WriteoffsTab({ onOpenCopies }) {
     if (!slipId) {
       setSelectedSlip(null)
       setStagedCopies([])
-      setBlockedCount(0)
       return
     }
 
@@ -184,8 +204,8 @@ export function WriteoffsTab({ onOpenCopies }) {
       let holdSet = new Set()
       if (copyIds.length > 0) {
         const [{ data: loanRows }, { data: holdRows }] = await Promise.all([
-          supabase.from('loans').select('copy_id, status').in('copy_id', copyIds).in('status', ['active', 'overdue']),
-          supabase.from('reservations').select('copy_id, status').in('copy_id', copyIds).in('status', ['ready', 'held', 'ready_for_pickup']),
+          supabase.from('loan_items').select('copy_id, status').in('copy_id', copyIds).in('status', ['borrowed', 'overdue', 'ready_for_pickup']),
+          supabase.from('reservations').select('copy_id, status').in('copy_id', copyIds).eq('status', 'ready_for_pickup'),
         ])
         loanSet = new Set((loanRows || []).map((r) => r.copy_id))
         holdSet = new Set((holdRows || []).map((r) => r.copy_id))
@@ -213,7 +233,6 @@ export function WriteoffsTab({ onOpenCopies }) {
       setDraftNotes(slipData.notes || '')
       setDraftPhotos(slipData.photos || [])
       setStagedCopies(staged)
-      setBlockedCount(staged.filter((c) => c.blocked || BLOCKING_STATUSES[c.current_status]).length)
     } catch (err) {
       setFeedback({ type: 'error', message: err.message })
     } finally {
@@ -496,12 +515,12 @@ export function WriteoffsTab({ onOpenCopies }) {
       .map(
         (c) => `
         <tr>
-          <td style="padding: 6px 10px; border: 1px solid #ccc; font-family: monospace;">${c.barcode}</td>
-          <td style="padding: 6px 10px; border: 1px solid #ccc;">${c.title || '—'}</td>
-          <td style="padding: 6px 10px; border: 1px solid #ccc;">${statusLabel(c.current_status)}</td>
-          <td style="padding: 6px 10px; border: 1px solid #ccc; font-weight: bold;">${statusLabel(c.target_status)}</td>
-          <td style="padding: 6px 10px; border: 1px solid #ccc;">${formatVnd(c.replacement_price)}</td>
-          <td style="padding: 6px 10px; border: 1px solid #ccc;">${c.assessment_note || '—'}</td>
+          <td style="padding: 6px 10px; border: 1px solid #ccc; font-family: monospace;">${escapeHtml(c.barcode)}</td>
+          <td style="padding: 6px 10px; border: 1px solid #ccc;">${escapeHtml(c.title || '—')}</td>
+          <td style="padding: 6px 10px; border: 1px solid #ccc;">${escapeHtml(statusLabel(c.current_status))}</td>
+          <td style="padding: 6px 10px; border: 1px solid #ccc; font-weight: bold;">${escapeHtml(statusLabel(c.target_status))}</td>
+          <td style="padding: 6px 10px; border: 1px solid #ccc;">${escapeHtml(formatVnd(c.replacement_price))}</td>
+          <td style="padding: 6px 10px; border: 1px solid #ccc;">${escapeHtml(c.assessment_note || '—')}</td>
         </tr>
       `
       )
@@ -517,25 +536,25 @@ export function WriteoffsTab({ onOpenCopies }) {
             <p style="margin: 4px 0 0; color: #72685e; font-size: 13px;">Official Library Asset Retirement Record (POL-13 / UC-22)</p>
           </div>
           <div style="text-align: right;">
-            <h2 style="margin: 0; font-size: 18px; color: #6e472a;">${selectedSlip.number}</h2>
-            <span style="font-size: 12px; font-weight: bold; text-transform: uppercase;">${selectedSlip.status}</span>
+            <h2 style="margin: 0; font-size: 18px; color: #6e472a;">${escapeHtml(selectedSlip.number)}</h2>
+            <span style="font-size: 12px; font-weight: bold; text-transform: uppercase;">${escapeHtml(selectedSlip.status)}</span>
           </div>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; font-size: 13px;">
           <div>
-            <p><strong>Reason code:</strong> ${reasonLabel(selectedSlip.reason_code)}</p>
-            <p><strong>Created by:</strong> ${selectedSlip.profiles?.full_name || 'Staff'}</p>
-            <p><strong>Created at:</strong> ${formatDateTime(selectedSlip.created_at)}</p>
+            <p><strong>Reason code:</strong> ${escapeHtml(reasonLabel(selectedSlip.reason_code))}</p>
+            <p><strong>Created by:</strong> ${escapeHtml(selectedSlip.profiles?.full_name || 'Staff')}</p>
+            <p><strong>Created at:</strong> ${escapeHtml(formatDateTime(selectedSlip.created_at))}</p>
           </div>
           <div>
-            <p><strong>Completed at:</strong> ${formatDateTime(selectedSlip.completed_at)}</p>
+            <p><strong>Completed at:</strong> ${escapeHtml(formatDateTime(selectedSlip.completed_at))}</p>
             <p><strong>Total decommissioned copies:</strong> ${stagedCopies.length}</p>
-            <p><strong>Total book replacement value:</strong> ${formatVnd(totalLossVal)}</p>
+            <p><strong>Total book replacement value:</strong> ${escapeHtml(formatVnd(totalLossVal))}</p>
           </div>
         </div>
 
-        ${selectedSlip.notes ? `<div style="background: #fdfbf7; padding: 10px; border: 1px solid #ede6db; border-radius: 6px; margin-bottom: 20px; font-size: 13px;"><strong>Staff Notes:</strong> ${selectedSlip.notes}</div>` : ''}
+        ${selectedSlip.notes ? `<div style="background: #fdfbf7; padding: 10px; border: 1px solid #ede6db; border-radius: 6px; margin-bottom: 20px; font-size: 13px;"><strong>Staff Notes:</strong> ${escapeHtml(selectedSlip.notes)}</div>` : ''}
 
         <h3 style="font-size: 14px; margin-bottom: 8px;">Decommissioned Copy Inventory</h3>
         <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: left;">
@@ -576,7 +595,6 @@ export function WriteoffsTab({ onOpenCopies }) {
   const stagedTotalValue = stagedCopies.reduce((sum, c) => sum + (Number(c.replacement_price) || 0), 0)
   const liveBlocked = stagedCopies.filter((c) => c.blocked || BLOCKING_STATUSES[c.current_status]).length
   const hasEvidence = draftPhotos.length > 0 || stagedCopies.some((c) => (c.photo_paths || []).length > 0)
-  const disabledComplete = stagedCopies.length === 0
 
   return (
     <div className="books-tab">
@@ -910,16 +928,6 @@ export function WriteoffsTab({ onOpenCopies }) {
                               {c.barcode}
                             </button>
                             {c.authors?.length > 0 && <span> · {c.authors.join(', ')}</span>}
-                            {isDraft && (
-                              <button
-                                type="button"
-                                className="books-staged-remove books-staged-remove-inline"
-                                onClick={() => handleRemoveStagedCopy(c.copy_id)}
-                                aria-label="Unstage copy"
-                              >
-                                <IconClose size={10} aria-hidden="true" /> Unstage
-                              </button>
-                            )}
                           </div>
                           <div className="books-staged-facts">
                             <span><em>From</em> {statusLabel(c.current_status)}</span>
@@ -975,7 +983,18 @@ export function WriteoffsTab({ onOpenCopies }) {
                     <div className="books-staged-empty">
                       <span>No copies staged on this slip.</span>
                       {isDraft && (
-                        <span className="books-section-action muted">+ Stage Copies</span>
+                        <button
+                          type="button"
+                          className="books-section-action"
+                          onClick={() => {
+                            setStageCandidate(null)
+                            setStageCandidateError(null)
+                            setStageBarcodeQuery('')
+                            setShowStageModal(true)
+                          }}
+                        >
+                          + Stage first copy
+                        </button>
                       )}
                     </div>
                   )}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import '../App.css'
 import '../features/auth/auth.css'
 import { useAuth } from '../features/auth/AuthContext.jsx'
@@ -23,6 +23,15 @@ import { CataloguePage } from '../features/reader/catalog/CataloguePage.jsx'
 import { ScanIsbnPage } from '../features/reader/catalog/ScanIsbnPage.jsx'
 import { BookDetailPage } from '../features/reader/catalog/BookDetailPage.jsx'
 import { CheckoutFlowPage } from '../features/reader/catalog/CheckoutFlowPage.jsx'
+
+const VALID_ADMIN_PAGES = ['dashboard', 'circulation', 'books', 'acquisitions', 'queues', 'people', 'money', 'reports']
+
+function getInitialAdminPage() {
+  if (typeof window === 'undefined') return 'circulation'
+  const match = window.location.pathname.match(/^\/admin\/([^/]+)/)
+  if (match && VALID_ADMIN_PAGES.includes(match[1])) return match[1]
+  return 'circulation'
+}
 
 function getInitialRoute() {
   if (typeof window === 'undefined') return 'login'
@@ -196,13 +205,44 @@ function App() {
   const [currentRoute, setCurrentRoute] = useState(getInitialRoute)
   const [registeredEmail, setRegisteredEmail] = useState('')
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
-  const [adminPage, setAdminPage] = useState('circulation')
+  const [adminPage, setAdminPage] = useState(getInitialAdminPage)
 
   const navigate = (route, params = {}) => {
     if (params.email) setRegisteredEmail(params.email)
     setCurrentRoute(route)
     window.history.pushState({}, '', `/${route}`)
   }
+
+  const navigateAdmin = (page) => {
+    setAdminPage(page)
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', `/admin/${page}`)
+    }
+  }
+
+  const handleSignOut = async () => {
+    setShowLogoutConfirm(false)
+    await logout()
+    setAdminPage('circulation')
+    setCurrentRoute('login')
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', '/login')
+    }
+  }
+
+  useEffect(() => {
+    const onPopState = () => {
+      const pathname = window.location.pathname
+      const match = pathname.match(/^\/admin\/([^/]+)/)
+      if (match && VALID_ADMIN_PAGES.includes(match[1])) {
+        setAdminPage(match[1])
+      } else {
+        setCurrentRoute(getInitialRoute())
+      }
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
 
   if (loading) {
     return (
@@ -255,12 +295,12 @@ function App() {
         <>
           <AdminLayout
             activePage={adminPage}
-            onNavigate={(page) => setAdminPage(page)}
+            onNavigate={navigateAdmin}
             user={user}
             profile={profile}
             onLogout={() => setShowLogoutConfirm(true)}
           >
-            {adminPage === 'circulation' && <CirculationPage />}
+            {adminPage === 'circulation' && <CirculationPage profile={profile} />}
             {adminPage === 'books' && <BooksPage />}
             {adminPage === 'queues' && <QueuesPage />}
             {adminPage === 'money' && <FinancialLedgerPage />}
@@ -281,10 +321,7 @@ function App() {
               subtitle="Are you sure you want to sign out?"
               confirmText="Sign Out"
               cancelText="Stay Signed In"
-              onConfirm={() => {
-                setShowLogoutConfirm(false)
-                logout()
-              }}
+              onConfirm={handleSignOut}
               onCancel={() => setShowLogoutConfirm(false)}
             />
           )}
@@ -307,10 +344,7 @@ function App() {
             subtitle="Are you sure you want to sign out?"
             confirmText="Sign Out"
             cancelText="Stay Signed In"
-            onConfirm={() => {
-              setShowLogoutConfirm(false)
-              logout()
-            }}
+            onConfirm={handleSignOut}
             onCancel={() => setShowLogoutConfirm(false)}
           />
         )}
