@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { api } from '../../../lib/api'
+import { IconDownload } from './booksIcons'
 import {
   IMPORT_TEMPLATE,
   buildImportPreview,
@@ -47,7 +48,7 @@ export function ImportTab({ onImported }) {
       if (parsed.errors.length > 0) {
         setFeedback({ type: 'error', message: `${parsed.errors.length} row(s) have validation errors and will be excluded. ${parsed.validRows.length} valid row(s) are ready.` })
       } else {
-        setFeedback({ type: 'success', message: `${parsed.validRows.length} row(s) validated. Review the preview and confirm the import.` })
+        setFeedback(null)
       }
     } catch (error) {
       setFeedback({ type: 'error', message: error.message })
@@ -145,7 +146,7 @@ export function ImportTab({ onImported }) {
             <h3>Upload input CSV</h3>
             <p>UTF-8 / RFC 4180. Use the template to avoid column-name surprises.</p>
           </div>
-          <button type="button" className="admin-btn-outline books-btn-sm books-push-right" onClick={() => downloadText('catalog-import-template.csv', IMPORT_TEMPLATE)}>      ↓<span className="books-btn-glyph">CSV template download</span></button>
+          <button type="button" className="admin-btn-outline books-btn-sm books-push-right" onClick={() => downloadText('catalog-import-template.csv', IMPORT_TEMPLATE)}><IconDownload size={12} /> CSV template download</button>
         </div>
 
         <div

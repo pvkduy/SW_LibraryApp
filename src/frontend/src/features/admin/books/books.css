@@ -1453,6 +1453,7 @@
   align-items: flex-start;
   gap: 8px;
   margin-top: 12px;
+  margin-bottom: 14px;
   font-size: 11px;
   line-height: 1.5;
   color: var(--admin-text-muted);
@@ -1477,7 +1478,8 @@
 .books-valid-preview {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
+  margin-top: 14px;
 }
 
 .books-valid-head {
@@ -1645,6 +1647,7 @@
   font-family: inherit;
   font-size: 13px;
   font-weight: 500;
+  background: transparent;
 }
 
 .books-page-container .admin-barcode-icon {
@@ -2670,6 +2673,7 @@
 .books-stage-lookup .admin-barcode-input input {
   font-family: inherit;
   font-weight: 500;
+  background: transparent;
 }
 
 .books-stage-lookup .admin-btn-primary {
@@ -2943,8 +2947,15 @@
 /* Alerts */
 .books-alert {
   gap: 10px;
-  align-items: flex-start;
+  align-items: center;
   border-left-width: 3px;
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.books-alert > span:first-child {
+  flex: 1;
+  text-align: center;
 }
 
 .books-alert-icon {

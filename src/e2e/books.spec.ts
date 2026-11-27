@@ -152,8 +152,8 @@ test('Catalog: clicking into every title renders its detail drawer', async ({ pa
     await expect(page.locator('.books-detail')).toContainText(/Physical copies summary \(\d+\)/)
   }
 
-  // The chevron button must open the same drawer without selecting via the row.
-  await page.locator('.books-table tbody tr').last().getByRole('button', { name: 'Open details' }).click()
+  // Clicking the last row directly must also open its detail drawer.
+  await page.locator('.books-table tbody tr').last().click()
   await expect(page.locator('.books-detail h2')).toBeVisible()
 
   expectNoProblems(problems)

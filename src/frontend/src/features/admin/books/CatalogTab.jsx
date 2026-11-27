@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../../lib/api'
 import { supabase } from '../../../lib/supabase'
-import { IconBook, IconChevron, IconRefresh, IconSliders } from './booksIcons'
+import { IconBook, IconRefresh, IconSliders } from './booksIcons'
 import {
   BOOK_COLUMNS,
   COLLECTIONS,
@@ -78,7 +78,12 @@ export function CatalogTab({ focusBookId, onClearFocusBook, onOpenCopies }) {
   const buildQueryFor = useCallback((select, bookIds, all = false) => {
     let query = supabase.from('books').select(select, { count: 'exact' })
     if (status !== 'all') query = query.eq('status', status)
-    if (condition !== 'all') query = query.eq('copies.condition', condition)
+    if (condition === 'damaged') {
+      // Copies marked damaged via CopiesTab update `copies.status` while `copies.condition` may remain 'good'.
+      query = query.or('condition.eq.damaged,status.eq.damaged', { referencedTable: 'copies' })
+    } else if (condition !== 'all') {
+      query = query.eq('copies.condition', condition)
+    }
     if (search) {
       const needle = search.replace(/[,()]/g, ' ').trim()
       if (needle) {
@@ -297,12 +302,11 @@ export function CatalogTab({ focusBookId, onClearFocusBook, onOpenCopies }) {
                   <th>Collection</th>
                   <th>Copies</th>
                   <th>Shelf</th>
-                  <th aria-label="Open detail" />
                 </tr>
               </thead>
               <tbody>
                 {loading && (
-                  <tr><td colSpan="7" className="books-table-empty">Loading catalog…</td></tr>
+                  <tr><td colSpan="6" className="books-table-empty">Loading catalog…</td></tr>
                 )}
                 {!loading && books.map((book) => (
                   <tr key={book.id} className={book.id === selectedId ? 'selected' : ''} onClick={() => setSelectedId(book.id)}>
@@ -329,13 +333,10 @@ export function CatalogTab({ focusBookId, onClearFocusBook, onOpenCopies }) {
                       {book.available_copies ?? 0} <span className="books-copies-of">/ {book.total_copies ?? 0}</span>
                     </td>
                     <td className="books-cell-wrap" title={book.shelf_location || 'No default shelf'}>{book.shelf_location || '—'}</td>
-                    <td>
-                      <button type="button" className="books-icon-btn" aria-label="Open details" onClick={(event) => { event.stopPropagation(); setSelectedId(book.id) }}><IconChevron size={13} /></button>
-                    </td>
                   </tr>
                 ))}
                 {!loading && books.length === 0 && (
-                  <tr><td colSpan="7" className="books-table-empty">No titles match the selected filters.</td></tr>
+                  <tr><td colSpan="6" className="books-table-empty">No titles match the selected filters.</td></tr>
                 )}
               </tbody>
             </table>

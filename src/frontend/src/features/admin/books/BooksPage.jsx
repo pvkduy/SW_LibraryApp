@@ -80,11 +80,6 @@ export function BooksPage() {
             Physical inventory, catalog metadata, copy lifecycle, batch import, and decommissioning
           </div>
         </div>
-        <div className="books-title-badges" aria-label="Inventory scope">
-          <span className="books-scope-chip">
-            <i className="books-scope-dot" aria-hidden="true" /> FR-INV-01…07
-          </span>
-        </div>
       </div>
 
       {/* Top Tab Switcher */}
