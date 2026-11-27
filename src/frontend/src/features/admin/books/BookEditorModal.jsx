@@ -115,9 +115,9 @@ export function BookEditorModal({ book, onClose, onSaved }) {
       setLookupState('done')
       setFeedback({ type: 'success', message: `Metadata found via ${data.source === 'open_library' ? 'Open Library' : 'Google Books'}. Review the fields before saving.` })
     } catch (error) {
+      // UC-19 §2.2.1: keep the typed ISBN and let the manual form carry on.
       setLookupState('failed')
       setLookupWarning(error.message || 'No metadata found for ISBN. Please enter book details manually.')
-      setLookupState('done')
     }
   }
 
@@ -272,7 +272,9 @@ export function BookEditorModal({ book, onClose, onSaved }) {
                       {lookupState === 'loading' ? 'Looking up…' : 'Lookup metadata'}
                     </button>
                   </div>
-                  {lookupWarning && <div className="books-hint warn">{lookupWarning}</div>}
+                  {lookupWarning && (
+                    <div className="books-hint warn">{lookupWarning}</div>
+                  )}
                 </div>
               </div>
 
@@ -418,12 +420,14 @@ export function BookEditorModal({ book, onClose, onSaved }) {
                 <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleCover} hidden />
                 <div className="books-inline">
                   <button type="button" className="admin-btn-outline" onClick={() => fileRef.current?.click()}>Choose file</button>
-                  {coverFile && <button type="button" className="admin-btn-outline books-btn-ghost" onClick={() => setCoverFile(null)}>Clear</button>}
                   {coverFile && <span className="books-muted">{coverFile.name}</span>}
                 </div>
                 <div className="books-field" style={{ marginTop: 12 }}>
                   <label htmlFor="cover-path">Or use an image URL / stored path</label>
                   <input id="cover-path" value={form.cover_path} onChange={(event) => setField('cover_path', event.target.value)} />
+                  <button type="button" className="books-link" onClick={() => { setCoverFile(null); setField('cover_path', '') }}>
+                    Remove cover
+                  </button>
                 </div>
               </div>
             </div>

@@ -1,12 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../../lib/api'
 import { supabase } from '../../../lib/supabase'
 import {
   BOOK_COLUMNS,
   COLLECTIONS,
   CONDITIONS,
-  copyProgress,
-  downloadCsv,
+  copiesTone,
   formatDateTime,
   formatVnd,
   getCoverUrl,
@@ -33,11 +32,10 @@ export function CatalogTab({ onOpenCopies }) {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [searchInput, setSearchInput] = useState('')
+  const searchRef = useRef(null)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('all')
   const [condition, setCondition] = useState('all')
-  const [shelf, setShelf] = useState('all')
-  const [shelves, setShelves] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [checked, setChecked] = useState(() => new Set())
   const [copies, setCopies] = useState([])
@@ -61,13 +59,14 @@ export function CatalogTab({ onOpenCopies }) {
     return () => clearTimeout(handle)
   }, [searchInput])
 
-  const buildQuery = useCallback((select, all = false) => {
+  const buildQueryFor = useCallback((select, bookIds, all = false) => {
     let query = supabase.from('books').select(select, { count: 'exact' })
     if (status !== 'all') query = query.eq('status', status)
     if (condition !== 'all') query = query.eq('copies.condition', condition)
     if (search) {
       const needle = search.replaceAll(',', ' ')
-      query = query.or(`title.ilike.%${needle}%,isbn13.ilike.%${needle}%,isbn10.ilike.%${needle}%,publisher.ilike.%${needle}%`)
+      const text = `title.ilike.%${needle}%,isbn13.ilike.%${needle}%,isbn10.ilike.%${needle}%,publisher.ilike.%${needle}%`
+      query = query.or(bookIds.length ? `id.in.(${bookIds.join(',')}),${text}` : text)
     }
     if (all) return query.range(0, 19999)
     const from = (page - 1) * PAGE_SIZE
@@ -77,41 +76,32 @@ export function CatalogTab({ onOpenCopies }) {
   const loadBooks = useCallback(async () => {
     setLoading(true)
     try {
+      // A copy barcode resolves to its title so the lookup bar matches its hint.
+      const bookIds = search
+        ? (await supabase.from('copies').select('book_id').ilike('barcode', `%${search}%`).limit(200)).data?.map((row) => row.book_id) ?? []
+        : []
       const select = condition === 'all'
         ? `${BOOK_COLUMNS}, copies(id, status, condition, shelf_location, barcode)`
         : `${BOOK_COLUMNS}, copies!inner(id, status, condition, shelf_location, barcode)`
-      let query = buildQuery(select)
+      let query = buildQueryFor(select, bookIds)
       if (condition === 'all') query = query.order('added_at', { ascending: false })
       const { data, error, count } = await query
       if (error) throw error
 
-      let rows = data ?? []
-      if (shelf !== 'all') {
-        rows = rows.filter((book) => book.shelf_location === shelf || (book.copies ?? []).some((copy) => copy.shelf_location === shelf))
-      }
+      const rows = data ?? []
       setBooks(rows)
-      setTotal(shelf === 'all' ? (count ?? rows.length) : rows.length)
+      setTotal(count ?? rows.length)
       setSelectedId((current) => (rows.some((book) => book.id === current) ? current : rows[0]?.id ?? null))
     } catch (error) {
       setFeedback({ type: 'error', message: error.message })
     } finally {
       setLoading(false)
     }
-  }, [buildQuery, condition, shelf])
+  }, [buildQueryFor, condition, search])
 
   useEffect(() => {
     loadBooks()
   }, [loadBooks, refreshToken])
-
-  useEffect(() => {
-    let active = true
-    supabase.from('copies').select('shelf_location').not('shelf_location', 'is', null).limit(1000).then(({ data }) => {
-      if (!active) return
-      const values = [...new Set((data ?? []).map((row) => row.shelf_location).filter(Boolean))].sort()
-      setShelves(values)
-    })
-    return () => { active = false }
-  }, [])
 
   useEffect(() => {
     if (!selectedBook?.id) {
@@ -197,32 +187,6 @@ export function CatalogTab({ onOpenCopies }) {
     }
   }
 
-  const handleExport = async () => {
-    try {
-      const select = condition === 'all'
-        ? 'id,title,authors,isbn13,isbn10,publisher,year,collection,total_copies,available_copies,shelf_location,status,added_at'
-        : 'id,title,authors,isbn13,isbn10,publisher,year,collection,total_copies,available_copies,shelf_location,status,added_at,copies!inner(condition)'
-      const { data, error } = await buildQuery(select, true)
-      if (error) throw error
-      downloadCsv('catalog-export.csv', [
-        { label: 'Title', value: (row) => row.title },
-        { label: 'Authors', value: (row) => (row.authors ?? []).join('; ') },
-        { label: 'ISBN-13', value: (row) => row.isbn13 },
-        { label: 'ISBN-10', value: (row) => row.isbn10 },
-        { label: 'Publisher', value: (row) => row.publisher },
-        { label: 'Year', value: (row) => row.year },
-        { label: 'Collection', value: (row) => row.collection },
-        { label: 'Total copies', value: (row) => row.total_copies },
-        { label: 'Available', value: (row) => row.available_copies },
-        { label: 'Shelf', value: (row) => row.shelf_location },
-        { label: 'Status', value: (row) => row.status },
-        { label: 'Added', value: (row) => row.added_at },
-      ], data ?? [])
-    } catch (error) {
-      setFeedback({ type: 'error', message: error.message })
-    }
-  }
-
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const pageWindow = Array.from({ length: Math.min(5, pages) }, (_, index) => {
     const start = Math.min(Math.max(1, page - 2), Math.max(1, pages - 4))
@@ -231,19 +195,22 @@ export function CatalogTab({ onOpenCopies }) {
 
   return (
     <div className="books-tab">
+      {/* UC-19 basic flow: pick an existing title and add copies, or "Add New Book". */}
       <div className="admin-search-bar-wrap">
         <div className="admin-barcode-input">
-          <span className="books-search-icon">⌕</span>
+          <span className="books-search-icon" aria-hidden="true">⌕</span>
           <input
+            ref={searchRef}
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
             onKeyDown={(event) => { if (event.key === 'Enter') { setSearch(searchInput.trim()); setPage(1) } }}
             placeholder="Scan or type barcode / ISBN / title…"
+            aria-label="Lookup titles by barcode, ISBN, title or publisher"
           />
           <span className="books-kbd">Enter</span>
         </div>
         <button type="button" className="admin-btn-primary" onClick={() => { setSearch(searchInput.trim()); setPage(1) }}>Lookup</button>
-        <button type="button" className="admin-btn-outline" onClick={() => setEditorBook(null)}>Add Title</button>
+        <button type="button" className="admin-btn-outline" onClick={() => setEditorBook(null)}>Add New Book</button>
       </div>
 
       {feedback && (
@@ -263,10 +230,6 @@ export function CatalogTab({ onOpenCopies }) {
           <option value="all">Condition: All conditions</option>
           {CONDITIONS.map((value) => <option key={value} value={value}>{statusLabel(value)}</option>)}
         </select>
-        <select value={shelf} onChange={(event) => setShelf(event.target.value)} aria-label="Shelf filter">
-          <option value="all">Shelf: All shelves</option>
-          {shelves.map((value) => <option key={value} value={value}>{value}</option>)}
-        </select>
         {checked.size > 0 && (
           <div className="books-bulk-actions">
             <span>{checked.size} selected</span>
@@ -274,7 +237,6 @@ export function CatalogTab({ onOpenCopies }) {
             <button type="button" className="admin-btn-outline books-btn-sm" disabled={collectionSaving} onClick={() => handleBulkCollection('premium')}>Set Premium</button>
           </div>
         )}
-        <button type="button" className="admin-btn-outline books-btn-sm books-btn-ghost books-push-right" onClick={handleExport}>Export</button>
       </div>
 
       <div className="admin-work-layout">
@@ -298,7 +260,6 @@ export function CatalogTab({ onOpenCopies }) {
                   </th>
                   <th>Title & author</th>
                   <th>ISBN</th>
-                  <th>Call number</th>
                   <th>Collection</th>
                   <th>Copies</th>
                   <th>Shelf</th>
@@ -307,16 +268,16 @@ export function CatalogTab({ onOpenCopies }) {
               </thead>
               <tbody>
                 {loading && (
-                  <tr><td colSpan="8" className="books-table-empty">Loading catalog…</td></tr>
+                  <tr><td colSpan="7" className="books-table-empty">Loading catalog…</td></tr>
                 )}
                 {!loading && books.map((book) => (
                   <tr key={book.id} className={book.id === selectedId ? 'selected' : ''} onClick={() => setSelectedId(book.id)}>
                     <td className="check" onClick={(event) => event.stopPropagation()}>
                       <input type="checkbox" checked={checked.has(book.id)} onChange={() => toggleChecked(book.id)} aria-label={`Select ${book.title}`} />
                     </td>
-                    <td>
+                    <td className="books-cell-wrap">
                       <div className="books-title-cell">
-                        <Cover book={book} />
+                        <Cover book={book} size="sm" />
                         <div>
                           <div className="books-title-line">
                             {book.title}
@@ -327,19 +288,20 @@ export function CatalogTab({ onOpenCopies }) {
                       </div>
                     </td>
                     <td className="mono">{book.isbn13 || book.isbn10 || '—'}</td>
-                    <td className="mono">{book.shelf_location || '—'}</td>
                     <td>
                       <span className={`books-badge ${book.collection}`}>{statusLabel(book.collection)}</span>
                     </td>
-                    <td className="mono">{copyProgress(book)}</td>
-                    <td>{book.shelf_location || '—'}</td>
+                    <td className={`mono books-copies-cell tone-${copiesTone(book)}`} title={`${book.available_copies ?? 0} of ${book.total_copies ?? 0} copies borrowable`}>
+                      {book.available_copies ?? 0} <span className="books-copies-of">/ {book.total_copies ?? 0}</span>
+                    </td>
+                    <td className="books-cell-wrap" title={book.shelf_location || 'No default shelf'}>{book.shelf_location || '—'}</td>
                     <td>
                       <button type="button" className="books-icon-btn" aria-label="Open details" onClick={(event) => { event.stopPropagation(); setSelectedId(book.id) }}>›</button>
                     </td>
                   </tr>
                 ))}
                 {!loading && books.length === 0 && (
-                  <tr><td colSpan="8" className="books-table-empty">No titles match the selected filters.</td></tr>
+                  <tr><td colSpan="7" className="books-table-empty">No titles match the selected filters.</td></tr>
                 )}
               </tbody>
             </table>
@@ -385,7 +347,7 @@ export function CatalogTab({ onOpenCopies }) {
                   <div><dt>ISBN</dt><dd className="mono">{selectedBook.isbn13 || selectedBook.isbn10 || '—'}</dd></div>
                   <div><dt>Call number</dt><dd className="mono">{selectedBook.shelf_location || '—'}</dd></div>
                   <div><dt>Category / field</dt><dd>{[selectedBook.category, selectedBook.field].filter(Boolean).join(' · ') || '—'}</dd></div>
-                  <div><dt>Default shelf</dt><dd>{selectedBook.shelf_location || '—'}</dd></div>
+                  <div><dt>Copies</dt><dd>{selectedBook.available_copies ?? 0} / {selectedBook.total_copies ?? 0} available</dd></div>
                   <div><dt>Status</dt><dd><span className={`books-badge tone-${statusTone(selectedBook.status)}`}>{statusLabel(selectedBook.status)}</span></dd></div>
                   <div><dt>Added</dt><dd>{formatDateTime(selectedBook.added_at)}</dd></div>
                 </dl>
@@ -442,7 +404,7 @@ export function CatalogTab({ onOpenCopies }) {
 
               <div className="books-detail-actions">
                 <button type="button" className="admin-btn-outline" onClick={() => setEditorBook(selectedBook)}>Edit metadata</button>
-                <button type="button" className="admin-btn-primary" onClick={() => setAddCopiesBook(selectedBook)}>Add copies to title</button>
+                <button type="button" className="admin-btn-primary" onClick={() => setAddCopiesBook(selectedBook)}>Add copies</button>
               </div>
             </>
           ) : (

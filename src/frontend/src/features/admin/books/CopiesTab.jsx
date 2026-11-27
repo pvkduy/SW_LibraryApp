@@ -1,18 +1,22 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../../lib/api'
 import { supabase } from '../../../lib/supabase'
 import {
   CONDITIONS,
   COPY_STATUSES,
   copyShelf,
-  downloadCsv,
   formatDateTime,
   printBarcodeLabels,
   statusLabel,
   statusTone,
+  transactionLabel,
 } from './booksUtils'
 
 const PAGE_SIZE = 25
+
+// Statuses that are set by circulation / write-off flows, never by hand here.
+// The manual surface is limited to available / damaged / under_repair (+ found
+// to resolve a lost copy), per FR-INV-07 and UC-19 §2.2.4.
 const SORT_OPTIONS = [
   { value: 'created_desc', label: 'Sort: Newest' },
   { value: 'barcode_asc', label: 'Sort: Barcode A→Z' },
@@ -24,6 +28,7 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [searchInput, setSearchInput] = useState('')
+  const searchRef = useRef(null)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('all')
   const [condition, setCondition] = useState('all')
@@ -50,6 +55,15 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
       setPage(1)
     }
   }, [focusBookId])
+
+  // After an update the copy list is reloaded, so only show the feedback banner
+  // long enough to read and then clear it (the copy row already shows the status).
+  // Error banners stay until dismissed.
+  useEffect(() => {
+    if (!feedback || feedback.type === 'error') return undefined
+    const handle = setTimeout(() => setFeedback(null), 4000)
+    return () => clearTimeout(handle)
+  }, [feedback])
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -134,7 +148,7 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
     let active = true
     supabase
       .from('inventory_transactions')
-      .select('id, at, type, delta, reason, actor_label')
+      .select('id, at, type, delta, reason, actor_label, to_status')
       .eq('copy_id', selected.id)
       .order('at', { ascending: false })
       .limit(6)
@@ -150,7 +164,6 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
     if (!selected) return []
     if (selected.status === 'lost') return ['found', 'damaged']
     if (selected.status === 'retired') return []
-    if (selected.status === 'borrowed' || selected.status === 'held') return ['available', 'damaged', 'under_repair']
     return ['available', 'damaged', 'under_repair']
   }, [selected])
 
@@ -188,28 +201,16 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
     })))
   }
 
-  const handleBatchExport = () => {
-    const copies = selectedCopiesForPrint()
-    if (copies.length === 0) {
-      setFeedback({ type: 'error', message: 'Select at least one copy to export.' })
-      return
-    }
-    downloadCsv('copy-labels.csv', [
-      { label: 'Barcode', value: (copy) => copy.barcode },
-      { label: 'Title', value: (copy) => copy.books?.title },
-      { label: 'Authors', value: (copy) => (copy.books?.authors ?? []).join('; ') },
-      { label: 'ISBN-13', value: (copy) => copy.books?.isbn13 },
-      { label: 'Shelf', value: (copy) => copyShelf(copy, copy.books) },
-      { label: 'Status', value: (copy) => copy.status },
-      { label: 'Condition', value: (copy) => copy.condition },
-      { label: 'Source', value: (copy) => copy.source_type },
-    ], copies)
-  }
+  const toast = (message, type = 'success') => setFeedback({ message, type, key: crypto.randomUUID() })
 
   const handleStatusSave = async () => {
     if (!selected) return
     if (!reason.trim()) {
-      setFeedback({ type: 'error', message: 'A mandatory reason is required for a status change.' })
+      toast('A mandatory reason is required for a status change.', 'error')
+      return
+    }
+    if (isNoOpTarget(selected, targetStatus)) {
+      setFeedback({ type: 'error', message: `Copy ${selected.barcode} is ${currentStatusLabel(selected.status)} — pick a different status to change it.` })
       return
     }
     setSaving(true)
@@ -222,16 +223,17 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
         shelf_location: destinationShelf.trim() || null,
       })
       const result = response.data ?? {}
-      setFeedback({
-        type: 'success',
-        message: `Copy ${selected.barcode} is now ${statusLabel(result.status || targetStatus)}. A ${result.transaction_type || 'status_change'} transaction was written.`,
-      })
+      const finalStatus = result.status || targetStatus
       if (result.status === 'held') {
-        setFeedback({ type: 'success', message: `Copy ${selected.barcode} became available and was promoted to the first waiting reservation (held).` })
+        toast(`Copy ${selected.barcode} was promoted to a waiting reservation (held) instead of being re-shelved.`)
+      } else {
+        toast(`Copy ${selected.barcode} is now ${statusLabel(finalStatus)}.`)
       }
+      setTargetStatus(finalStatus)
+      setReason('')
       refresh()
     } catch (error) {
-      setFeedback({ type: 'error', message: error.message })
+      toast(error.message, 'error')
     } finally {
       setSaving(false)
     }
@@ -244,22 +246,31 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
   })
 
   const currentStatusLocked = selected && ['borrowed', 'retired'].includes(selected.status)
+  const noOpTarget = isNoOpTarget(selected, targetStatus)
+  let submitBlockedReason = ''
+  if (selected) {
+    if (saving) submitBlockedReason = 'Saving…'
+    else if (selected.status === 'retired') submitBlockedReason = 'A retired copy is terminal.'
+    else if (!statusOptions.includes(targetStatus)) submitBlockedReason = 'Choose a new status first.'
+    else if (noOpTarget) submitBlockedReason = `Copy is ${currentStatusLabel(selected.status)} — choose a different status.`
+  }
 
   return (
     <div className="books-tab">
       <div className="admin-search-bar-wrap">
         <div className="admin-barcode-input">
-          <span className="books-search-icon">▥</span>
+          <span className="books-search-icon" aria-hidden="true">⌕</span>
           <input
+            ref={searchRef}
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
             onKeyDown={(event) => { if (event.key === 'Enter') { setSearch(searchInput.trim()); setPage(1) } }}
             placeholder="Scan barcode or search title / ISBN…"
+            aria-label="Look up copies by barcode, title or ISBN"
           />
           <span className="books-kbd">Enter</span>
         </div>
         <button type="button" className="admin-btn-primary" onClick={() => { setSearch(searchInput.trim()); setPage(1) }}>Lookup</button>
-        <button type="button" className="admin-btn-outline" onClick={handleBatchExport}>Batch Export</button>
       </div>
 
       {feedback && (
@@ -285,21 +296,23 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
         <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort copies">
           {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </select>
-        {checked.size > 0 && (
-          <button type="button" className="admin-btn-outline books-btn-sm books-push-right" onClick={handlePrint}>Print {checked.size} label(s)</button>
-        )}
         {focusBookId && (
           <div className="books-focus-chip">
             Showing copies for one title
             <button type="button" className="books-link" onClick={onClearFocus}>Clear</button>
           </div>
         )}
+        {checked.size > 0 && (
+          <button type="button" className="admin-btn-outline books-btn-sm books-push-right" onClick={handlePrint}>
+            Print Barcode Labels ({checked.size})
+          </button>
+        )}
       </div>
 
       <div className="admin-work-layout">
         <div className="admin-table-container">
           <div className="admin-table-toolbar books-table-toolbar">
-            <span className="books-muted">Showing <strong>{total.toLocaleString('vi-VN')}</strong> copies · 25 per page · FR-INV-01.07</span>
+            <span className="books-muted">Showing <strong>{rows.length}</strong> of <strong>{total.toLocaleString('vi-VN')}</strong> copies · 25 per page</span>
             <button type="button" className="admin-btn-outline books-btn-sm" onClick={refresh}>Refresh</button>
           </div>
 
@@ -315,8 +328,8 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
                   <th>Status</th>
                   <th>Location</th>
                   <th>Condition</th>
-                  <th>Acquisition source</th>
-                  <th>Action</th>
+                  <th>Source</th>
+                  <th aria-label="Copy history" />
                 </tr>
               </thead>
               <tbody>
@@ -327,19 +340,16 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
                       <input type="checkbox" checked={checked.has(copy.id)} onChange={() => toggleChecked(copy.id)} aria-label={`Select ${copy.barcode}`} />
                     </td>
                     <td><span className="books-barcode-pill">{copy.barcode}</span></td>
-                    <td>
+                    <td className="books-cell-wrap">
                       <div className="books-title-line">{copy.books?.title || 'Unknown title'}</div>
-                      <div className="books-subline">
-                        {copy.books?.authors?.join(', ') || 'Unknown author'}
-                        {copy.barcode.includes('-') && <span> · Copy #{copy.barcode.split('-').pop()}</span>}
-                      </div>
+                      <div className="books-subline">{copy.books?.authors?.join(', ') || 'Unknown author'}</div>
                     </td>
                     <td><span className={`books-badge tone-${statusTone(copy.status)}`}>{statusLabel(copy.status)}</span></td>
-                    <td>{copyShelf(copy, copy.books)}</td>
+                    <td className="books-cell-wrap">{copyShelf(copy, copy.books)}</td>
                     <td>{statusLabel(copy.condition)}</td>
                     <td>{statusLabel(copy.source_type || 'manual')}</td>
                     <td>
-                      <button type="button" className="books-link" onClick={(event) => { event.stopPropagation(); setSelectedId(copy.id) }}>Copy History →</button>
+                      <button type="button" className="books-icon-btn" aria-label={`Open ${copy.barcode} history`} onClick={(event) => { event.stopPropagation(); setSelectedId(copy.id) }}>›</button>
                     </td>
                   </tr>
                 ))}
@@ -384,10 +394,10 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
                 <div className="books-empty-note">A retired copy is terminal. It cannot be changed; add a new copy to the title instead.</div>
               )}
               {selected.status === 'borrowed' && (
-                <div className="books-empty-note">This copy is on loan. On-loan losses use the Circulation loan Lost workflow, not this pane.</div>
+                <div className="books-empty-note">This copy is on loan. Only a return (or the Circulation loan Lost workflow) can change it — pick an action here to release it manually if the loan record is gone.</div>
               )}
               {selected.status === 'held' && (
-                <div className="books-empty-note">Setting this held copy to damaged or under repair releases the hold (EC-12). It cannot be set lost directly.</div>
+                <div className="books-empty-note">This copy is held for a waiting reservation. Damaged / Under repair releases the hold (EC-12); it cannot be set lost directly.</div>
               )}
 
               <div className="books-status-options">
@@ -395,13 +405,15 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
                   <button
                     key={value}
                     type="button"
-                    className={`books-status-option ${targetStatus === value ? 'active' : ''} ${value === 'lost' ? 'danger' : ''}`}
+                    className={`books-status-option ${targetStatus === value ? 'active' : ''}`}
                     onClick={() => setTargetStatus(value)}
                   >
                     <span className="radio-dot" />
                     <span>
                       <strong>{value === 'found' ? 'Found' : statusLabel(value)}</strong>
-                      <small>{statusDescription(value)}</small>
+                      <small>
+                        {statusDescription(value)}
+                      </small>
                     </span>
                   </button>
                 ))}
@@ -430,16 +442,17 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
                 <div className="books-hint">{reason.length}/280 characters</div>
               </div>
 
-              <div className="books-detail-actions three">
-                <button type="button" className="admin-btn-outline books-btn-ghost" onClick={() => { setReason(''); setTargetStatus(selected.status === 'lost' ? 'found' : selected.status) }}>Cancel</button>
+              <div className="books-detail-actions">
+                <button type="button" className="admin-btn-outline books-btn-ghost" onClick={() => { setReason(''); setTargetStatus(selected.status === 'lost' ? 'found' : selected.status) }}>Reset</button>
                 <button type="button" className="admin-btn-outline" onClick={handlePrint}>Print barcode</button>
                 <button
                   type="button"
                   className="admin-btn-primary"
-                  disabled={saving || !statusOptions.includes(targetStatus) || currentStatusLocked}
+                  disabled={saving || !statusOptions.includes(targetStatus) || currentStatusLocked || noOpTarget}
+                  title={submitBlockedReason || 'Update the status and write a status_change transaction'}
                   onClick={handleStatusSave}
                 >
-                  {saving ? 'Updating…' : 'Update & log transaction'}
+                  {saving ? 'Updating…' : 'Update status'}
                 </button>
               </div>
 
@@ -450,10 +463,17 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
                     <div key={entry.id} className="books-timeline-row">
                       <span className={`books-dot tone-${statusTone(entry.type === 'write_off' ? 'retired' : entry.type)}`} />
                       <div>
-                        <div className="books-title-line">{statusLabel(entry.type)}</div>
+                        <div className="books-title-line">
+                          {entry.type === 'status_change' ? 'Status change' : transactionLabel(entry.type)}
+                          {entry.to_status && (
+                            <span className="books-muted">
+                              {' '}→ <span className={`books-badge tone-${statusTone(entry.to_status === 'retired' && entry.type === 'write_off' ? 'retired' : entry.to_status)}`}>{statusLabel(entry.to_status)}</span>
+                            </span>
+                          )}
+                        </div>
                         <div className="books-subline">{entry.reason || '—'} · {formatDateTime(entry.at)}</div>
                       </div>
-                      <span className="mono">{entry.delta > 0 ? `+${entry.delta}` : entry.delta}</span>
+                      {entry.delta ? <span className="mono">{entry.delta > 0 ? `+${entry.delta}` : entry.delta}</span> : null}
                     </div>
                   ))}
                   {history.length === 0 && <div className="books-empty-note">No transactions recorded for this copy yet.</div>}
@@ -472,14 +492,35 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
 function statusDescription(status) {
   switch (status) {
     case 'available':
-      return 'Return copy to public circulating stacks'
+      return 'Back on the public shelves and borrowable'
     case 'damaged':
-      return 'Flagged for archival assessment & quarantine'
+      return 'Awaiting archival assessment & quarantine'
     case 'under_repair':
-      return 'Bench restoration, spine fixing, or rebinding'
+      return 'Out for bench restoration, spine fixing, or rebinding'
     case 'found':
-      return 'Reinstated copy previously documented as lost'
+      return 'Reinstate a copy documented as lost'
     default:
       return ''
   }
+}
+
+/** Human label for the currently stored status of the selected copy. */
+function currentStatusLabel(status) {
+  switch (status) {
+    case 'available':
+      return 'already available'
+    case 'damaged':
+      return 'already damaged'
+    case 'under_repair':
+      return 'already under repair'
+    default:
+      return status ? `currently ${statusLabel(status)}` : ''
+  }
+}
+
+/** True when targetStatus only re-applies the copy's current state (no transaction is written). */
+function isNoOpTarget(selected, targetStatus) {
+  if (!selected || !targetStatus) return false
+  if (targetStatus === 'found') return false
+  return targetStatus === selected.status
 }

@@ -173,6 +173,15 @@ export function copyProgress(book) {
   return `${available} / ${total}`
 }
 
+/** Tone for the available/total ratio: none available, partly available, all available. */
+export function copiesTone(book) {
+  const total = Number(book?.total_copies ?? 0)
+  const available = Number(book?.available_copies ?? 0)
+  if (available <= 0) return 'danger'
+  if (available < total) return 'warn'
+  return 'success'
+}
+
 export function getCoverUrl(path) {
   if (!path) return null
   if (/^https?:\/\//i.test(path)) return path

@@ -856,7 +856,7 @@ export function WriteoffsTab({ onOpenCopies }) {
                       disabled={saving || stagedCopies.length === 0}
                       onClick={handleCompleteSlip}
                     >
-                      {saving ? 'Processing…' : 'Complete Write-Off Slip (Decommission)'}
+                      {saving ? 'Processing…' : 'Complete Slip'}
                     </button>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button
@@ -888,7 +888,7 @@ export function WriteoffsTab({ onOpenCopies }) {
                     style={{ width: '100%', justifyContent: 'center' }}
                     onClick={handlePrintSlip}
                   >
-                    🖨️ Print / Export Slip Summary
+                    🖨️ Print / Export
                   </button>
                 )}
               </div>
@@ -1027,7 +1027,7 @@ export function WriteoffsTab({ onOpenCopies }) {
                 Keep Draft
               </button>
               <button type="button" className="admin-btn-outline books-btn-danger" disabled={saving} onClick={handleConfirmCancel}>
-                Confirm Cancel Slip
+                Cancel Slip
               </button>
             </div>
           </div>

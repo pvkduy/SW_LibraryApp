@@ -11,15 +11,11 @@ import {
 const MAX_BYTES = 2 * 1024 * 1024
 const MAX_ROWS = 1000
 
-const DUPLICATE_RULES = [
-  { value: 'skip', label: 'Skip existing records', hint: 'Preserves current catalog and barcode assignments.' },
-  { value: 'add_copies', label: 'Add copies to existing title', hint: 'Increment inventory stock and provision the next barcode sequence.' },
-  { value: 'update_metadata', label: 'Update title metadata', hint: 'Overwrite publisher, call number, and categorization with incoming values.' },
-]
+// UC-19 §2.2.2 / FR-INV-01: a duplicate ISBN adds copies to the existing title.
+const DUPLICATE_RULE = 'add_copies'
 
 export function ImportTab({ onImported }) {
   const [preview, setPreview] = useState(null)
-  const [duplicateRule, setDuplicateRule] = useState('add_copies')
   const [busy, setBusy] = useState(false)
   const [feedback, setFeedback] = useState(null)
   const [result, setResult] = useState(null)
@@ -51,7 +47,7 @@ export function ImportTab({ onImported }) {
       if (parsed.errors.length > 0) {
         setFeedback({ type: 'error', message: `${parsed.errors.length} row(s) have validation errors and will be excluded. ${parsed.validRows.length} valid row(s) are ready.` })
       } else {
-        setFeedback({ type: 'success', message: `${parsed.validRows.length} row(s) validated. Review the duplicate rule and confirm the import.` })
+        setFeedback({ type: 'success', message: `${parsed.validRows.length} row(s) validated. Review the preview and confirm the import.` })
       }
     } catch (error) {
       setFeedback({ type: 'error', message: error.message })
@@ -88,7 +84,7 @@ export function ImportTab({ onImported }) {
 
       const response = await api.invoke('import-books', {
         rows: preview.validRows,
-        duplicate_rule: duplicateRule,
+        duplicate_rule: DUPLICATE_RULE,
         source_file: storagePath,
       })
       const data = response.data ?? {}
@@ -176,38 +172,16 @@ export function ImportTab({ onImported }) {
         <div className="books-panel-head">
           <div className="books-step-badge">2</div>
           <div>
-            <h3>Duplicate ISBN conflict rule</h3>
-            <p>Applied when a validated row matches an ISBN already in the catalog.</p>
-          </div>
-        </div>
-        <div className="books-rule-grid">
-          {DUPLICATE_RULES.map((rule) => (
-            <button
-              key={rule.value}
-              type="button"
-              className={`books-rule-card ${duplicateRule === rule.value ? 'active' : ''}`}
-              onClick={() => setDuplicateRule(rule.value)}
-            >
-              <span className="radio-dot" />
-              <span>
-                <strong>{rule.label}</strong>
-                <small>{rule.hint}</small>
-              </span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="books-panel">
-        <div className="books-panel-head">
-          <div className="books-step-badge">3</div>
-          <div>
             <h3>Erroneous rows preview</h3>
             <p>Only invalid rows are listed with per-row reasons; valid rows are ingested when you confirm.</p>
           </div>
           <span className={`books-badge tone-${preview?.errors?.length ? 'danger' : 'neutral'} books-push-right`}>
             {preview ? `${preview.errors.length} row(s) with errors` : 'No file selected'}
           </span>
+        </div>
+        <div className="books-schema-hint">
+          <span className="books-schema-label">Duplicate ISBN</span>
+          <span>Rows whose ISBN already exists in the catalog add copies to the existing title (UC-19 §2.2.2).</span>
         </div>
 
         {feedback && (
@@ -302,7 +276,6 @@ export function ImportTab({ onImported }) {
           )}
           <div className="books-inline">
             <button type="button" className="admin-btn-outline" onClick={reset}>Import another file</button>
-            <button type="button" className="admin-btn-primary" onClick={() => onImported?.()}>Open catalog</button>
           </div>
         </section>
       )}
