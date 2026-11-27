@@ -52,6 +52,9 @@ Deno.serve(async (req: Request) => {
   if (isAdmin && !reason) {
     return fail('VALIDATION_FAILED', 'Staff cancellation requires an explicit reason (UC-29)')
   }
+  if (reason.length > 500) {
+    return fail('VALIDATION_FAILED', 'Cancellation reason must be 500 characters or fewer')
+  }
 
   // 1. Fetch reservation
   const { data: resRecord, error: resErr } = await auth.supabaseAdmin

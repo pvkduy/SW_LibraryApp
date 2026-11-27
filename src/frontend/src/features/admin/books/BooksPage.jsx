@@ -11,6 +11,8 @@ import { TabIcon } from './booksComponents'
 export function BooksPage() {
   const [activeTab, setActiveTab] = useState('catalog') // 'catalog' | 'copies' | 'import' | 'history' | 'writeoffs'
   const [focusBookId, setFocusBookId] = useState(null)
+  const [focusCatalogBookId, setFocusCatalogBookId] = useState(null)
+  const [focusSlipId, setFocusSlipId] = useState(null)
 
   // Quick summary counts
   const [counts, setCounts] = useState({
@@ -54,11 +56,13 @@ export function BooksPage() {
     setFocusBookId(null)
   }
 
-  const handleOpenCatalogForBook = () => {
+  const handleOpenCatalogForBook = (bookId) => {
+    setFocusCatalogBookId(bookId ?? null)
     setActiveTab('catalog')
   }
 
-  const handleOpenWriteoff = () => {
+  const handleOpenWriteoff = (slipId) => {
+    setFocusSlipId(slipId ?? null)
     setActiveTab('writeoffs')
   }
 
@@ -134,7 +138,11 @@ export function BooksPage() {
 
       {/* Main Tab Content */}
       {activeTab === 'catalog' && (
-        <CatalogTab onOpenCopies={handleOpenCopiesForBook} />
+        <CatalogTab
+          focusBookId={focusCatalogBookId}
+          onClearFocusBook={() => setFocusCatalogBookId(null)}
+          onOpenCopies={handleOpenCopiesForBook}
+        />
       )}
 
       {activeTab === 'copies' && (
@@ -153,7 +161,11 @@ export function BooksPage() {
       )}
 
       {activeTab === 'writeoffs' && (
-        <WriteoffsTab onOpenCopies={handleOpenCopiesForBook} />
+        <WriteoffsTab
+          focusSlipId={focusSlipId}
+          onClearFocusSlip={() => setFocusSlipId(null)}
+          onOpenCopies={handleOpenCopiesForBook}
+        />
       )}
     </div>
   )

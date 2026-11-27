@@ -75,11 +75,12 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
   }, [searchInput])
 
   const resolveBookIds = useCallback(async (needle) => {
-    if (!needle) return []
+    const safeNeedle = needle.replace(/[,()]/g, ' ').trim()
+    if (!safeNeedle) return []
     const { data } = await supabase
       .from('books')
       .select('id')
-      .or(`title.ilike.%${needle}%,isbn13.ilike.%${needle}%,isbn10.ilike.%${needle}%`)
+      .or(`title.ilike.%${safeNeedle}%,isbn13.ilike.%${safeNeedle}%,isbn10.ilike.%${safeNeedle}%`)
       .limit(200)
     return (data ?? []).map((book) => book.id)
   }, [])
@@ -87,18 +88,19 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
   const loadCopies = useCallback(async () => {
     setLoading(true)
     try {
-      const bookIds = await resolveBookIds(search)
+      const safeSearch = search.replace(/[,()]/g, ' ').trim()
+      const bookIds = await resolveBookIds(safeSearch)
       const orParts = []
-      if (search) {
-        orParts.push(`barcode.ilike.%${search}%`)
+      if (safeSearch) {
+        orParts.push(`barcode.ilike.%${safeSearch}%`)
         if (bookIds.length > 0) orParts.push(`book_id.in.(${bookIds.join(',')})`)
       }
-      if (focusBookId) orParts.push(`book_id.eq.${focusBookId}`)
 
       let query = supabase
         .from('copies')
         .select('*, books(id, title, authors, isbn13, shelf_location, replacement_price)', { count: 'exact' })
 
+      if (focusBookId) query = query.eq('book_id', focusBookId)
       if (orParts.length > 0) query = query.or(orParts.join(','))
       if (status !== 'all') query = query.eq('status', status)
       if (condition !== 'all') query = query.eq('condition', condition)
@@ -204,13 +206,17 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
 
   const toast = (message, type = 'success') => setFeedback({ message, type, key: crypto.randomUUID() })
 
+  const shelfChanged = Boolean(
+    selected && destinationShelf.trim() !== (selected.shelf_location ?? '').trim(),
+  )
+
   const handleStatusSave = async () => {
     if (!selected) return
     if (!reason.trim()) {
       toast('A mandatory reason is required for a status change.', 'error')
       return
     }
-    if (isNoOpTarget(selected, targetStatus)) {
+    if (isNoOpTarget(selected, targetStatus) && !shelfChanged) {
       setFeedback({ type: 'error', message: `Copy ${selected.barcode} is ${currentStatusLabel(selected.status)} — pick a different status to change it.` })
       return
     }
@@ -227,6 +233,8 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
       const finalStatus = result.status || targetStatus
       if (result.status === 'held') {
         toast(`Copy ${selected.barcode} was promoted to a waiting reservation (held) instead of being re-shelved.`)
+      } else if (isNoOpTarget(selected, targetStatus) && shelfChanged) {
+        toast(`Copy ${selected.barcode} shelf location updated to ${destinationShelf.trim()}.`)
       } else {
         toast(`Copy ${selected.barcode} is now ${statusLabel(finalStatus)}.`)
       }
@@ -247,13 +255,14 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
   })
 
   const currentStatusLocked = selected && ['borrowed', 'retired'].includes(selected.status)
-  const noOpTarget = isNoOpTarget(selected, targetStatus)
+  const noOpTarget = isNoOpTarget(selected, targetStatus) && !shelfChanged
   let submitBlockedReason = ''
   if (selected) {
     if (saving) submitBlockedReason = 'Saving…'
     else if (selected.status === 'retired') submitBlockedReason = 'A retired copy is terminal.'
+    else if (selected.status === 'borrowed') submitBlockedReason = 'An on-loan copy must be returned or marked lost from Circulation.'
     else if (!statusOptions.includes(targetStatus)) submitBlockedReason = 'Choose a new status first.'
-    else if (noOpTarget) submitBlockedReason = `Copy is ${currentStatusLabel(selected.status)} — choose a different status.`
+    else if (noOpTarget) submitBlockedReason = `Copy is ${currentStatusLabel(selected.status)} — choose a different status or change its destination shelf.`
   }
 
   return (
@@ -407,7 +416,7 @@ export function CopiesTab({ focusBookId, onClearFocus }) {
                 <div className="books-empty-note">A retired copy is terminal. It cannot be changed; add a new copy to the title instead.</div>
               )}
               {selected.status === 'borrowed' && (
-                <div className="books-empty-note">This copy is on loan. Only a return (or the Circulation loan Lost workflow) can change it — pick an action here to release it manually if the loan record is gone.</div>
+                <div className="books-empty-note">This copy is on loan. Process its return or mark it lost from the Circulation Desk (FR-CIRC-03 / FR-CIRC-05).</div>
               )}
               {selected.status === 'held' && (
                 <div className="books-empty-note">This copy is held for a waiting reservation. Damaged / Under repair releases the hold (EC-12); it cannot be set lost directly.</div>
