@@ -1,8 +1,11 @@
 # ShelfHelp: Smart Library Management System
+# PA4 Software Architecture — C4 Level 3 (Component Diagrams)
 
-## PA4 Software Architecture — C4 Level 3 (Component Diagrams)
+**Version:** 1.7
 
-### Revision history
+---
+
+## Revision History
 
 | Date | Version | Description | Author |
 | :--- | :--- | :--- | :--- |
@@ -12,8 +15,12 @@
 | 24/Nov/2026 | 1.3 | Component diagrams rendered as two panels each (Web Application by mode; ShelfHelp API by entry path) so the C4 layout stays readable | Nguyễn Anh Khôi |
 | 24/Nov/2026 | 1.4 | Catalogues gained a Panel column so each component maps to its diagram panel | Nguyễn Anh Khôi |
 | 27/Nov/2026 | 1.5 | Aligned Web App and API components, command map (`list-sessions`, `revoke-session`, `revoke-other-sessions`), and traceability (UC-01–UC-32) with PA4 UC-02 and UC-32 | Nguyễn Anh Khôi |
+| 28/Nov/2026 | 1.6 | Updated Edge Function count to 24, corrected command names (`send-reminders`, `submit-book-review`, `inventory-history`), and aligned §7.1/§8 with `src/supabase/functions/` | Nguyễn Anh Khôi |
+| 28/Nov/2026 | 1.7 | Clarified §4.1 and §5 — reader/admin code-splitting is a PA5 target; routes are currently separate trees but share one bundle | Nguyễn Anh Khôi |
 
-### Table of contents
+---
+
+## Table of Contents
 
 - [1. Introduction](#1-introduction)
 - [2. Why these two containers](#2-why-these-two-containers)
@@ -35,6 +42,8 @@
 ---
 
 ## 1. Introduction
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
 
 ### 1.1 Purpose
 
@@ -59,6 +68,8 @@ The view covers the two core application containers across the whole product sco
 
 ## 2. Why these two containers
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
+
 The Web Application and the ShelfHelp API carry almost all product behaviour. The Web Application is where Reader and Admin experiences differ; the API is where every command, job, and provider adapter runs.
 
 PostgreSQL is not decomposed here because its components are tables, constraints, indexes, policies, triggers, and RPCs, which are documented in the specification and migrations. Auth, Storage, and
@@ -67,6 +78,8 @@ Realtime are managed services with no team-owned internal modules.
 ---
 
 ## 3. Web Application — component diagram
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
 
 The view is drawn as two panels, one per operating mode. Reader Mode and Admin Mode share the same
 App Shell, the same Data Access & Realtime Client, and the same backend services, so each panel shows
@@ -242,6 +255,8 @@ Source: [`mermaid/component-webapp-reader.mmd`](mermaid/component-webapp-reader.
 
 ## 4. Web Application — component catalogue
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
+
 The **Panel** column names the diagram panel in which each component appears: *Reader* (§3.1), *Admin*
 (§3.2), or *Both* for the App Shell, Authentication & Profile, the Data Access & Realtime Client, and the shared backend.
 
@@ -261,7 +276,7 @@ The **Panel** column names the diagram panel in which each component appears: *R
 
 ### 4.1 Reader and Admin Mode in one container
 
-Reader and Admin Mode share the App Shell, the Data Access client, and the shared contracts, but their route bundles are separate so a student never downloads admin code. The App Shell chooses the mode from the authenticated profile:
+Reader and Admin Mode share the App Shell, the Data Access client, and the shared contracts. Their routes are structured as separate route trees, with route-level `React.lazy` / `Suspense` code-splitting planned for PA5 so that admin code is never downloaded by students. The App Shell chooses the mode from the authenticated profile:
 
 - `role = student` → Reader shell and reader routes;
 - `role = admin` → Admin shell and admin routes;
@@ -274,6 +289,8 @@ Route guards improve the experience; RLS and Edge Functions enforce the actual r
 
 ## 5. Web Application — design notes
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
+
 - **Feature isolation.** Features do not import each other's internals. Shared behaviour moves to
   `@shelfhelp/shared` or a shared presentation component.
 - **Server state.** TanStack Query is planned to own server state; until it is added, component state
@@ -281,13 +298,15 @@ Route guards improve the experience; RLS and Edge Functions enforce the actual r
   availability data after implementation.
 - **Validation.** Client validation is a usability feature; the same schema and domain rules run on the
   server.
-- **Bundles.** Admin-only code stays out of the student bundle.
+- **Bundles.** Route-level `React.lazy` / `Suspense` splitting is planned for PA5; until then, reader and admin routes are separate route trees but ship in the same bundle.
 - **Failure.** The API client preserves `reason`, `message`, and `details`, so screens can show a
   specific recovery action.
 
 ---
 
 ## 6. ShelfHelp API — component diagram
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
 
 The view is drawn as two panels, one per entry path. Business commands arrive from the Web Application
 over HTTPS; scheduled jobs arrive from `pg_cron` inside PostgreSQL through `pg_net`. Both paths enter
@@ -439,6 +458,8 @@ Source: [`mermaid/component-api-request.mmd`](mermaid/component-api-request.mmd)
 
 ## 7. ShelfHelp API — component catalogue
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
+
 The **Panel** column names the diagram panel in which each component appears: *Request* (§6.1),
 *Scheduled job* (§6.2), or *Both* for the shared rule engine, RPC gateway, adapters, and job tracker.
 
@@ -466,7 +487,7 @@ The **Panel** column names the diagram panel in which each component appears: *R
 | `rpc_pay_reader_charges` | Settles reader charges and records the immutable receipt. |
 | `rpc_submit_book_review` | Validates loan history and stores book rating and review text. |
 
-*Implementation status:* Twenty-one business Edge Function directories are currently present, excluding `_shared` and the `hello` health-check function. The implemented set includes `handover-items`, `return-loan`, `record-counter-payment`, `cancel-reservation`, `checkout-cart`, `complete-simulated-payment`, reader payment/renewal/review/reservation/wishlist handlers, catalog/import/write-off, and inventory handlers. The remaining PA5 command/job table in §8 is a target map, not evidence that every listed function, table, or scheduled job is migrated and implemented.
+*Implementation status:* Twenty-four business Edge Function directories are currently present, excluding `_shared` and the `hello` health-check function. The implemented set includes `add-copies`, `cancel-reservation`, `cancel-writeoff-slip`, `change-copy-status`, `checkout-cart`, `complete-simulated-payment`, `complete-writeoff-slip`, `handover-items`, `import-books`, `inventory-history`, `lookup-isbn`, `mark-loan-lost`, `pay-reader-charges`, `record-counter-payment`, `register-student`, `renew-loan`, `reserve-book`, `return-loan`, `save-book`, `save-writeoff-slip`, `send-reminders`, `set-books-collection`, `submit-book-review`, and `toggle-wishlist`. The remaining PA5 command/job table in §8 is a target map, not evidence that every listed function, table, or scheduled job is migrated and implemented.
 
 > **Session-management commands are not yet deployed.** `list-sessions`, `revoke-session`, and `revoke-other-sessions` appear in the component notes above as the **PA5 target** for UC-32 and have no Edge Function in `src/supabase/functions/` yet; the same applies to UC-02 server-side lockout. They are shown because the diagrams depict the full PA1–PA5 component structure, not because they run today.
 
@@ -474,24 +495,28 @@ The **Panel** column names the diagram panel in which each component appears: *R
 
 ## 8. ShelfHelp API — business command map
 
-Target map. Twenty-one business function directories are implemented in `src/supabase/functions/`, while the target table below also lists additional PA5 command and job handlers that are not yet implemented.
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
+
+Target map. Twenty-four business function directories are implemented in `src/supabase/functions/`, while the target table below also lists additional PA5 command and job handlers that are not yet implemented.
 
 | Family | Functions | Main data touched | Use cases |
 | :--- | :--- | :--- | :--- |
 | **Account** | `register-student`, `set-account-inactive`, `reactivate-account`, `restore-account`, `request-restore-review`, `list-sessions`, `revoke-session`, `revoke-other-sessions` | `auth.users`, `auth.sessions`, `profiles`, `audit_logs` | UC-01–UC-04, UC-31, UC-32 |
-| **Catalog** | `lookup-isbn`, `save-book`, `import-books`, `add-copies`, `change-copy-status`, `set-books-collection`, `submit-review` | `books`, `copies`, `copy_events`, `reviews` | UC-06, UC-07, UC-15, UC-19 |
+| **Catalog** | `lookup-isbn`, `save-book`, `import-books`, `add-copies`, `change-copy-status`, `set-books-collection`, `inventory-history` | `books`, `copies`, `copy_events`, `reviews` | UC-06, UC-07, UC-15, UC-19 |
 | **Borrowing** | `checkout-cart`, `cancel-loan-item`, `switch-to-counter-payment`, `renew-loan`, `submit-book-review`, `pay-reader-charges`, `reserve-book`, `cancel-reservation`, `toggle-wishlist` | `loan_requests`, `loan_items`, `reservations`, `wishlist` | UC-08–UC-10, UC-12, UC-14 |
 | **Money** | `create-payment`, `complete-simulated-payment`, `purchase-membership`, `record-counter-payment`, `create-manual-receipt`, `reverse-receipt` | `payments`, `payment_lines`, `memberships`, `receipts`, `charges` | UC-05, UC-10, UC-13, UC-18, UC-23 |
 | **Circulation** | `handover-items`, `return-loan`, `mark-loan-lost` | `loan_items`, `copies`, `copy_events`, `charges` | UC-18, UC-20, UC-21 |
 | **Write-off** | `save-writeoff-slip`, `complete-writeoff-slip`, `cancel-writeoff-slip` | `writeoff_slips`, `writeoff_slip_copies`, `copies`, `inventory_transactions` | UC-22 |
 | **Acquisition** | `submit-suggestion`, `withdraw-suggestion`, `reject-suggestion`, `add-suggestion-to-batch`, `save-batch`, `mark-batch-ordered`, `mark-batch-line-received` | `suggestions`, `suggestion_groups`, `batches`, `batch_lines`, `batch_activity` | UC-16, UC-24, UC-25 |
-| **Notification** | `send-bulk-reminder` | `notifications`, `email_outbox` | UC-30 |
+| **Notification** | `send-reminders` | `notifications`, `email_outbox` | UC-30 |
 | **Assistant** | `chat-send` | `chats`, `chat_messages`, `books.embedding` | UC-17 |
 | **Scheduled jobs** | `job-nightly-loans`, `job-due-notifications`, `job-hold-expiry`, `job-payment-expiry`, `job-membership-reminders`, `job-pickup-warnings`, `job-email-outbox`, `job-embed-queue` | `loan_items`, `charges`, `reservations`, `payments`, `notifications`, `email_outbox`, `books.embedding` | UC-12, UC-14, UC-18, UC-28, UC-30 |
 
 ---
 
 ## 9. ShelfHelp API — interactions and design notes
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
 
 ### 9.1 Command sequence
 
@@ -530,6 +555,8 @@ Target map. Twenty-one business function directories are implemented in `src/sup
 
 ## 10. Shared code and cross-cutting concerns
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
+
 `@shelfhelp/shared` is compiled into both containers and is the main defence against drift.
 
 | Shared area | Used by | Purpose |
@@ -543,6 +570,8 @@ Target map. Twenty-one business function directories are implemented in `src/sup
 ---
 
 ## 11. Traceability
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
 
 | View element | Feature groups | Use cases |
 | :--- | :--- | :--- |
@@ -565,6 +594,8 @@ Target map. Twenty-one business function directories are implemented in `src/sup
 ---
 
 ## 12. Deliberate omissions
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
 
 - **Individual pages and dialogs.** Each feature component contains several routes and modals.
 - **Individual function folders.** The API diagram groups functions into command and job families; §8

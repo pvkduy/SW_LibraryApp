@@ -1,8 +1,11 @@
 # ShelfHelp: Smart Library Management System
+# PA4 Software Architecture — C4 Level 2 (Container Diagram)
 
-## PA4 Software Architecture — C4 Level 2 (Container Diagram)
+**Version:** 1.7
 
-### Revision history
+---
+
+## Revision History
 
 | Date | Version | Description | Author |
 | :--- | :--- | :--- | :--- |
@@ -13,8 +16,11 @@
 | 24/Nov/2026 | 1.4 | Stated the locked frontend versions (React 19.3.1, Vite 8.3.5) consistently with the Level 1 and deployment views | Nguyễn Anh Khôi |
 | 24/Nov/2026 | 1.5 | Container diagram rendered as two panels (core containers; API outbound integrations) so the C4 layout stays readable | Nguyễn Anh Khôi |
 | 27/Nov/2026 | 1.6 | Aligned Container view, API-to-Auth session relationship, authentication path, and traceability (UC-01–UC-32) with PA4 UC-02 and UC-32 | Nguyễn Anh Khôi |
+| 28/Nov/2026 | 1.7 | Corrected `rpc_search_books` RPC name in §5.1 | Nguyễn Anh Khôi |
 
-### Table of contents
+---
+
+## Table of Contents
 
 - [1. Introduction](#1-introduction)
 - [2. Relationship to the Level 1 view](#2-relationship-to-the-level-1-view)
@@ -32,6 +38,8 @@
 ---
 
 ## 1. Introduction
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Nguyễn Minh Phú | **Edited by:** Nguyễn Anh Khôi
 
 ### 1.1 Purpose
 
@@ -61,6 +69,8 @@ The view covers the whole product scope from PA1–PA4: identity and membership,
 
 ## 2. Relationship to the Level 1 view
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Nguyễn Minh Phú | **Edited by:** Nguyễn Anh Khôi
+
 The Level 1 view treats ShelfHelp as one system and the Supabase Platform as one external dependency.
 At Level 2 the boundary follows **business logic ownership**:
 
@@ -78,6 +88,8 @@ TypeScript library is not a container; it is compiled into the Web Application a
 ---
 
 ## 3. Container diagram
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Nguyễn Minh Phú | **Edited by:** Nguyễn Anh Khôi
 
 The view is drawn as two panels. Panel 1 shows the containers inside ShelfHelp and the managed
 services they call, with every internal and platform relationship. Panel 2 shows the edges that leave
@@ -210,6 +222,8 @@ Source: [`mermaid/container-part1.mmd`](mermaid/container-part1.mmd) and
 
 ## 4. Container catalogue
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Nguyễn Minh Phú | **Edited by:** Nguyễn Anh Khôi
+
 ### 4.1 ShelfHelp Web Application
 
 | Property | Value |
@@ -303,12 +317,14 @@ Static hosting, Cloudflare Turnstile, Sentry, and CI are supporting services rat
 
 ## 5. Runtime interactions
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Nguyễn Minh Phú | **Edited by:** Nguyễn Anh Khôi
+
 ### 5.1 Read path
 
 1. The SPA obtains or refreshes a session through Supabase Auth.
 2. The SPA queries PostgREST with the user's JWT. PostgreSQL applies RLS: students see active books,
    public reviews, membership plans, and their own rows; staff see the rows their screens need.
-3. Complex catalog search runs through the `search_books` RPC.
+3. Complex catalog search runs through the `rpc_search_books` RPC.
 4. Realtime pushes availability counters, notifications, and the caller's own loan changes.
 
 ### 5.2 Command path
@@ -354,6 +370,8 @@ The underlying principles are summarized in [Key principles](../system-context/S
 
 ## 6. Deployment and environments
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Nguyễn Minh Phú | **Edited by:** Nguyễn Anh Khôi
+
 | Environment | Frontend | Backend | Data |
 | :--- | :--- | :--- | :--- |
 | **Local** | Vite dev server | Supabase local stack in Docker | Local PostgreSQL with migrations and seed |
@@ -366,6 +384,8 @@ Schema changes move only through migrations applied by CI. The SPA release is a 
 ---
 
 ## 7. Traceability to PA1–PA4
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Nguyễn Minh Phú | **Edited by:** Nguyễn Anh Khôi
 
 | Feature group | Features | Use cases | Containers involved |
 | :--- | :--- | :--- | :--- |
@@ -388,6 +408,8 @@ All feature groups and all 32 active use cases use the Web Application and Postg
 
 ## 8. Quality and failure characteristics
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Nguyễn Minh Phú | **Edited by:** Nguyễn Anh Khôi
+
 | Attribute | Design response |
 | :--- | :--- |
 | **Integrity** | One transaction per command; fixed lock order; unique indexes for active loans, holds, and reversals; immutable ledgers. |
@@ -403,6 +425,8 @@ If the Supabase project is unavailable, reads, writes, auth, and storage fail; t
 
 ## 9. Scope and assumptions
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Nguyễn Minh Phú | **Edited by:** Nguyễn Anh Khôi
+
 **Out of scope:** deployment topology inside Supabase, network diagrams, vendor internals, and class/module structure. The deployment view is [Deployment.md](../../deployment/Deployment.md).
 
 **Assumptions:** one library branch, one staff role, institutional email, a catalog at or below roughly
@@ -411,6 +435,8 @@ If the Supabase project is unavailable, reads, writes, auth, and storage fail; t
 ---
 
 ## 10. Related views
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Nguyễn Minh Phú | **Edited by:** Nguyễn Anh Khôi
 
 - **Up:** [System Context (C4 Level 1)](../system-context/System-Context.md)
 - **Down:** [Component Diagrams (C4 Level 3)](../component/Component.md)

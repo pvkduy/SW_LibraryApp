@@ -1,8 +1,11 @@
 # ShelfHelp: Smart Library Management System
+# PA4 Software Architecture — Technology Stack and System Context (C4 Level 1)
 
-## PA4 Software Architecture — Technology Stack and System Context (C4 Level 1)
+**Version:** 2.0
 
-### Revision history
+---
+
+## Revision History
 
 | Date | Version | Description | Author |
 | :--- | :--- | :--- | :--- |
@@ -15,8 +18,12 @@
 | 24/Nov/2026 | 1.6 | Applied the locked React 19.3.1 / Vite 8.3.5 notation consistently in §3.1 and §3.2 | Nguyễn Anh Khôi |
 | 24/Nov/2026 | 1.7 | System Context diagram presented as a rendered image, matching the other C4 views | Nguyễn Anh Khôi |
 | 27/Nov/2026 | 1.8 | Aligned references, actor use-case coverage (UC-01–UC-32), and §3.5 authentication/session rules with PA4 UC-02 and UC-32 changes | Nguyễn Anh Khôi |
+| 28/Nov/2026 | 1.9 | Corrected `rpc_search_books` RPC name in §3.3, marked `public.notifications` as implemented in §2.4, and qualified idempotency scope to checkout/payment mutations | Nguyễn Anh Khôi |
+| 28/Nov/2026 | 2.0 | Clarified §3.2 — reader/admin code-splitting is a PA5 target; routes are currently separate trees but share one bundle | Nguyễn Anh Khôi |
 
-### Table of contents
+---
+
+## Table of Contents
 
 - [1. Introduction](#1-introduction)
 - [2. Architecture overview](#2-architecture-overview)
@@ -26,6 +33,8 @@
 ---
 
 ## 1. Introduction
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Minh Thuận | **Edited by:** Nguyễn Anh Khôi
 
 ### 1.1 Purpose
 
@@ -54,6 +63,8 @@ The view covers the two actors and five external dependencies that make up the S
 ---
 
 ## 2. Architecture overview
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Minh Thuận | **Edited by:** Nguyễn Anh Khôi
 
 ### 2.1 Architectural style
 
@@ -90,14 +101,16 @@ The system provides the following capabilities in two modes over one shared back
 | **PA1** | Project proposal, actors, feature list | Problem scope and initial technology direction |
 | **PA2** | Vision document, Spec Kit setup, requirement IDs | Feature catalogue, quality attributes, traceability |
 | **PA3** | 31 use cases, UI prototypes, first FR (authentication) | React auth screens, `register-student` function, `profiles`/`books`/`copies` schema, RLS, auth triggers |
-| **PA4** | Architecture baseline, circulation and reader loan/fine slice, `UC-02` and `UC-32` specifications | Implemented: `handover-items`, `return-loan`, `record-counter-payment`, `cancel-reservation`, `checkout-cart`, `complete-simulated-payment`, catalog/import/write-off/inventory handlers, circulation/queue tables and RPCs, reader loan/fine/reservation flows, and admin circulation/queues/ledger screens. Specified but **not yet implemented** (PA5): UC-02 lockout and UC-32 session endpoints |
-| **PA5** *(planned)* | Final release | Remaining catalog and acquisition workflows, receipts, analytics, reminders, assistant, UC-02 failed-sign-in lockout/persistent-session hardening, UC-32 active-session endpoints (`list-sessions`, `revoke-session`, `revoke-other-sessions`), and scheduled job functions; also reconciliation of several target tables (`memberships`, `notifications`, `email_outbox`, `suggestions`, `batches`, `chats`, `audit_logs`, `copy_events`, `job_runs`, and `settings`) |
+| **PA4** | Architecture baseline, circulation and reader loan/fine slice, `UC-02` and `UC-32` specifications | Implemented: `handover-items`, `return-loan`, `record-counter-payment`, `cancel-reservation`, `checkout-cart`, `complete-simulated-payment`, catalog/import/write-off/inventory handlers, circulation/queue tables and RPCs, reader loan/fine/reservation flows, and admin circulation/queues/ledger screens; `public.notifications` and `public.reservation_strike_events` are created in `0013`. Specified but **not yet implemented** (PA5): UC-02 lockout and UC-32 session endpoints |
+| **PA5** *(planned)* | Final release | Remaining catalog and acquisition workflows, receipts, analytics, reminders, assistant, UC-02 failed-sign-in lockout/persistent-session hardening, UC-32 active-session endpoints (`list-sessions`, `revoke-session`, `revoke-other-sessions`), and scheduled job functions; also reconciliation of several target tables (`memberships`, `email_outbox`, `suggestions`, `batches`, `chats`, `audit_logs`, `copy_events`, `job_runs`, and `settings`) |
 
 In the PA4 circulation test slice, loan requests and items for handover testing are provided via deterministic database seeds (`src/supabase/seed.sql`) and direct staff counter operations. The `checkout-cart` and `complete-simulated-payment` handlers are also implemented in the codebase, while broader PA5 workflows and scheduled jobs remain target scope.
 
 ---
 
 ## 3. Technology stack
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Minh Thuận | **Edited by:** Nguyễn Anh Khôi
 
 ### 3.1 Stack at a glance
 
@@ -119,7 +132,7 @@ Supabase is a single managed platform that provides the function runtime, Postgr
 
 ### 3.2 Frontend
 
-The frontend is a responsive **React 19.3.1 + Vite 8.3.5** application. Reader Mode is mobile-first; Admin Mode is desktop-first. Reader and admin routes are separate lazy-loaded bundles so admin code is never shipped to students.
+The frontend is a responsive **React 19.3.1 + Vite 8.3.5** application. Reader Mode is mobile-first; Admin Mode is desktop-first. Reader and admin routes are structured as separate route trees so admin code is kept out of student navigation; route-level `React.lazy` / `Suspense` code-splitting is planned for PA5 so that admin bundles are never downloaded by students.
 
 - **Routing and access:** React Router is planned to add guarded role/account-status routes. Students opening `/admin/*` will receive a 403 page; staff will be redirected to `/admin`.
 - **Data and forms:** TanStack Query will be added for server state; forms currently use custom React controls and shared domain validation.
@@ -132,8 +145,8 @@ The frontend is a responsive **React 19.3.1 + Vite 8.3.5** application. Reader M
 The backend logic is a set of **stateless Supabase Edge Functions** written in TypeScript on Deno and deployed on the external Supabase platform. Each function validates the request, authenticates the caller, authorizes the action, runs the shared domain logic, and writes inside one PostgreSQL transaction.
 
 - **Commands:** account, catalog, borrowing, money, circulation, write-off, acquisition, notifications, and assistant functions (for example `register-student`, `checkout-cart`, `handover-items`, `return-loan`, `purchase-membership`, `reverse-receipt`, `chat-send`).
-- **Reads:** simple reads use PostgREST under RLS. Complex reads use SQL RPCs such as `search_books` and `get_dashboard_kpis`.
-- **Concurrency and idempotency:** row-level locks in a fixed order; checkout uses `FOR UPDATE SKIP LOCKED`; every mutation accepts an idempotency key so retries do not duplicate effects.
+- **Reads:** simple reads use PostgREST under RLS. Complex reads use SQL RPCs such as `rpc_search_books` and `get_dashboard_kpis`.
+- **Concurrency and idempotency:** row-level locks in a fixed order; checkout uses `FOR UPDATE SKIP LOCKED`; checkout and payment mutations accept an idempotency key so retries do not duplicate effects.
 - **Adapters:** `EmailProvider`, `PaymentProvider`, `Embedder`, `LlmClient`, and `IsbnLookup` isolate third-party services from business rules.
 
 ### 3.4 Database
@@ -191,6 +204,8 @@ Policies check the bucket, the caller's role, and avatar ownership. Bucket setti
 ---
 
 ## 4. C4 Level 1 — System Context
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Minh Thuận | **Edited by:** Nguyễn Anh Khôi
 
 ### 4.1 Purpose of the view
 
