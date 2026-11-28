@@ -42,17 +42,24 @@ export function CartProvider({ user, children }) {
       return
     }
 
-    // 1. Load active loan items to enforce FR-CART-01 duplicate & limit rules
-    const { data: loanData } = await supabase
-      .from('loan_items')
-      .select('id, book_id, status')
-      .eq('uid', uid)
-      .in('status', ['awaiting_payment', 'payment_failed', 'ready_for_pickup', 'borrowed', 'overdue'])
+    // 1. Load active loan items + ready_for_pickup reservations (UC-09 §2.1.1, DEC-22)
+    const [{ data: loanData }, { data: readyResData }] = await Promise.all([
+      supabase
+        .from('loan_items')
+        .select('id, book_id, status')
+        .eq('uid', uid)
+        .in('status', ['awaiting_payment', 'payment_failed', 'ready_for_pickup', 'borrowed', 'overdue']),
+      supabase
+        .from('reservations')
+        .select('id, book_id')
+        .eq('uid', uid)
+        .eq('status', 'ready_for_pickup'),
+    ])
 
-    if (loanData) {
-      setActiveLoansCount(loanData.length)
-      setActiveLoanBookIds(loanData.map((l) => l.book_id))
-    }
+    const loanCount = loanData?.length ?? 0
+    const resCount = readyResData?.length ?? 0
+    setActiveLoansCount(loanCount + resCount)
+    setActiveLoanBookIds((loanData || []).map((l) => l.book_id))
 
     // 2. Load persistent cart_items from Supabase
     const { data: cartData, error: cartErr } = await supabase

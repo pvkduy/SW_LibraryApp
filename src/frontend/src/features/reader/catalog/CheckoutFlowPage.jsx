@@ -18,7 +18,7 @@ const SHOW_SIMULATOR_CONTROLS = import.meta.env.VITE_PAYMENT_SIMULATOR_CONTROLS 
  * Figma Screens 5 (Borrowing Cart), 6 (Checkout Confirmation), and 7 (SuccessWithPickupQR).
  * Implements R-10, R-11, R-13, FR-CART-01..08.
  */
-export function CheckoutFlowPage({ profile, user, onBackToCatalog, onGoToLoans }) {
+export function CheckoutFlowPage({ profile, user, onBackToCatalog, onGoToLoans, onGoToFines }) {
   const {
     cartItems,
     activeLoansCount,
@@ -35,6 +35,8 @@ export function CheckoutFlowPage({ profile, user, onBackToCatalog, onGoToLoans }
   const [errorMsg, setErrorMsg] = useState(null)
   const [lineErrors, setLineErrors] = useState({})
   const [receiptData, setReceiptData] = useState(null)
+  const [copiedCode, setCopiedCode] = useState(false)
+  const [remainingText, setRemainingText] = useState('48h 00m remaining')
   const [idempotencyKey, setIdempotencyKey] = useState(() => `chk-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
 
   // Refresh live availability when entering cart (FR-CART-02)
@@ -42,7 +44,28 @@ export function CheckoutFlowPage({ profile, user, onBackToCatalog, onGoToLoans }
     refreshCartState()
   }, [refreshCartState])
 
+  // Live 48-hour pickup countdown on confirmation screen (UC-10 §2.1.1)
+  useEffect(() => {
+    if (step !== 'success' || !receiptData) return undefined
+    const baseMs = receiptData.timestamp ? new Date(receiptData.timestamp).getTime() : Date.now()
+    const deadlineMs = (Number.isFinite(baseMs) ? baseMs : Date.now()) + 48 * 60 * 60 * 1000
+
+    const updateRemaining = () => {
+      const diffMs = Math.max(0, deadlineMs - Date.now())
+      const hrs = Math.floor(diffMs / 3600000)
+      const mins = Math.floor((diffMs % 3600000) / 60000)
+      setRemainingText(diffMs === 0 ? 'Pickup window expired' : `${hrs}h ${String(mins).padStart(2, '0')}m remaining`)
+    }
+
+    updateRemaining()
+    const id = window.setInterval(updateRemaining, 30000)
+    return () => window.clearInterval(id)
+  }, [step, receiptData])
+
   const isMember = false // Non-member default unless active membership plan exists
+  const allowedDurations = useMemo(() => (isMember ? ALLOWED_DURATIONS : [7]), [isMember])
+  const debtOutstanding = profile?.debt_outstanding || 0
+  const isAccountBlocked = profile?.status === 'restricted' || profile?.status === 'inactive' || debtOutstanding > 0
 
   const enrichedItems = useMemo(
     () =>
@@ -50,17 +73,29 @@ export function CheckoutFlowPage({ profile, user, onBackToCatalog, onGoToLoans }
         const isUnavailable =
           (item.book?.available_copies ?? 0) <= 0 ||
           (item.copy && item.copy.status && item.copy.status !== 'available')
-        const fee = calculateLineFee(item.book?.collection, item.duration_days, isMember)
-        return { ...item, isUnavailable, fee }
+        const effectiveDuration = allowedDurations.includes(item.duration_days)
+          ? item.duration_days
+          : allowedDurations[0]
+        const fee = calculateLineFee(item.book?.collection, effectiveDuration, isMember)
+        return { ...item, duration_days: effectiveDuration, isUnavailable, fee }
       }),
-    [cartItems, isMember],
+    [cartItems, isMember, allowedDurations],
   )
 
   const hasUnavailable = enrichedItems.some((item) => item.isUnavailable)
+  const hasPremiumItem = enrichedItems.some((item) => item.book?.collection === 'premium')
   const subtotal = enrichedItems.reduce((sum, item) => sum + item.fee, 0)
 
   const handleContinueToConfirm = () => {
     setErrorMsg(null)
+    if (isAccountBlocked) {
+      setErrorMsg(
+        debtOutstanding > 0
+          ? `Debt Hold Active: Please settle your outstanding balance (${formatVnd(debtOutstanding)}) before checking out.`
+          : 'Your account is currently restricted. Borrowing is disabled.',
+      )
+      return
+    }
     if (enrichedItems.length === 0) {
       setErrorMsg('Your borrowing cart is empty.')
       return
@@ -178,6 +213,18 @@ export function CheckoutFlowPage({ profile, user, onBackToCatalog, onGoToLoans }
   // =========================================================================
   if (step === 'success' && receiptData) {
     const refId = receiptData.reference_id || `RSH-${receiptData.pickup_code || '884021'}`
+    const pickupCode = receiptData.pickup_code || refId
+    const isCounterPending = receiptData.payment_method === 'counter' && (receiptData.total_amount || 0) > 0
+    const handleCopyCode = async () => {
+      try {
+        await navigator.clipboard.writeText(pickupCode)
+        setCopiedCode(true)
+        window.setTimeout(() => setCopiedCode(false), 2000)
+      } catch {
+        // clipboard unavailable
+      }
+    }
+
     return (
       <div className="sh-app-shell" style={{ background: '#ffffff' }}>
         <div className="sh-success-page">
@@ -185,20 +232,40 @@ export function CheckoutFlowPage({ profile, user, onBackToCatalog, onGoToLoans }
             <CheckCircleIcon size={34} />
           </div>
           <h1 style={{ margin: '0 0 8px', fontSize: '22px', fontWeight: 800, color: '#241e19' }}>
-            Transaction Completed
+            {isCounterPending ? 'Request Confirmed' : 'Transaction Completed'}
           </h1>
           <p style={{ margin: 0, fontSize: '13.5px', color: '#6e665e', lineHeight: 1.5 }}>
-            Show this pickup QR at the circulation desk. Access receipts at My Loans &gt; Payment History.
+            {isCounterPending
+              ? `Status: Awaiting Counter Payment. Please visit the library circulation desk within 48 hours, present your pickup code, and pay ${formatVnd(receiptData.total_amount)} before collecting your books.`
+              : 'Show this pickup QR at the circulation desk. Access receipts at My Loans > Payment History.'}
           </p>
 
-          {/* Scannable Pickup QR Code */}
+          {/* Scannable Pickup QR Code + Copy Button + 48h Countdown (UC-10 §2.1.1) */}
           <div className="sh-qr-box">
             <PickupQrSvg value={refId} size={168} />
-            <div style={{ marginTop: '10px', fontSize: '13px', fontWeight: 800, letterSpacing: '2px', color: '#6e472a' }}>
-              {receiptData.pickup_code || refId}
+            <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '15px', fontWeight: 800, letterSpacing: '2px', color: '#6e472a' }}>
+                {pickupCode}
+              </span>
+              <button
+                type="button"
+                onClick={handleCopyCode}
+                style={{
+                  background: '#f3ede5',
+                  border: '1px solid #d9cbbd',
+                  color: '#6e472a',
+                  borderRadius: '8px',
+                  padding: '3px 9px',
+                  fontSize: '11.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {copiedCode ? 'Copied!' : 'Copy'}
+              </button>
             </div>
-            <div style={{ fontSize: '11px', color: '#8c8277', marginTop: '2px' }}>
-              48-hour pickup window active
+            <div style={{ fontSize: '11.5px', color: '#8c8277', marginTop: '4px', fontWeight: 600 }}>
+              48-hour pickup window • {remainingText}
             </div>
           </div>
 
@@ -385,9 +452,53 @@ export function CheckoutFlowPage({ profile, user, onBackToCatalog, onGoToLoans }
           </div>
         )}
 
-        {/* STEP 1: BORROWING CART (Figma Screen 5) */}
+        {/* STEP 1: BORROWING CART (Figma Screen 5, UC-09) */}
         {step === 'cart' && (
           <section>
+            {isAccountBlocked && (
+              <div
+                style={{
+                  background: '#fce8e6',
+                  border: '1px solid #f4c7c3',
+                  color: '#c5221f',
+                  borderRadius: '12px',
+                  padding: '11px 14px',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  marginBottom: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '10px',
+                }}
+              >
+                <span>
+                  {debtOutstanding > 0
+                    ? `Debt Hold Active: You have outstanding fines totaling ${formatVnd(debtOutstanding)}. Please settle your library charges before requesting new books.`
+                    : 'Your account is restricted. Borrowing is disabled until the restriction is resolved.'}
+                </span>
+                {debtOutstanding > 0 && onGoToFines && (
+                  <button
+                    type="button"
+                    onClick={onGoToFines}
+                    style={{
+                      background: '#c5221f',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '5px 10px',
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                    }}
+                  >
+                    Pay Fines
+                  </button>
+                )}
+              </div>
+            )}
+
             <h3 style={{ margin: '0 0 12px', fontSize: '16px', fontWeight: 700 }}>Selected Books</h3>
 
             {enrichedItems.length === 0 ? (
@@ -406,9 +517,9 @@ export function CheckoutFlowPage({ profile, user, onBackToCatalog, onGoToLoans }
                 {enrichedItems.map((item) => {
                   const lineErr = lineErrors[item.book_id]
                   const blocked = item.isUnavailable || Boolean(lineErr)
-                  const idx = ALLOWED_DURATIONS.indexOf(item.duration_days)
+                  const idx = allowedDurations.indexOf(item.duration_days)
                   const canDec = idx > 0
-                  const canInc = idx >= 0 && idx < ALLOWED_DURATIONS.length - 1
+                  const canInc = idx >= 0 && idx < allowedDurations.length - 1
 
                   return (
                     <div key={item.book_id} className={`sh-cart-item ${blocked ? 'unavailable' : ''}`}>
@@ -480,11 +591,15 @@ export function CheckoutFlowPage({ profile, user, onBackToCatalog, onGoToLoans }
                             <span style={{ fontSize: '12px', color: '#8c8277' }}> / {item.duration_days} days</span>
                           </div>
 
-                          <div className="sh-duration-stepper" aria-label="Loan duration selector">
+                          <div
+                            className="sh-duration-stepper"
+                            aria-label="Loan duration selector"
+                            title={!isMember ? '14-day loans require an active membership (UC-09)' : undefined}
+                          >
                             <button
                               type="button"
                               disabled={!canDec}
-                              onClick={() => updateDuration(item.book_id, ALLOWED_DURATIONS[idx - 1])}
+                              onClick={() => updateDuration(item.book_id, allowedDurations[idx - 1])}
                               aria-label="Decrease loan days"
                             >
                               −
@@ -495,7 +610,7 @@ export function CheckoutFlowPage({ profile, user, onBackToCatalog, onGoToLoans }
                             <button
                               type="button"
                               disabled={!canInc}
-                              onClick={() => updateDuration(item.book_id, ALLOWED_DURATIONS[idx + 1])}
+                              onClick={() => updateDuration(item.book_id, allowedDurations[idx + 1])}
                               aria-label="Increase loan days"
                             >
                               +
@@ -510,9 +625,9 @@ export function CheckoutFlowPage({ profile, user, onBackToCatalog, onGoToLoans }
                 <div className="sh-perks-banner">
                   <InfoIcon size={16} color="#6e472a" />
                   <span>
-                    {subtotal === 0
-                      ? 'Membership perks applied! Standard books are free to borrow.'
-                      : `Active quota: ${activeLoansCount + enrichedItems.length}/${maxItems} items • Premium fee 5.000₫ per 7 days.`}
+                    {!isMember && hasPremiumItem
+                      ? `Quota: ${activeLoansCount + enrichedItems.length}/${maxItems} items • Become a member to borrow Premium titles for free and unlock 14-day loans.`
+                      : `Quota: ${activeLoansCount + enrichedItems.length}/${maxItems} items • Standard books are free to borrow (7 days for non-members).`}
                   </span>
                 </div>
               </>
@@ -625,7 +740,7 @@ export function CheckoutFlowPage({ profile, user, onBackToCatalog, onGoToLoans }
                 type="button"
                 className="sh-btn-primary"
                 style={{ minWidth: '148px' }}
-                disabled={hasUnavailable}
+                disabled={hasUnavailable || isAccountBlocked}
                 onClick={handleContinueToConfirm}
               >
                 Continue

@@ -79,6 +79,8 @@ function ReaderWorkspace({ user, profile, onRequestLogout }) {
         onBack={() => setReaderScreen('main')}
         onOpenCart={() => setReaderScreen('checkout')}
         onNavigateLoans={() => openMainTab('loans')}
+        onNavigateFines={() => openMainTab('fines')}
+        onNavigateWishlist={() => openMainTab('wishlist')}
       />
     )
   }
@@ -90,6 +92,7 @@ function ReaderWorkspace({ user, profile, onRequestLogout }) {
         user={user}
         onBackToCatalog={() => openMainTab('books')}
         onGoToLoans={() => openMainTab('loans')}
+        onGoToFines={() => openMainTab('fines')}
       />
     )
   }

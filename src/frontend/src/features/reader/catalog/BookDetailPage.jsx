@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { api } from '../../../lib/api'
 import { useCart } from './useCart'
@@ -16,9 +16,17 @@ import './catalog.css'
 
 /**
  * Figma Screen 3 (Book Detail) + Screen 4 (Add book to cart - Select Variant Sheet).
- * Implements R-09, FR-SRCH-05, FR-SRCH-06, FR-CART-01, SC-004.
+ * Implements R-09, UC-06, UC-08, UC-09 (FR-SRCH-05, FR-SRCH-06, FR-CART-01, SC-004).
  */
-export function BookDetailPage({ bookId, profile, onBack, onOpenCart, onNavigateLoans }) {
+export function BookDetailPage({
+  bookId,
+  profile,
+  onBack,
+  onOpenCart,
+  onNavigateLoans,
+  onNavigateFines,
+  onNavigateWishlist,
+}) {
   const {
     cartItems,
     cartCount,
@@ -36,10 +44,12 @@ export function BookDetailPage({ bookId, profile, onBack, onOpenCart, onNavigate
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [expandedSynopsis, setExpandedSynopsis] = useState(false)
+  const [expandedToc, setExpandedToc] = useState(false)
   const [showVariantSheet, setShowVariantSheet] = useState(false)
   const [selectedCopyId, setSelectedCopyId] = useState(null)
   const [actionToast, setActionToast] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const prevAvailableRef = useRef(null)
 
   const loadBookDetail = useCallback(async () => {
     if (!bookId) return
@@ -89,6 +99,15 @@ export function BookDetailPage({ bookId, profile, onBack, onOpenCart, onNavigate
       ])
 
       const activeCopies = copyRows || []
+      const nextAvailCount = activeCopies.filter((c) => c.status === 'available').length
+      if (prevAvailableRef.current !== null && prevAvailableRef.current > 0 && nextAvailCount === 0) {
+        setShowVariantSheet(false)
+        setActionToast({
+          type: 'error',
+          text: 'Stock updated: The last available copy of this title was just claimed by another patron.',
+        })
+      }
+      prevAvailableRef.current = nextAvailCount
       setCopies(activeCopies)
       const firstAvail = activeCopies.find((c) => c.status === 'available')
       setSelectedCopyId((prev) =>
@@ -162,14 +181,22 @@ export function BookDetailPage({ bookId, profile, onBack, onOpenCart, onNavigate
 
   const handleToggleWishlist = async () => {
     if (!book) return
+    if (profile?.status === 'restricted') {
+      setActionToast({
+        type: 'error',
+        text: 'Your account is restricted. Wishlist and notification features are unavailable until restrictions are resolved.',
+      })
+      return
+    }
     const res = await toggleWishlist(book.id)
     setActionToast({
       type: res.ok ? 'success' : 'error',
       text: res.ok
         ? res.wishlisted
-          ? 'Saved to your Wishlist!'
-          : 'Removed from Wishlist.'
+          ? 'Added to wishlist. You will be notified when copies are available!'
+          : 'Removed from your wishlist.'
         : res.error,
+      showWishlistLink: !res.ok && String(res.error || '').toLowerCase().includes('50'),
     })
   }
 
@@ -219,13 +246,7 @@ export function BookDetailPage({ bookId, profile, onBack, onOpenCart, onNavigate
   // Review distribution percentages (5..1)
   const ratingDistribution = useMemo(() => {
     if (reviews.length === 0) {
-      return [
-        { star: 5, pct: 82 },
-        { star: 4, pct: 14 },
-        { star: 3, pct: 3 },
-        { star: 2, pct: 1 },
-        { star: 1, pct: 0 },
-      ]
+      return [5, 4, 3, 2, 1].map((star) => ({ star, pct: 0 }))
     }
     return [5, 4, 3, 2, 1].map((star) => {
       const count = reviews.filter((r) => Number(r.rating) === star).length
@@ -321,6 +342,25 @@ export function BookDetailPage({ bookId, profile, onBack, onOpenCart, onNavigate
                     View Cart
                   </button>
                 )}
+                {actionToast.showWishlistLink && onNavigateWishlist && (
+                  <button
+                    type="button"
+                    onClick={onNavigateWishlist}
+                    style={{
+                      background: '#6e472a',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '5px 10px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                    }}
+                  >
+                    Manage Wishlist
+                  </button>
+                )}
               </div>
             )}
 
@@ -356,8 +396,8 @@ export function BookDetailPage({ bookId, profile, onBack, onOpenCart, onNavigate
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
                   <StarIcon size={15} />
-                  <strong>{book.rating_avg ? Number(book.rating_avg).toFixed(1) : '4.8'}</strong>
-                  <span style={{ color: '#82786e' }}>({book.rating_count || reviews.length || 342})</span>
+                  <strong>{book.rating_avg ? Number(book.rating_avg).toFixed(1) : '—'}</strong>
+                  <span style={{ color: '#82786e' }}>({book.rating_count ?? reviews.length})</span>
                   {book.collection === 'premium' && (
                     <span style={{ marginLeft: 'auto', fontSize: '11.5px', fontWeight: 700, color: '#6e472a' }}>
                       5.000₫ / 7 days
@@ -444,6 +484,46 @@ export function BookDetailPage({ bookId, profile, onBack, onOpenCart, onNavigate
                   {expandedSynopsis ? 'Show less ⌃' : 'Read more ⌄'}
                 </button>
               )}
+
+              {book.toc && (
+                <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #ede6db' }}>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedToc((v) => !v)}
+                    aria-expanded={expandedToc}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      color: '#241e19',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      width: '100%',
+                    }}
+                  >
+                    <span>Table of Contents</span>
+                    <span style={{ color: '#6e472a', fontSize: '12px' }}>{expandedToc ? 'Hide ⌃' : 'Expand ⌄'}</span>
+                  </button>
+                  {expandedToc && (
+                    <pre
+                      style={{
+                        margin: '10px 0 0',
+                        fontFamily: 'inherit',
+                        fontSize: '12.5px',
+                        lineHeight: 1.65,
+                        color: '#4d443d',
+                        whiteSpace: 'pre-wrap',
+                      }}
+                    >
+                      {book.toc}
+                    </pre>
+                  )}
+                </div>
+              )}
             </section>
 
             {/* Physical Copies List (Figma Screen 3) */}
@@ -500,14 +580,14 @@ export function BookDetailPage({ bookId, profile, onBack, onOpenCart, onNavigate
               </div>
               <div className="sh-review-summary">
                 <div className="sh-review-score">
-                  <strong>{book.rating_avg ? Number(book.rating_avg).toFixed(1) : '4.8'}</strong>
+                  <strong>{book.rating_avg ? Number(book.rating_avg).toFixed(1) : '—'}</strong>
                   <div style={{ display: 'flex', justifyContent: 'center', gap: '2px', margin: '4px 0' }}>
                     {[1, 2, 3, 4, 5].map((s) => (
                       <StarIcon key={s} size={11} />
                     ))}
                   </div>
                   <small style={{ fontSize: '11px', color: '#82786e' }}>
-                    {book.rating_count || reviews.length || 342} reviews
+                    {book.rating_count ?? reviews.length} reviews
                   </small>
                 </div>
 
@@ -525,15 +605,9 @@ export function BookDetailPage({ bookId, profile, onBack, onOpenCart, onNavigate
               </div>
 
               {reviews.length === 0 ? (
-                <div style={{ background: '#faf8f5', borderRadius: '12px', padding: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <strong style={{ fontSize: '13px' }}>Maya L.</strong>
-                    <span style={{ fontSize: '11px', color: '#d9822b' }}>★★★★★</span>
-                  </div>
-                  <p style={{ margin: 0, fontSize: '12.5px', color: '#5b524a', fontStyle: 'italic' }}>
-                    &ldquo;Essential reading for anyone in UX, architecture, or product design.&rdquo;
-                  </p>
-                </div>
+                <p style={{ margin: 0, fontSize: '13px', color: '#7c736a', textAlign: 'center', padding: '10px 0' }}>
+                  No reader reviews yet for this title.
+                </p>
               ) : (
                 reviews.map((rev) => {
                   const name = rev.profiles?.full_name || 'ShelfHelp Reader'
@@ -619,6 +693,15 @@ export function BookDetailPage({ bookId, profile, onBack, onOpenCart, onNavigate
                     style={{ marginLeft: '6px', background: 'none', border: 'none', color: '#6e472a', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}
                   >
                     View My Loans
+                  </button>
+                )}
+                {(profile?.debt_outstanding || 0) > 0 && onNavigateFines && (
+                  <button
+                    type="button"
+                    onClick={onNavigateFines}
+                    style={{ marginLeft: '6px', background: 'none', border: 'none', color: '#6e472a', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}
+                  >
+                    Pay Fines
                   </button>
                 )}
               </div>

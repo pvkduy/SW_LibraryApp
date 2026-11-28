@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useCart } from './useCart'
-import { getGreeting, rankBooksClient } from './cartHelpers'
+import { BOOK_SAFE_COLUMNS, WISHLIST_MAX, getGreeting, rankBooksClient } from './cartHelpers'
 import {
   BarcodeIcon,
   HeartIcon,
@@ -13,26 +13,100 @@ import {
 } from './CatalogIcons'
 import './catalog.css'
 
+const PAGE_SIZE = 20
 const CATEGORY_PILLS = ['All', 'Fiction', 'Non-Fiction', 'Science', 'Computer Science', 'Natural Sciences', 'Arts']
 
+const CATEGORY_FIELDS = {
+  'Computer Science': [
+    'Software Engineering',
+    'Algorithms & Data Structures',
+    'Artificial Intelligence',
+    'Distributed Systems',
+    'Databases',
+    'Cybersecurity',
+    'Computer Networks',
+    'Operating Systems',
+    'Cloud Architecture',
+  ],
+  Science: [
+    'Physics',
+    'Mathematics',
+    'Data Science',
+    'Astronomy',
+    'Neuroscience',
+    'Climate Science',
+    'Statistics',
+    'Quantum Mechanics',
+    'Computer Science',
+  ],
+  'Non-Fiction': [
+    'Economics',
+    'Psychology',
+    'Productivity',
+    'History',
+    'Philosophy',
+    'UX & Design',
+    'Management',
+    'Sociology',
+  ],
+  Fiction: [
+    'Sci-Fi',
+    'Literary Fiction',
+    'Mystery & Thriller',
+    'Historical Fiction',
+    'Fantasy',
+    'Short Stories',
+  ],
+  'Natural Sciences': [
+    'Biology',
+    'Chemistry',
+    'Ecology',
+    'Earth Sciences',
+    'Biotechnology',
+    'Genetics',
+  ],
+  Arts: [
+    'Design',
+    'Architecture',
+    'Visual Arts',
+    'Music Theory',
+    'Film Studies',
+    'Typography',
+    'Culture',
+  ],
+}
+
+function readUrlParam(key, fallback = '') {
+  if (typeof window === 'undefined') return fallback
+  return new URLSearchParams(window.location.search).get(key) || fallback
+}
+
 /**
- * Figma Screen 2: Catalogue / Discover & Wishlist (R-05, R-06, FR-SRCH-01..04, FR-SRCH-06).
+ * Figma Screen 2: Catalogue / Discover & Wishlist (R-05, R-06, UC-06, UC-08).
  */
 export function CataloguePage({ profile, mode = 'discover', onOpenBook, onOpenScan }) {
   const { wishlistIds, toggleWishlist } = useCart()
 
-  const [query, setQuery] = useState(() => {
-    if (typeof window === 'undefined') return ''
-    return new URLSearchParams(window.location.search).get('q') || ''
-  })
+  const [query, setQuery] = useState(() => (mode === 'discover' ? readUrlParam('q', '') : ''))
   const [debouncedQuery, setDebouncedQuery] = useState(query)
-  const [selectedCategory, setSelectedCategory] = useState('All')
-  const [collectionFilter, setCollectionFilter] = useState('')
-  const [languageFilter, setLanguageFilter] = useState('')
-  const [availableOnly, setAvailableOnly] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState(() => {
+    if (mode !== 'discover') return 'All'
+    const cat = readUrlParam('category', 'All')
+    return CATEGORY_PILLS.includes(cat) ? cat : 'All'
+  })
+  const [fieldFilter, setFieldFilter] = useState(() => (mode === 'discover' ? readUrlParam('field', '') : ''))
+  const [collectionFilter, setCollectionFilter] = useState(() => (mode === 'discover' ? readUrlParam('collection', '') : ''))
+  const [languageFilter, setLanguageFilter] = useState(() => (mode === 'discover' ? readUrlParam('language', '') : ''))
+  const [availableOnly, setAvailableOnly] = useState(() => mode === 'discover' && readUrlParam('available', '') === '1')
   const [yearMin, setYearMin] = useState('')
   const [yearMax, setYearMax] = useState('')
-  const [sortBy, setSortBy] = useState('relevance')
+  const [sortBy, setSortBy] = useState(() => (mode === 'discover' ? readUrlParam('sort', 'relevance') : 'relevance'))
+  const [page, setPage] = useState(() => {
+    if (mode !== 'discover') return 1
+    const parsed = Number.parseInt(readUrlParam('page', '1'), 10)
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1
+  })
+  const [hasNextPage, setHasNextPage] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [showAiHint, setShowAiHint] = useState(false)
 
@@ -41,22 +115,43 @@ export function CataloguePage({ profile, mode = 'discover', onOpenBook, onOpenSc
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Debounce search input 250ms and sync query in URL (FR-SRCH-01)
+  const availableFields = useMemo(() => {
+    if (selectedCategory === 'All') {
+      return [...new Set(Object.values(CATEGORY_FIELDS).flat())].sort()
+    }
+    return CATEGORY_FIELDS[selectedCategory] || []
+  }, [selectedCategory])
+
+  // Debounce search input 250ms (UC-06 §3.2)
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setDebouncedQuery(query)
-      if (typeof window !== 'undefined' && mode === 'discover') {
-        const url = new URL(window.location.href)
-        if (query.trim()) url.searchParams.set('q', query.trim())
-        else url.searchParams.delete('q')
-        window.history.replaceState({}, '', url.toString())
-      }
     }, 250)
     return () => window.clearTimeout(timer)
-  }, [query, mode])
+  }, [query])
+
+  // Sync discover search/filter/sort/page params to URL (UC-06 §3.2)
+  useEffect(() => {
+    if (typeof window === 'undefined' || mode !== 'discover') return
+    const url = new URL(window.location.href)
+    const setOrDel = (k, val, def = '') => {
+      if (val && String(val) !== String(def)) url.searchParams.set(k, String(val))
+      else url.searchParams.delete(k)
+    }
+    setOrDel('q', debouncedQuery.trim())
+    setOrDel('category', selectedCategory, 'All')
+    setOrDel('field', fieldFilter)
+    setOrDel('collection', collectionFilter)
+    setOrDel('language', languageFilter)
+    setOrDel('available', availableOnly ? '1' : '')
+    setOrDel('sort', sortBy, 'relevance')
+    setOrDel('page', page > 1 ? String(page) : '')
+    window.history.replaceState({}, '', url.toString())
+  }, [debouncedQuery, selectedCategory, fieldFilter, collectionFilter, languageFilter, availableOnly, sortBy, page, mode])
 
   // Load "Popular This Week" independently (FR-HOME-01)
   useEffect(() => {
+    if (mode !== 'discover') return undefined
     let active = true
     supabase
       .from('books')
@@ -71,48 +166,71 @@ export function CataloguePage({ profile, mode = 'discover', onOpenBook, onOpenSc
     return () => {
       active = false
     }
-  }, [])
+  }, [mode])
 
-  // Load main catalog via rpc_search_books (POL-17) with direct table fallback
+  // Load main catalog via rpc_search_books (20/page, UC-06) or wishlist entries directly (UC-08)
   const fetchBooks = useCallback(async () => {
     setLoading(true)
     setError(null)
 
     try {
+      if (mode === 'wishlist') {
+        if (wishlistIds.length === 0) {
+          setBooks([])
+          setHasNextPage(false)
+          setLoading(false)
+          return
+        }
+        const { data, error: wlErr } = await supabase
+          .from('books')
+          .select(BOOK_SAFE_COLUMNS)
+          .eq('status', 'active')
+          .in('id', wishlistIds)
+          .order('title', { ascending: true })
+        if (wlErr) throw wlErr
+        setBooks(data || [])
+        setHasNextPage(false)
+        setLoading(false)
+        return
+      }
+
+      const offset = (page - 1) * PAGE_SIZE
       const { data, error: rpcErr } = await supabase.rpc('rpc_search_books', {
         p_query: debouncedQuery.trim() || null,
         p_category: selectedCategory === 'All' ? null : selectedCategory,
-        p_field: null,
+        p_field: fieldFilter || null,
         p_collection: collectionFilter || null,
         p_language: languageFilter || null,
         p_year_min: yearMin ? Number(yearMin) : null,
         p_year_max: yearMax ? Number(yearMax) : null,
         p_available_only: availableOnly,
         p_sort: sortBy,
-        p_limit: 40,
-        p_offset: 0,
+        p_limit: PAGE_SIZE + 1,
+        p_offset: offset,
       })
 
       if (!rpcErr && data) {
-        setBooks(data)
+        setHasNextPage(data.length > PAGE_SIZE)
+        setBooks(data.slice(0, PAGE_SIZE))
         setLoading(false)
         return
       }
 
-      // Fallback when migration 0005 RPC is not yet loaded in local DB
+      // Fallback when rpc_search_books is not available
       let qBuilder = supabase
         .from('books')
         .select('id, title, authors, isbn10, isbn13, publisher, year, language, category, field, description, collection, shelf_location, cover_path, total_copies, available_copies, rating_avg, rating_count, popularity_score, added_at')
         .eq('status', 'active')
 
       if (selectedCategory !== 'All') qBuilder = qBuilder.ilike('category', selectedCategory)
+      if (fieldFilter) qBuilder = qBuilder.ilike('field', fieldFilter)
       if (collectionFilter) qBuilder = qBuilder.eq('collection', collectionFilter)
       if (languageFilter) qBuilder = qBuilder.ilike('language', languageFilter)
       if (availableOnly) qBuilder = qBuilder.gt('available_copies', 0)
       if (yearMin) qBuilder = qBuilder.gte('year', Number(yearMin))
       if (yearMax) qBuilder = qBuilder.lte('year', Number(yearMax))
 
-      const { data: fallbackData, error: fbErr } = await qBuilder.limit(60)
+      const { data: fallbackData, error: fbErr } = await qBuilder.limit(250)
       if (fbErr) throw fbErr
 
       let list = fallbackData || []
@@ -126,13 +244,27 @@ export function CataloguePage({ profile, mode = 'discover', onOpenBook, onOpenSc
       } else if (sortBy === 'popularity') {
         list = [...list].sort((a, b) => (b.popularity_score || 0) - (a.popularity_score || 0))
       }
-      setBooks(list)
+      setHasNextPage(list.length > offset + PAGE_SIZE)
+      setBooks(list.slice(offset, offset + PAGE_SIZE))
     } catch (err) {
       setError(err.message || 'Search is temporarily limited. Please retry.')
     } finally {
       setLoading(false)
     }
-  }, [debouncedQuery, selectedCategory, collectionFilter, languageFilter, availableOnly, yearMin, yearMax, sortBy])
+  }, [
+    mode,
+    wishlistIds,
+    page,
+    debouncedQuery,
+    selectedCategory,
+    fieldFilter,
+    collectionFilter,
+    languageFilter,
+    availableOnly,
+    yearMin,
+    yearMax,
+    sortBy,
+  ])
 
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -141,18 +273,63 @@ export function CataloguePage({ profile, mode = 'discover', onOpenBook, onOpenSc
     return () => window.clearTimeout(t)
   }, [fetchBooks])
 
-  const displayedBooks = useMemo(() => {
-    if (mode === 'wishlist') {
-      return books.filter((b) => wishlistIds.includes(b.id))
+  const displayedBooks = books
+
+  const handleCategoryChange = (cat) => {
+    setSelectedCategory(cat)
+    setPage(1)
+    if (cat !== 'All') {
+      const allowed = CATEGORY_FIELDS[cat] || []
+      if (fieldFilter && !allowed.includes(fieldFilter)) {
+        setFieldFilter('')
+      }
     }
-    return books
-  }, [books, mode, wishlistIds])
+  }
 
   const activeFilterChips = []
-  if (selectedCategory !== 'All') activeFilterChips.push({ key: 'cat', label: selectedCategory, clear: () => setSelectedCategory('All') })
-  if (collectionFilter) activeFilterChips.push({ key: 'col', label: collectionFilter === 'premium' ? 'Premium' : 'Standard', clear: () => setCollectionFilter('') })
-  if (languageFilter) activeFilterChips.push({ key: 'lang', label: languageFilter, clear: () => setLanguageFilter('') })
-  if (availableOnly) activeFilterChips.push({ key: 'avail', label: 'Available now', clear: () => setAvailableOnly(false) })
+  if (selectedCategory !== 'All') {
+    activeFilterChips.push({ key: 'cat', label: selectedCategory, clear: () => handleCategoryChange('All') })
+  }
+  if (fieldFilter) {
+    activeFilterChips.push({
+      key: 'field',
+      label: `Field: ${fieldFilter}`,
+      clear: () => {
+        setFieldFilter('')
+        setPage(1)
+      },
+    })
+  }
+  if (collectionFilter) {
+    activeFilterChips.push({
+      key: 'col',
+      label: collectionFilter === 'premium' ? 'Premium' : 'Standard',
+      clear: () => {
+        setCollectionFilter('')
+        setPage(1)
+      },
+    })
+  }
+  if (languageFilter) {
+    activeFilterChips.push({
+      key: 'lang',
+      label: languageFilter,
+      clear: () => {
+        setLanguageFilter('')
+        setPage(1)
+      },
+    })
+  }
+  if (availableOnly) {
+    activeFilterChips.push({
+      key: 'avail',
+      label: 'Available now',
+      clear: () => {
+        setAvailableOnly(false)
+        setPage(1)
+      },
+    })
+  }
   if (yearMin || yearMax) {
     activeFilterChips.push({
       key: 'year',
@@ -160,6 +337,7 @@ export function CataloguePage({ profile, mode = 'discover', onOpenBook, onOpenSc
       clear: () => {
         setYearMin('')
         setYearMax('')
+        setPage(1)
       },
     })
   }
@@ -167,11 +345,13 @@ export function CataloguePage({ profile, mode = 'discover', onOpenBook, onOpenSc
   const clearAllFilters = () => {
     setQuery('')
     setSelectedCategory('All')
+    setFieldFilter('')
     setCollectionFilter('')
     setLanguageFilter('')
     setAvailableOnly(false)
     setYearMin('')
     setYearMax('')
+    setPage(1)
   }
 
   const renderBookCard = (book) => {
@@ -243,7 +423,9 @@ export function CataloguePage({ profile, mode = 'discover', onOpenBook, onOpenSc
     <div className="sh-container">
       {mode === 'wishlist' ? (
         <div className="sh-greeting">
-          <h2>My Wishlist ({displayedBooks.length})</h2>
+          <h2>
+            My Wishlist ({wishlistIds.length} of {WISHLIST_MAX} titles)
+          </h2>
           <p>Saved books &amp; notify-me alerts when copies return to shelf.</p>
         </div>
       ) : (
@@ -256,7 +438,10 @@ export function CataloguePage({ profile, mode = 'discover', onOpenBook, onOpenSc
               className="sh-search-input"
               placeholder="Search books, authors, ISBN..."
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value)
+                setPage(1)
+              }}
               aria-label="Search books, authors, ISBN"
             />
             <button
@@ -279,15 +464,36 @@ export function CataloguePage({ profile, mode = 'discover', onOpenBook, onOpenSc
             </button>
           </div>
 
-          {/* Expandable Filters (FR-SRCH-02) */}
+          {/* Expandable Filters (UC-06 §2.2.2, FR-SRCH-02) */}
           {showFilters && (
             <div className="sh-filter-panel">
+              <div className="sh-filter-group">
+                <label htmlFor="flt-field">Field</label>
+                <select
+                  id="flt-field"
+                  value={fieldFilter}
+                  onChange={(e) => {
+                    setFieldFilter(e.target.value)
+                    setPage(1)
+                  }}
+                >
+                  <option value="">All Fields</option>
+                  {availableFields.map((fld) => (
+                    <option key={fld} value={fld}>
+                      {fld}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="sh-filter-group">
                 <label htmlFor="flt-collection">Collection</label>
                 <select
                   id="flt-collection"
                   value={collectionFilter}
-                  onChange={(e) => setCollectionFilter(e.target.value)}
+                  onChange={(e) => {
+                    setCollectionFilter(e.target.value)
+                    setPage(1)
+                  }}
                 >
                   <option value="">All Collections</option>
                   <option value="standard">Standard (Free)</option>
@@ -299,7 +505,10 @@ export function CataloguePage({ profile, mode = 'discover', onOpenBook, onOpenSc
                 <select
                   id="flt-language"
                   value={languageFilter}
-                  onChange={(e) => setLanguageFilter(e.target.value)}
+                  onChange={(e) => {
+                    setLanguageFilter(e.target.value)
+                    setPage(1)
+                  }}
                 >
                   <option value="">All Languages</option>
                   <option value="English">English</option>
@@ -313,7 +522,10 @@ export function CataloguePage({ profile, mode = 'discover', onOpenBook, onOpenSc
                   type="number"
                   placeholder="e.g. 2000"
                   value={yearMin}
-                  onChange={(e) => setYearMin(e.target.value)}
+                  onChange={(e) => {
+                    setYearMin(e.target.value)
+                    setPage(1)
+                  }}
                 />
               </div>
               <div className="sh-filter-group">
@@ -323,7 +535,10 @@ export function CataloguePage({ profile, mode = 'discover', onOpenBook, onOpenSc
                   type="number"
                   placeholder="e.g. 2026"
                   value={yearMax}
-                  onChange={(e) => setYearMax(e.target.value)}
+                  onChange={(e) => {
+                    setYearMax(e.target.value)
+                    setPage(1)
+                  }}
                 />
               </div>
               <div className="sh-filter-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
@@ -341,7 +556,10 @@ export function CataloguePage({ profile, mode = 'discover', onOpenBook, onOpenSc
                   <input
                     type="checkbox"
                     checked={availableOnly}
-                    onChange={(e) => setAvailableOnly(e.target.checked)}
+                    onChange={(e) => {
+                      setAvailableOnly(e.target.checked)
+                      setPage(1)
+                    }}
                   />
                   Available now only
                 </label>
@@ -364,7 +582,7 @@ export function CataloguePage({ profile, mode = 'discover', onOpenBook, onOpenSc
                 role="tab"
                 aria-selected={selectedCategory === cat}
                 className={`sh-pill ${selectedCategory === cat ? 'active' : ''}`}
-                onClick={() => setSelectedCategory(cat)}
+                onClick={() => handleCategoryChange(cat)}
               >
                 {cat}
               </button>
@@ -414,22 +632,27 @@ export function CataloguePage({ profile, mode = 'discover', onOpenBook, onOpenSc
         </>
       )}
 
-      {/* All Titles Grid + Sort By (FR-SRCH-03) */}
+      {/* All Titles Grid + Sort By (FR-SRCH-03, UC-06 20/page pagination) */}
       <section>
         <div className="sh-section-header">
-          <h3>
+          <h3 aria-live="polite">
             {mode === 'wishlist'
               ? 'Saved Titles'
               : debouncedQuery.trim()
                 ? `Results for "${debouncedQuery.trim()}" (${displayedBooks.length})`
-                : 'All Titles'}
+                : page > 1
+                  ? `All Titles — Page ${page}`
+                  : 'All Titles'}
           </h3>
           {mode === 'discover' && (
             <select
               className="sh-sort-select"
               aria-label="Sort books"
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
+              onChange={(e) => {
+                setSortBy(e.target.value)
+                setPage(1)
+              }}
             >
               <option value="relevance">Sort by: Relevance</option>
               <option value="popularity">Sort by: Popular</option>
@@ -457,17 +680,17 @@ export function CataloguePage({ profile, mode = 'discover', onOpenBook, onOpenSc
         ) : displayedBooks.length === 0 ? (
           <div className="sh-card" style={{ textAlign: 'center', padding: '36px 20px' }}>
             <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: '15px' }}>
-              {mode === 'wishlist' ? 'Your wishlist is empty.' : 'No books match your filters.'}
+              {mode === 'wishlist' ? 'Your wishlist is empty.' : 'No books matched your search criteria.'}
             </p>
             <p style={{ margin: '0 0 14px', fontSize: '13px', color: '#7c736a' }}>
               {mode === 'wishlist'
                 ? 'Tap the heart button on any book detail page to save it here.'
-                : 'Try adjusting your keywords, removing filters, or scanning an ISBN barcode.'}
+                : 'Try adjusting your keywords, clearing active filters, or scanning an ISBN barcode.'}
             </p>
             {mode === 'discover' && (
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 <button type="button" className="sh-btn-outline" onClick={clearAllFilters}>
-                  Clear Filters
+                  Clear All Filters
                 </button>
                 <button type="button" className="sh-btn-primary" onClick={onOpenScan}>
                   Scan ISBN
@@ -476,7 +699,49 @@ export function CataloguePage({ profile, mode = 'discover', onOpenBook, onOpenSc
             )}
           </div>
         ) : (
-          <div className="sh-book-grid">{displayedBooks.map((book) => renderBookCard(book))}</div>
+          <>
+            <div className="sh-book-grid">{displayedBooks.map((book) => renderBookCard(book))}</div>
+
+            {mode === 'discover' && (page > 1 || hasNextPage) && (
+              <nav
+                aria-label="Catalog pagination"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '12px',
+                  marginTop: '20px',
+                  paddingBottom: '8px',
+                }}
+              >
+                <button
+                  type="button"
+                  className="sh-btn-outline"
+                  disabled={page <= 1}
+                  onClick={() => {
+                    setPage((p) => Math.max(1, p - 1))
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
+                >
+                  Previous
+                </button>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#5b524a' }}>
+                  Page {page}
+                </span>
+                <button
+                  type="button"
+                  className="sh-btn-outline"
+                  disabled={!hasNextPage}
+                  onClick={() => {
+                    setPage((p) => p + 1)
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
+                >
+                  Next
+                </button>
+              </nav>
+            )}
+          </>
         )}
       </section>
 

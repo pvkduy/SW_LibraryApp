@@ -5,7 +5,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return handleOptions()
   if (req.method !== 'POST') return fail('VALIDATION_FAILED', 'Method must be POST')
 
-  const auth = await requireUser(req, ['active', 'restricted'])
+  const auth = await requireUser(req, ['active'])
   if (auth.errorResponse) return auth.errorResponse
 
   let body: { book_id?: string }

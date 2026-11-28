@@ -1,72 +1,116 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { isValidIsbn, normalizeIsbn } from './cartHelpers'
 import { BackArrowIcon, BarcodeIcon, ShelfBookLogo } from './CatalogIcons'
 import './catalog.css'
 
 /**
- * Figma Screen 1: Scan ISBN (R-07, FR-SRCH-07).
- * - Requests camera permission on entry and cleanly stops MediaStream tracks on close.
+ * Figma Screen 1: Scan ISBN (R-07, UC-07, FR-SRCH-07).
+ * - Requests camera permission on entry and cleanly stops MediaStream tracks on close,
+ *   Escape key, tab backgrounding, or ISBN detection.
  * - Uses native BarcodeDetector when available; always provides manual ISBN entry fallback (NFR-08).
- * - Validates EAN-13 (978/979) checksum; opens book detail if found, or shows "Not in the catalog".
+ * - Validates EAN-13 (978/979) checksum; flashes red reticle on invalid scan; opens book detail
+ *   if found, or shows "Book Not in Catalog" with "Scan Another Book" reset.
  */
 export function ScanIsbnPage({ onBack, onBookFound }) {
   const videoRef = useRef(null)
   const streamRef = useRef(null)
+  const intervalRef = useRef(null)
 
-  const [cameraState, setCameraState] = useState('initializing') // initializing | active | unavailable
+  const [cameraState, setCameraState] = useState('initializing') // initializing | active | paused | unavailable
+  const [cameraRestartKey, setCameraRestartKey] = useState(0)
+  const [invalidFlash, setInvalidFlash] = useState(false)
   const [detectedText, setDetectedText] = useState('')
   const [manualIsbn, setManualIsbn] = useState('')
   const [statusError, setStatusError] = useState(null)
   const [notFoundIsbn, setNotFoundIsbn] = useState(null)
   const [searching, setSearching] = useState(false)
 
-  const lookupIsbn = async (raw) => {
-    const clean = normalizeIsbn(raw)
-    setStatusError(null)
-    setNotFoundIsbn(null)
-
-    if (!clean) {
-      setStatusError('Please enter or scan an ISBN-13 / ISBN-10 code.')
-      return
+  const stopCamera = useCallback(() => {
+    if (intervalRef.current) {
+      window.clearInterval(intervalRef.current)
+      intervalRef.current = null
     }
-
-    if (!isValidIsbn(clean)) {
-      setStatusError(`Invalid ISBN checksum (${clean}). Expected a valid 13-digit (978/979) or 10-digit ISBN.`)
-      return
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop())
+      streamRef.current = null
     }
+  }, [])
 
-    setSearching(true)
-    setDetectedText(`ISBN detected: ${clean}`)
+  const lookupIsbn = useCallback(
+    async (raw) => {
+      const clean = normalizeIsbn(raw)
+      setStatusError(null)
+      setNotFoundIsbn(null)
 
-    try {
-      const { data, error } = await supabase
-        .from('books')
-        .select('id, title, isbn13, isbn10')
-        .eq('status', 'active')
-        .or(`isbn13.eq.${clean},isbn10.eq.${clean}`)
-        .limit(1)
-
-      if (error) throw error
-
-      if (data && data.length > 0) {
-        onBookFound(data[0].id)
-      } else {
-        setNotFoundIsbn(clean)
+      if (!clean) {
+        setStatusError('Please enter or scan an ISBN-13 / ISBN-10 code.')
+        return
       }
-    } catch (err) {
-      setStatusError(err.message || 'Could not look up ISBN right now.')
-    } finally {
-      setSearching(false)
+
+      if (!isValidIsbn(clean)) {
+        setStatusError('Unrecognized or invalid ISBN barcode. Please align clearly or enter manually.')
+        setInvalidFlash(true)
+        window.setTimeout(() => setInvalidFlash(false), 1200)
+        return
+      }
+
+      stopCamera()
+      setCameraState('paused')
+      setSearching(true)
+      setDetectedText(`ISBN detected: ${clean}`)
+
+      try {
+        const { data, error } = await supabase
+          .from('books')
+          .select('id, title, isbn13, isbn10')
+          .eq('status', 'active')
+          .or(`isbn13.eq.${clean},isbn10.eq.${clean}`)
+          .limit(1)
+
+        if (error) throw error
+
+        if (data && data.length > 0) {
+          onBookFound(data[0].id)
+        } else {
+          setNotFoundIsbn(clean)
+        }
+      } catch (err) {
+        setStatusError(err.message || 'Could not look up ISBN right now.')
+      } finally {
+        setSearching(false)
+      }
+    },
+    [onBookFound, stopCamera],
+  )
+
+  // Dismiss on Escape key & release camera when tab goes to background (UC-07 §2.2.4, §3.1)
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        stopCamera()
+        onBack()
+      }
     }
-  }
+    const onVisibility = () => {
+      if (document.hidden) {
+        stopCamera()
+        setCameraState('paused')
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [onBack, stopCamera])
 
   useEffect(() => {
     let active = true
-    let detectorInterval = null
 
     async function startCamera() {
-      if (!navigator?.mediaDevices?.getUserMedia) {
+      if (!navigator?.mediaDevices?.getUserMedia || !window.isSecureContext) {
         if (active) setCameraState('unavailable')
         return
       }
@@ -89,15 +133,18 @@ export function ScanIsbnPage({ onBack, onBookFound }) {
         // Use native browser BarcodeDetector when supported (Chrome/Edge/Android)
         if ('BarcodeDetector' in window) {
           const detector = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8'] })
-          detectorInterval = window.setInterval(async () => {
+          intervalRef.current = window.setInterval(async () => {
             if (!videoRef.current || videoRef.current.readyState < 2) return
             try {
               const codes = await detector.detect(videoRef.current)
               if (codes.length > 0 && codes[0].rawValue) {
                 const candidate = normalizeIsbn(codes[0].rawValue)
                 if (isValidIsbn(candidate)) {
-                  window.clearInterval(detectorInterval)
                   lookupIsbn(candidate)
+                } else {
+                  setInvalidFlash(true)
+                  setStatusError('Unrecognized or invalid ISBN barcode. Please align clearly or enter manually.')
+                  window.setTimeout(() => setInvalidFlash(false), 1200)
                 }
               }
             } catch {
@@ -114,14 +161,18 @@ export function ScanIsbnPage({ onBack, onBookFound }) {
 
     return () => {
       active = false
-      if (detectorInterval) window.clearInterval(detectorInterval)
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop())
-        streamRef.current = null
-      }
+      stopCamera()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [cameraRestartKey, lookupIsbn, stopCamera])
+
+  const handleScanAnother = () => {
+    setNotFoundIsbn(null)
+    setStatusError(null)
+    setDetectedText('')
+    setManualIsbn('')
+    setCameraState('initializing')
+    setCameraRestartKey((k) => k + 1)
+  }
 
   const handleManualSubmit = (e) => {
     e.preventDefault()
@@ -171,8 +222,11 @@ export function ScanIsbnPage({ onBack, onBookFound }) {
             </div>
           )}
 
-          {/* Green Reticle + Red Laser Line (Figma Screen 1) */}
-          <div className="sh-scanner-reticle">
+          {/* Green Reticle + Red Laser Line (flashes red on invalid scan per UC-07 §2.2.2) */}
+          <div
+            className="sh-scanner-reticle"
+            style={invalidFlash ? { border: '2px solid #ef4444', borderRadius: '14px', boxShadow: '0 0 18px rgba(239,68,68,0.65)' } : undefined}
+          >
             <span className="sh-reticle-corner tl" />
             <span className="sh-reticle-corner tr" />
             <span className="sh-reticle-corner bl" />
@@ -304,9 +358,19 @@ export function ScanIsbnPage({ onBack, onBookFound }) {
                 color: '#fde8df',
               }}
             >
-              <strong>Not in the catalog:</strong> No book matched ISBN <code>{notFoundIsbn}</code>.
+              <strong>Book Not in Catalog:</strong> ISBN <code>{notFoundIsbn}</code> is not currently in the library collection.
               <div style={{ marginTop: '6px', fontSize: '12px', color: '#e5cbbd' }}>
                 You can request the library to acquire this title via Book Suggestions.
+              </div>
+              <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="sh-btn-primary"
+                  style={{ height: '34px', padding: '0 14px', fontSize: '12px' }}
+                  onClick={handleScanAnother}
+                >
+                  Scan Another Book
+                </button>
               </div>
             </div>
           )}
