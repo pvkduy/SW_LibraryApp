@@ -2,19 +2,19 @@ C4Component
     title Component diagram — ShelfHelp API: request path (business commands)
     Container_Ext(auth, "Supabase Auth", "Managed identity service", "JWT verification, user identity and session management.")
     Container(webapp, "ShelfHelp Web Application", "React SPA", "Calls business commands.")
-    ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "System of record, RLS, triggers, atomic RPC transactions and audit logging.")
+    ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "System of record, RLS, triggers and atomic RPC transactions; general audit logging is planned.")
 
     Container_Boundary(api, "ShelfHelp API") {
-        Component(authGuard, "Auth & Access Guard", "_shared/auth.ts", "Verifies the JWT, reads app_metadata.role and reloads profile status; enforces role, account status, debt hold, membership and reservation ban.")
-        Component(commandGateway, "Command Execution & RPC Gateway", "SQL RPCs, idempotency keys", "Executes each command as one PostgreSQL RPC/transaction (writing state changes and audit_logs atomically), retries deadlocks, and returns cached idempotency responses.")
-        Component(jobLogger, "Job Tracking & Error Logger", "job_runs, logger", "Captures unhandled exceptions for operational monitoring.")
+        Component(authGuard, "Auth & Access Guard", "_shared/auth.ts", "Verifies the caller and checks role and profile status for protected handlers.")
+        Component(commandGateway, "RPC invocation", "PostgREST, SQL RPCs", "Handlers call transactional RPCs directly; a general retry gateway is a target.")
+        Component(jobLogger, "Job Tracking & Error Logger (PA5 target)", "job_runs, logger", "Planned operational monitoring.")
 
-        Component(validation, "Request Validation", "Shared validation", "Parses and validates every request body before any database work begins.")
-        Component(commandHandlers, "Business Command Handlers", "One function folder per command", "Account, catalog, inventory, borrowing, money, circulation, write-off, acquisition, notification and assistant commands; thin orchestration only.")
+        Component(validation, "Request Validation", "Handler-specific validation", "Handlers parse and validate requests; some shared helpers exist.")
+        Component(commandHandlers, "Business Command Handlers", "One function folder per command", "Implemented account, catalog, inventory, borrowing, money, circulation, write-off and reminder handlers.")
         Component(httpHelpers, "HTTP & CORS Helpers", "_shared/http.ts", "Accept POST requests, handle CORS and OPTIONS, and map results to JSON or the standard error envelope.")
 
-        Component(domainRules, "Shared Domain Rules", "@shelfhelp/shared", "Pure entitlements, gating, fines, reservation promotion, lost-book and charge rules.")
-        Component(adapters, "Integration Adapters", "Email, payment, embedding, LLM and ISBN adapters", "Isolates third-party protocols and applies fallbacks such as manual ISBN entry and keyword assistant results.")
+        Component(domainRules, "Shared Helpers", "@shelfhelp/shared", "Types, reason codes, auth and catalog helpers; business rules also live in SQL.")
+        Component(adapters, "Integration Adapters (PA5 target)", "Provider interfaces", "Planned adapters; current ISBN lookup calls providers directly.")
     }
 
     Boundary(providers, "Third-party providers", "EXTERNAL") {
@@ -31,19 +31,19 @@ C4Component
     Rel(commandHandlers, httpHelpers, "Uses")
     Rel(commandHandlers, domainRules, "Business rules")
     Rel(commandHandlers, commandGateway, "One RPC transaction")
-    Rel(commandHandlers, adapters, "Provider calls")
-    Rel(commandHandlers, jobLogger, "Logs unhandled errors")
+    Rel(commandHandlers, adapters, "Target provider adapters")
+    Rel(commandHandlers, jobLogger, "Target")
 
     Rel(authGuard, auth, "Verifies JWT", "HTTPS")
-    Rel(commandHandlers, auth, "Manages users & sessions", "HTTPS, service role")
+    Rel(commandHandlers, auth, "Registers users", "HTTPS, service role")
     Rel(authGuard, db, "Reloads profiles.status", "PostgREST HTTPS, service role")
-    Rel(commandGateway, db, "Executes RPC (commits state & audit)", "PostgREST HTTPS, service role")
-    Rel(jobLogger, db, "Writes error records", "PostgREST HTTPS, service role")
+    Rel(commandGateway, db, "Executes RPC", "PostgREST HTTPS, service role")
+    Rel(jobLogger, db, "Target error records", "PostgREST HTTPS, service role")
 
-    Rel(adapters, email, "Email", "HTTPS/SMTP")
-    Rel(adapters, payment, "Payments", "HTTPS")
-    Rel(adapters, ai, "AI", "HTTPS")
-    Rel(adapters, isbn, "ISBN", "HTTPS")
+    Rel(adapters, email, "Target email", "HTTPS/SMTP")
+    Rel(adapters, payment, "Target payment provider", "HTTPS")
+    Rel(adapters, ai, "Target AI", "HTTPS")
+    Rel(commandHandlers, isbn, "Direct ISBN lookup", "HTTPS")
 
     UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
     UpdateRelStyle(commandHandlers, authGuard, $offsetX="0", $offsetY="-30")
@@ -64,4 +64,4 @@ C4Component
     UpdateRelStyle(adapters, email, $offsetX="-140", $offsetY="50")
     UpdateRelStyle(adapters, payment, $offsetX="40", $offsetY="0")
     UpdateRelStyle(adapters, ai, $offsetX="10", $offsetY="0")
-    UpdateRelStyle(adapters, isbn, $offsetX="0", $offsetY="0")
+    UpdateRelStyle(commandHandlers, isbn, $offsetX="0", $offsetY="0")

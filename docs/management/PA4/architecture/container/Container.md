@@ -54,7 +54,9 @@ This document is the **C4 Level 2 (Container) view** of ShelfHelp. It opens the 
 
 ### 1.2 Scope
 
-The view covers the whole product scope from PA1–PA4: identity and membership, catalog and discovery, cart and checkout, desk circulation, inventory and write-offs, money and receipts, reservations, acquisitions, notifications, reporting, and the AI assistant. Features planned for PA5 use the same containers and do not change this view.
+The view covers the intended product architecture, including PA5 capabilities that are not yet implemented. Diagrams are target views, not a deployment inventory; current implementation and planned integrations are distinguished below. Status refers to the repository through migration `0018`, not to an independently verified cloud deployment.
+
+The inline Mermaid diagrams and linked `.mmd` files are authoritative. Existing `.png` exports are historical and have not been regenerated for this reconciliation.
 
 ### 1.3 References
 
@@ -99,9 +101,6 @@ together, the two panels cover the same elements and relationships.
 
 ### 3.1 Core containers and managed services
 
-<details>
-<summary>Mermaid source</summary>
-
 ```mermaid
 %%{init: {"c4": {"c4ShapeMargin": 90, "width": 200, "c4ShapePadding": 12}}}%%
 %%internal + supabase%%
@@ -115,13 +114,13 @@ C4Container
     System_Boundary(shelfhelp, "ShelfHelp") {
         Container(webapp, "ShelfHelp Web Application", "React 19.3.1, Vite 8.3.5", "Reader Mode and Admin Mode single-page application. Renders catalog, cart, checkout, loans, circulation, money and reporting screens; guards routes by session, role and account status.")
         Container(api, "ShelfHelp API", "Supabase Edge Functions, Deno, TypeScript", "One stateless function per business command. Validates input, authenticates and authorizes the caller, runs shared domain rules and commits the command in one PostgreSQL transaction.")
-        ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15, managed; team-owned schema, RLS and RPCs", "System of record for accounts, catalog, loans, reservations, charges, receipts, audit and settings. Hosts full-text and vector search, and pg_cron schedules that call job functions.")
+        ContainerDb(db, "PostgreSQL Database", "Supabase Postgres, team-owned schema, RLS and RPCs", "Stores application data. Vector search, audit tables and scheduled jobs are PA5 targets.")
     }
 
     System_Boundary(supabase, "Supabase Platform (managed services)") {
         Container_Ext(storage, "Supabase Storage", "Managed object storage with bucket policies", "Covers, avatars, write-off evidence and CSV imports; access controlled by storage policies and signed URLs.")
         Container_Ext(auth, "Supabase Auth", "Managed identity service, JWT, PKCE", "Registration, email verification, sign-in/out, active sessions, password reset and JWT issuance with app_metadata.role.")
-        Container_Ext(realtime, "Supabase Realtime", "Managed change-data service", "Pushes live availability counters, notifications and own loan-item changes to subscribed browsers under RLS.")
+        Container_Ext(realtime, "Supabase Realtime", "Managed change-data service", "Current: book-detail copies subscription. Notification and loan subscriptions are targets.")
     }
 
     Rel(student, webapp, "Uses Reader Mode", "HTTPS")
@@ -130,12 +129,12 @@ C4Container
     Rel(webapp, api, "Invokes commands", "HTTPS, JWT")
     Rel(webapp, db, "Reads/writes own data", "PostgREST, RLS")
     Rel(api, db, "(API → db) Calls RPCs", "PostgREST, service role")
-    Rel(db, api, "(db → API) Runs cron jobs", "pg_net")
+    Rel(db, api, "(PA5 target) Cron job triggers", "pg_net")
 
     Rel(webapp, storage, "Uploads/downloads files", "HTTPS, signed URLs")
-    Rel(webapp, auth, "Signs up/in, resets password", "HTTPS, PKCE")
-    Rel(webapp, realtime, "Subscribes to changes", "WebSocket, RLS")
-    Rel(api, auth, "Verifies JWT, manages users & sessions", "HTTPS")
+    Rel(webapp, auth, "Signs in, verifies, resets password", "HTTPS, PKCE")
+    Rel(webapp, realtime, "Subscribes to copy changes", "WebSocket, RLS")
+    Rel(api, auth, "Verifies JWT; creates users", "HTTPS")
     Rel(realtime, db, "Reads change stream", "logical replication")
 
     UpdateRelStyle(student, webapp, $offsetX="10", $offsetY="-60")
@@ -153,9 +152,8 @@ C4Container
     UpdateRelStyle(realtime, db, $offsetX="10", $offsetY="-40")
 ```
 
-</details>
 
-![Container diagram, panel 1: the Web Application, ShelfHelp API and PostgreSQL database inside the ShelfHelp boundary, the managed Auth, Storage and Realtime services on the Supabase Platform, and the relationships between them](mermaid/container-part1.png)
+Panel 1 is a mixed current/target view; the cron relationship is planned.
 
 Panel 1 contains:
 
@@ -163,14 +161,11 @@ Panel 1 contains:
 - **Containers inside ShelfHelp:** the Web Application, the ShelfHelp API, and the PostgreSQL database.
 - **Managed platform services:** Supabase Storage, Supabase Auth, and Supabase Realtime, in reading order.
 - **Relationships:** both people to the Web Application; the Web Application to the API (commands), to
-  the database (reads and own profile/cart writes under RLS), to Storage, Auth, and Realtime; the API
-  to the database in both directions (transactional RPCs, and `pg_cron` job triggers via `pg_net`); the
+  the database (reads and permitted own profile/cart/notification writes under RLS), to Storage, Auth, and Realtime; the API
+  to the database (transactional RPCs, with `pg_cron` job triggers via `pg_net` planned); the
   API to Auth; and Realtime reading the database change stream.
 
 ### 3.2 ShelfHelp API outbound integrations
-
-<details>
-<summary>Mermaid source</summary>
 
 ```mermaid
 %%{init: {"c4": {"c4ShapeMargin": 45, "diagramMarginX": 20, "diagramMarginY": 20}}}%%
@@ -183,15 +178,15 @@ C4Container
 
     System_Boundary(external, "External services") {
         System_Ext(email, "Email Delivery Provider", "SMTP relay or transactional email API")
-        System_Ext(payment, "Payment Provider (simulator)", "Payment and refund API behind the PaymentProvider adapter")
+        System_Ext(payment, "Payment Provider (PA5 target)", "Planned payment provider interface; current simulation is local")
         System_Ext(ai, "AI Provider", "Embedding and LLM APIs for grounded recommendations")
         System_Ext(isbn, "Bibliographic Metadata Services", "Google Books and Open Library ISBN APIs")
     }
 
     Rel(auth, email, "Verification/reset email", "SMTP")
-    Rel(api, email, "Notification email", "HTTPS/SMTP")
-    Rel(api, payment, "Payments/refunds", "HTTPS")
-    Rel(api, ai, "Embeddings/answers", "HTTPS")
+    Rel(api, email, "(PA5 target) Notification email", "HTTPS/SMTP")
+    Rel(api, payment, "(PA5 target) Provider interface", "HTTPS")
+    Rel(api, ai, "(PA5 target) Embeddings/answers", "HTTPS")
     Rel(api, isbn, "ISBN lookup", "HTTPS")
 
     UpdateRelStyle(auth, email, $offsetX="5", $offsetY="-10")
@@ -201,18 +196,17 @@ C4Container
     UpdateRelStyle(api, isbn, $offsetX="-30", $offsetY="-30")
 ```
 
-</details>
 
-![Container diagram, panel 2: the ShelfHelp API calling the Email Delivery Provider, Payment Provider simulator, AI Provider and Bibliographic Metadata Services, plus Supabase Auth sending verification and reset email](mermaid/container-part2.png)
+Panel 2 shows the target external integrations. ISBN lookup is implemented directly; the current payment simulation is not an external HTTPS provider.
 
 Panel 2 contains every edge from ShelfHelp to an external system:
 
 | Relationship | Protocol | Purpose |
 | :--- | :--- | :--- |
 | Supabase Auth → Email Delivery Provider | SMTP | Verification and password-reset email. |
-| ShelfHelp API → Email Delivery Provider | HTTPS/SMTP | Notification email dispatched from the application email outbox. |
-| ShelfHelp API → Payment Provider (simulator) | HTTPS | Simulated payments and refunds behind the `PaymentProvider` adapter. |
-| ShelfHelp API → AI Provider | HTTPS | Query embeddings and grounded answer generation. |
+| ShelfHelp API → Email Delivery Provider | HTTPS/SMTP | **Target:** notification email dispatched from an application outbox. |
+| ShelfHelp API → Payment Provider (simulator) | HTTPS | **Target:** provider interface; current payments are simulated locally. |
+| ShelfHelp API → AI Provider | HTTPS | **Target:** query embeddings and grounded answer generation. |
 | ShelfHelp API → Bibliographic Metadata Services | HTTPS | ISBN metadata lookup during cataloguing and import. |
 
 Source: [`mermaid/container-part1.mmd`](mermaid/container-part1.mmd) and
@@ -233,17 +227,17 @@ Source: [`mermaid/container-part1.mmd`](mermaid/container-part1.mmd) and
 | **Deployed to** | Static host and global CDN (served over HTTPS) |
 | **Source** | [`src/frontend/`](../../../../../src/frontend/) |
 
-**Responsibilities and services provided:**
-- Renders the responsive single-page user interface for both **Reader Mode** (students: catalog discovery, borrowing cart, checkout, active loans, reservations, fines/payments, grounded AI assistant) and **Admin Mode** (staff: circulation desk handover and returns, copy management, reservation queues, financial ledger, write-off slips, report exports).
+**Responsibilities and services provided:** The catalog, cart, checkout, loans, reservations, fines, circulation, queues, inventory and ledger have implemented screens. Membership upgrades, assistant, acquisitions, student management and reporting remain targets or placeholders.
+- Renders the responsive single-page user interface for **Reader Mode** (catalog, cart, loans, reservations and fines) and **Admin Mode** (circulation, copies, queues, ledger and write-off). Assistant and report exports are targets.
 - Enforces client-side route guards based on session state, role (`student` vs `admin`), and account status (`active`, `pending_verification`, `restricted`, `inactive`).
 - Executes browser-native camera barcode scanning and implementation-selected utilities for barcode rendering, CSV, Excel, PDF, and image handling as those features are added.
 
 **Communication with other containers:**
 - **ShelfHelp API:** Invokes serverless Edge Functions via **HTTPS POST** bearing the caller's JWT bearer token in the `Authorization` header to execute transactional business commands.
-- **PostgreSQL Database:** Reads catalog, loan history, charges, and user profile data directly via **PostgREST over HTTPS** using the Supabase anonymous key and caller's JWT, strictly filtered by PostgreSQL Row Level Security (RLS). Personal cart items and profile contact fields are written directly under own-row RLS policies and column-level grants.
-- **Supabase Auth:** Handles OTP verification, sign-in/out, and password reset via **HTTPS POST** (PKCE flow). Student registration is validated and initiated through the `register-student` Edge Function using the Auth Admin API; direct public sign-up is disabled. Persists only the revocable refresh token in `localStorage` when *"Keep me signed in"* is selected (or `sessionStorage` otherwise), never storing the password (`UC-02`). Active-session listing and revocation (`UC-32`) are a **PA5 target** and will route through **ShelfHelp API**.
+- **PostgreSQL Database:** Reads catalog, loan history, charges, and user profile data directly via **PostgREST over HTTPS** using the Supabase anonymous key and caller's JWT, filtered by RLS. Permitted own-row cart/profile writes and `notifications.read_at` updates use RLS and grants.
+- **Supabase Auth:** Handles OTP verification, sign-in/out, and password reset via **HTTPS POST** (PKCE flow). Registration uses `register-student`. The Supabase client currently enables default session persistence and auto-refresh; selectable storage and refresh-token-only persistence are **PA5 targets**, as are active-session listing and revocation (`UC-32`).
 - **Supabase Storage:** Uploads avatars and evidence images and downloads public cover assets via **HTTPS** using signed URLs or public endpoints.
-- **Supabase Realtime:** Subscribes to live book availability counters, personal notifications, and loan-item status changes via persistent **WebSocket (WSS)** connections under RLS filtering.
+- **Supabase Realtime:** Book detail subscribes to changes to that book's `copies`. Personal notification and loan-item subscriptions are targets.
 
 ---
 
@@ -256,19 +250,19 @@ Source: [`mermaid/container-part1.mmd`](mermaid/container-part1.mmd) and
 | **Deployed to** | Supabase Edge Runtime (serverless globally distributed functions) |
 | **Source** | [`src/supabase/functions/`](../../../../../src/supabase/functions/) |
 
-**Responsibilities and services provided:**
-- Provides a centralized serverless backend hosting one dedicated function per business command (e.g. checkout, handover, return, counter payment, cancellation) and one function per scheduled cron task.
-- Validates request payloads with shared implementation-domain validation and strict type guards.
-- Authenticates callers using JWT tokens, reloads `profiles.status` (and session validity where immediate revocation is required), and enforces authorization policies (role verification, account suspension, debt holds, membership entitlement, and sign-in lockout protection).
-- Applies domain rules using `@shelfhelp/shared` (borrowing entitlements, gating checks, and input validations) and orchestrates single-transaction execution via PostgreSQL RPCs (which enforce transactional formulas and invariants).
-- Isolates third-party service communication behind pluggable integration adapters with standard fallback mechanisms.
+**Responsibilities and services provided:** Scheduled handlers, general provider adapters and UC-02 server lockout are targets, not existing services.
+- Provides serverless handlers for implemented commands such as checkout, handover, return, counter payment and cancellation; cron handlers are planned.
+- Validates request payloads within handlers and SQL, with selected shared helpers.
+- Protected functions verify the caller and reload role and status. Status and business rules depend on the command; restricted readers may pay fines and submit reviews.
+- Validates inputs in handlers and enforces transactional business rules in SQL RPCs. Shared TypeScript helpers exist but do not implement every business rule.
+- ISBN lookup calls external providers directly with fallback; a general adapter layer is planned.
 
 **Communication with other containers:**
 - **ShelfHelp Web Application:** Receives command requests via **HTTPS POST** with JWT authentication; returns standardized JSON responses or error envelopes (`{ error: { reason, message, details } }`).
-- **PostgreSQL Database:** Invokes database stored procedures via **PostgREST HTTPS** using the privileged database `service_role` key to execute atomic transactional RPCs (e.g. `rpc_confirm_handover`, `rpc_process_return`), commit audit logs atomically, and query real-time profile states.
-- **Supabase Auth:** Calls the GoTrue Admin API via **HTTPS** (`service_role`) to create verified user accounts, manage user security metadata, and, as a **PA5 target**, list or revoke user sessions (`list-sessions`, `revoke-session`, `revoke-other-sessions`) plus `set-account-inactive`, because `auth.sessions` is not exposed through PostgREST.
-- **PostgreSQL Database (`pg_cron`):** Receives background job trigger invocations from PostgreSQL via **HTTPS** using the `pg_net` extension with an internal authorization secret header (`x-job-secret`).
-- **External Services:** Communicates with external providers (**Email Provider** via HTTPS/SMTP, **Payment Provider** simulator via HTTPS, **AI Provider** via HTTPS, and **Bibliographic Metadata Services** via HTTPS).
+- **PostgreSQL Database:** Invokes stored procedures via **PostgREST HTTPS** using `service_role` for atomic transactions and profile checks. General `audit_logs` and `copy_events` are not currently implemented.
+- **Supabase Auth:** `register-student` calls the Auth Admin API to create an unconfirmed user. Session-management and `set-account-inactive` functions are PA5 targets.
+- **PostgreSQL Database (`pg_cron`):** Job invocations through `pg_net` are planned, not currently configured by migrations.
+- **External Services:** ISBN providers are called directly. Application notification email and AI integration are planned; simulated payment does not call an external provider.
 
 ---
 
@@ -282,18 +276,18 @@ Source: [`mermaid/container-part1.mmd`](mermaid/container-part1.mmd) and
 | **Source** | [`src/supabase/migrations/`](../../../../../src/supabase/migrations/), [`src/supabase/tests/`](../../../../../src/supabase/tests/) |
 
 **Responsibilities and services provided:**
-- Central system of record for all persistent application data: profiles, accounts, books, copies, copy events, loans, reservations, charges, receipts, audit logs, write-off slips, acquisitions, and system settings.
-- Enforces data integrity through declarative constraints (`CHECK`, `FOREIGN KEY`, `UNIQUE`), PostgreSQL triggers, and immutable ledger rules (preventing UPDATE/DELETE on audit, receipts, and inventory history).
+- Central system of record for implemented data such as profiles, books, copies, loans, reservations, charges, receipts and write-off slips. Several target tables, including `audit_logs`, `copy_events`, acquisitions and `settings`, are not yet present.
+- Enforces data integrity through constraints and triggers; inventory history and write-off rules are defined in the migrations. General audit tables are planned.
 - Enforces deny-by-default Row Level Security (RLS) on all tables for PostgREST client queries.
-- Executes complex transactional business logic, row locking, and atomic audit logging via security definer stored procedures (RPCs). All mutation RPCs have `EXECUTE` privileges revoked from `PUBLIC`, `anon`, and `authenticated`, granted exclusively to `service_role`.
-- Powers diacritic-insensitive Vietnamese catalog text search (`unaccent`, `tsvector`, `pg_trgm`) and vector similarity search for the AI assistant (`pgvector` HNSW indexes).
-- Drives background schedule execution via `pg_cron`.
+- Executes transactional business logic and row locking via stored procedures. Protected mutation entry points are restricted to `service_role`; general atomic audit logging is planned.
+- Powers catalog search using text search, `unaccent`, and `pg_trgm`. The vector extension and embedding column exist; HNSW-based assistant retrieval is planned.
+- Enables `pg_cron` and `pg_net`; scheduled application jobs are planned.
 
 **Communication with other containers:**
 - **ShelfHelp Web Application:** Exposes read endpoints directly to the browser via **PostgREST over HTTPS**, enforcing RLS on every table query.
 - **ShelfHelp API:** Accepts database queries and stored procedure invocations from Edge Functions via **PostgREST HTTPS** authenticated with the `service_role` key.
-- **Supabase Realtime:** Streams table mutation events (inserts/updates on `books`, `notifications`, `loan_items`) via **PostgreSQL logical replication**.
-- **ShelfHelp API (pg_cron triggers):** Dispatches scheduled job execution signals to Edge Function job handlers via **HTTPS** requests initiated by the `pg_net` extension.
+- **Supabase Realtime:** The browser subscribes to `copies` changes on book detail; notification and loan subscriptions are planned.
+- **ShelfHelp API (pg_cron triggers):** Dispatch via `pg_net` is planned.
 
 ---
 
@@ -307,7 +301,7 @@ Source: [`mermaid/container-part1.mmd`](mermaid/container-part1.mmd) and
 
 ### 4.5 External systems
 
-The email provider, payment simulator, AI provider, and bibliographic services sit outside ShelfHelp and are reached only through adapters in the API. Their role is shown by the diagram arrows; the
+The diagram includes planned email, payment-provider and AI integrations. ISBN lookup calls bibliographic services directly today, and payment simulation is local. Their intended roles are shown by the diagram arrows; the
 Level 1 view describes their integration and failure behaviour in
 [§3.7](../system-context/System-Context.md#37-external-apis-and-service-integrations).
 
@@ -325,13 +319,13 @@ Static hosting, Cloudflare Turnstile, Sentry, and CI are supporting services rat
 2. The SPA queries PostgREST with the user's JWT. PostgreSQL applies RLS: students see active books,
    public reviews, membership plans, and their own rows; staff see the rows their screens need.
 3. Complex catalog search runs through the `rpc_search_books` RPC.
-4. Realtime pushes availability counters, notifications, and the caller's own loan changes.
+4. Book detail subscribes to `copies` changes. Notification and loan change subscriptions are planned.
 
 ### 5.2 Command path
 
-1. The SPA validates a form with the shared schema and invokes an Edge Function with the JWT.
-2. The function validates the body, authenticates the caller, reloads the profile, and applies gating.
-3. The command executes as one PostgreSQL RPC/transaction through the service role.
+1. The SPA invokes an Edge Function with the JWT.
+2. The function authenticates the caller, reloads the profile, and validates the body and action-specific gates.
+3. Implemented circulation and reader mutations execute through a PostgreSQL RPC/transaction using the service role.
 4. The function returns the result or the standard error envelope, and the SPA maps the reason to a
    user-facing message.
 
@@ -342,10 +336,10 @@ The underlying principles are summarized in [Key principles](../system-context/S
 1. Registration calls `register-student`, which creates the Auth user and the `profiles` row.
 2. Supabase Auth sends the verification email through the email provider.
 3. **PA5 target:** On sign-in (`UC-02`), failed attempts will be throttled server-side (5 consecutive failures per identifier within 15 minutes triggers a 10-minute lockout returning HTTP 429 with `Retry-After`). On success, the SPA will store only the refresh token (`localStorage` if *"Keep me signed in"* is checked, `sessionStorage` otherwise — never the password) and load the caller's profile so role and status select the Reader or Admin shell.
-4. Every command reloads `profiles.status`, so a deactivated or restricted account is refused even with an old token.
+4. Protected handlers reload `profiles.status`; allowed statuses depend on the action. Restricted readers can pay charges and submit reviews.
 5. **PA5 target:** In Active Sessions (`UC-32`), the SPA will call `list-sessions`, `revoke-session`, or `revoke-other-sessions` on **ShelfHelp API** with the caller's JWT. The API will derive identity from the JWT, query or revoke the caller's own sessions via the Supabase Auth Admin API (`service_role`), log the revocation in `audit_logs`, and never return raw tokens. The current session will end only through normal sign-out (`UC-02`).
 
-### 5.4 Scheduled job path
+### 5.4 Scheduled job path — PA5 target
 
 1. `pg_cron` fires a schedule in UTC.
 2. A SQL job runs directly, or `pg_net` calls a job Edge Function with a secret header.
@@ -357,9 +351,9 @@ The underlying principles are summarized in [Key principles](../system-context/S
 1. The SPA uploads covers, avatars, evidence, or CSV files directly to Supabase Storage under the
    caller's identity.
 2. Storage policies check the bucket, role, and avatar ownership; private reads use signed URLs.
-3. Import CSVs are deleted after seven days.
+3. Seven-day import cleanup is a target; no scheduled cleanup is implemented.
 
-### 5.6 Assistant path
+### 5.6 Assistant path — PA5 target
 
 1. `chat-send` embeds the query and retrieves candidate books from the `pgvector` index.
 2. The LLM answers using only those candidates; the server drops any recommended book id outside the
@@ -412,12 +406,12 @@ All feature groups and all 32 active use cases use the Web Application and Postg
 
 | Attribute | Design response |
 | :--- | :--- |
-| **Integrity** | One transaction per command; fixed lock order; unique indexes for active loans, holds, and reversals; immutable ledgers. |
+| **Integrity** | Transactional RPCs protect implemented business mutations; checkout uses row locks. General fixed lock order and reversal behaviour remain targets. |
 | **Security** | TLS, PKCE, short-lived JWT, RLS on every table, service-role key confined to functions, bucket policies per storage bucket, data minimisation to the AI provider. |
 | **Availability** | Static SPA on a CDN; stateless functions; the database is the only stateful dependency. |
 | **Performance** | PostgREST for simple reads, indexed RPCs for complex reads, `FOR UPDATE SKIP LOCKED` for checkout, browser-side import/export. |
-| **Recoverability** | Idempotency keys make retries safe; the email outbox retries; jobs record outcomes; migrations are reproducible. |
-| **Observability** | Sentry, PostgreSQL logs, append-only `audit_logs` and `inventory_transactions`, `job_runs` for scheduled work. |
+| **Recoverability** | Checkout supports an optional idempotency key and migrations are reproducible; outbox retries and job records are targets. |
+| **Observability** | PostgreSQL logs and implemented inventory history; Sentry, `audit_logs` and `job_runs` are targets. |
 
 If the Supabase project is unavailable, reads, writes, auth, and storage fail; the SPA remains loadable from the CDN but cannot serve data. This is accepted for a course-scale system.
 

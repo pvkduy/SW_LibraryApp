@@ -4,23 +4,23 @@ C4Component
     Person(student, "Student (Reader)", "Uses Reader Mode on a phone or laptop.")
 
     Container_Boundary(spa, "ShelfHelp Web Application") {
-        Component(authProfile, "Authentication & Profile", "React", "Registration, OTP verification, login/logout, active sessions, password reset, profile editing and avatar cropping.")
-        Component(appShell, "App Shell & Access Guard", "React Router", "Bootstraps the application, selects the Reader or Admin shell and enforces session, role and account-status guards.")
-        Component(catalogDiscovery, "Catalog & Discovery", "React, TanStack Query", "Home, search with filters and sorting, book detail, barcode scan, reviews and wishlist.")
+        Component(authProfile, "Authentication & Profile", "React", "Registration, verification, login/logout and reset. Active sessions are a PA5 target.")
+        Component(appShell, "App Shell & Access Guard", "React state, browser history", "Selects Reader or Admin shell and checks session, role and account status.")
+        Component(catalogDiscovery, "Catalog & Discovery", "React", "Catalog, book detail, barcode scan, reviews and wishlist.")
 
-        Component(cartCheckout, "Cart & Checkout", "React, TanStack Query", "Borrowing cart, checkout, pickup window and simulated payment.")
-        Component(dataAccess, "Data Access & Realtime Client", "supabase-js, TanStack Query", "PostgREST reads, Realtime subscriptions, Storage uploads and Edge Function invocation with the JWT and standard error envelope.")
-        Component(myLibrary, "My Library", "React, TanStack Query", "Loans, renewals, reservations, charges and membership.")
+        Component(cartCheckout, "Cart & Checkout", "React", "Borrowing cart, checkout, pickup window and simulated payment.")
+        Component(dataAccess, "Data Access & Realtime Client", "supabase-js", "Direct PostgREST reads, copies subscription, Storage and Edge Function calls.")
+        Component(myLibrary, "My Library", "React", "Loans, renewals, reservations and charges. Membership upgrade is a PA5 target.")
 
-        Component(notificationsAssistant, "Notifications & Assistant", "React, Realtime", "Notifications, suggestions and the grounded AI assistant.")
+        Component(notificationsAssistant, "Notifications & Assistant", "React", "Reservations; notifications, suggestions and assistant are target capabilities.")
     }
 
     Boundary(backend, "Backend services", "SUPABASE") {
-        Container(api, "ShelfHelp API", "Supabase Edge Functions", "Business commands and scheduled jobs.")
+        Container(api, "ShelfHelp API", "Supabase Edge Functions", "Business commands; scheduled jobs are planned.")
         ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "Catalog and own-row data exposed through PostgREST under RLS.")
         Container_Ext(auth, "Supabase Auth", "Managed identity service", "Sessions, JWT and credential recovery.")
         Container_Ext(storage, "Supabase Storage", "Managed object storage", "Covers, avatars, evidence and imports.")
-        Container_Ext(realtime, "Supabase Realtime", "Managed change-data service", "Live counters, notifications and own loan changes.")
+        Container_Ext(realtime, "Supabase Realtime", "Managed change-data service", "Book-detail copies subscription.")
     }
 
     Rel(student, appShell, "Uses Reader Mode", "HTTPS")
@@ -39,7 +39,7 @@ C4Component
     Rel(authProfile, dataAccess, "Authenticates")
 
     Rel(dataAccess, auth, "Signs in/verifies OTP", "HTTPS, PKCE")
-    Rel(dataAccess, db, "(Data → DB) <br/> Reads; writes own profile/cart", "PostgREST, RLS")
+    Rel(dataAccess, db, "Reads; permitted own-row writes", "PostgREST, RLS")
     Rel(dataAccess, api, "Invokes commands", "HTTPS, JWT")
     Rel(dataAccess, storage, "(Data → Supabase Storage) <br/>Files", "HTTPS, signed URLs")
     Rel(dataAccess, realtime, "Subscribes", "WebSocket, RLS")

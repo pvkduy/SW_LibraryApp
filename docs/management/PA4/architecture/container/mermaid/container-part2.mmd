@@ -8,15 +8,15 @@ C4Container
 
     System_Boundary(external, "External services") {
         System_Ext(email, "Email Delivery Provider", "SMTP relay or transactional email API")
-        System_Ext(payment, "Payment Provider (simulator)", "Payment and refund API behind the PaymentProvider adapter")
+        System_Ext(payment, "Payment Provider (PA5 target)", "Planned payment provider interface; current simulation is local")
         System_Ext(ai, "AI Provider", "Embedding and LLM APIs for grounded recommendations")
         System_Ext(isbn, "Bibliographic Metadata Services", "Google Books and Open Library ISBN APIs")
     }
 
     Rel(auth, email, "Verification/reset email", "SMTP")
-    Rel(api, email, "Notification email", "HTTPS/SMTP")
-    Rel(api, payment, "Payments/refunds", "HTTPS")
-    Rel(api, ai, "Embeddings/answers", "HTTPS")
+    Rel(api, email, "(PA5 target) Notification email", "HTTPS/SMTP")
+    Rel(api, payment, "(PA5 target) Provider interface", "HTTPS")
+    Rel(api, ai, "(PA5 target) Embeddings/answers", "HTTPS")
     Rel(api, isbn, "ISBN lookup", "HTTPS")
 
     UpdateRelStyle(auth, email, $offsetX="5", $offsetY="-10")

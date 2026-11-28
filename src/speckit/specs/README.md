@@ -5,6 +5,8 @@ shared core plus per-feature specifications, each in the Spec Kit `spec.md` temp
 structure. The original SRS remains the authoritative source of truth; these files
 are a faithful re-organization of its contents for per-feature planning.
 
+> **Implementation status:** These specifications describe requirements and targets, not a checklist of completed functionality. See the implementation status in the SRS and the [PA4 architecture](../../../docs/management/PA4/architecture/system-context/System-Context.md) before treating a feature or integration as available.
+
 > **v1.3 admin simplification.** The admin side was pruned (see the SRS v1.3 scope
 > note): the Settings screen is removed (policy values are hardcoded defaults), the
 > dashboard is eight metrics plus a top-10 list and one category-trend chart, reports

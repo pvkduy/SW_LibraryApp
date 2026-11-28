@@ -1,15 +1,15 @@
 %%{init: {"c4": {"c4ShapeMargin": 70, "diagramMarginX": 40, "diagramMarginY": 20}}}%%
 C4Context
-    title System Context diagram — ShelfHelp: Smart Library Management System
+    title Target System Context — ShelfHelp Smart Library Management System
     UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
 
     Person(student, "Student (Reader)", "Searches, borrows, reserves and pays for library material.")
     System(shelfhelp, "ShelfHelp", "Reader and admin web applications plus the library logic and configuration deployed on the Supabase platform.")
     Person(librarian, "Librarian (Admin)", "Runs catalog, circulation, money, acquisitions and reporting.")
 
-    System_Ext(supabase, "Supabase Platform", "Managed backend: Auth, PostgreSQL, Storage, Realtime, Edge Functions and scheduled jobs.")
-    System_Ext(payment, "Payment Provider (simulator)", "Online payment gateway behind the PaymentProvider adapter.")
-    System_Ext(ai, "AI Provider", "Embedding and LLM APIs for grounded research recommendations.")
+    System_Ext(supabase, "Supabase Platform", "Auth, PostgreSQL, Storage, Realtime and Edge Functions; scheduled jobs are planned.")
+    System_Ext(payment, "Payment Provider (PA5 target)", "Planned provider interface; current payments are simulated locally.")
+    System_Ext(ai, "AI Provider (PA5 target)", "Embedding and LLM APIs for grounded research recommendations.")
 
     System_Ext(email, "Email Delivery Provider", "SMTP relay or transactional email service for verification, reset and notification email.")
     System_Ext(isbn, "Bibliographic Metadata Services", "Google Books and Open Library ISBN metadata.")
@@ -17,10 +17,10 @@ C4Context
     Rel(student, shelfhelp, "Uses Reader Mode", "HTTPS")
     Rel(librarian, shelfhelp, "Uses Admin Mode", "HTTPS")
     Rel(shelfhelp, supabase, "Stores data, auth, functions", "HTTPS")
-    Rel(shelfhelp, email, "Notification email", "SMTP/HTTPS")
+    Rel(shelfhelp, email, "Target notification email", "SMTP/HTTPS")
     Rel(supabase, email, "Verification/Reset email", "SMTP")
-    Rel(shelfhelp, payment, "Payments, refunds", "HTTPS")
-    Rel(shelfhelp, ai, "Embeddings, grounded answers", "HTTPS")
+    Rel(shelfhelp, payment, "Target provider integration", "HTTPS")
+    Rel(shelfhelp, ai, "Target embeddings, answers", "HTTPS")
     Rel(shelfhelp, isbn, "ISBN metadata lookup", "HTTPS")
 
     UpdateRelStyle(student, shelfhelp, $offsetX="-50", $offsetY="-40")

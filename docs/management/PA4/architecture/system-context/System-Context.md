@@ -68,13 +68,17 @@ The view covers the two actors and five external dependencies that make up the S
 
 ### 2.1 Architectural style
 
-ShelfHelp is a React single-page application backed by the managed **Supabase platform**. The browser reads data through PostgREST under Row Level Security (RLS); core business writes run in server-side Supabase Edge Functions that execute single-transaction PostgreSQL RPCs. Direct client writes via PostgREST are restricted to personal user data under strict RLS: personal `cart_items` (own rows) and `profiles` contact fields (enforced via column-level grants and triggers to prevent clients from updating protected columns like `role` or `status`). There is no custom long-running backend server. Scheduled work (overdue fines, reminders, expiry, email delivery, embeddings) runs through `pg_cron` and Edge Functions.
+ShelfHelp is a React single-page application backed by the **Supabase platform**. The browser reads through PostgREST under Row Level Security (RLS); implemented circulation and reader business mutations use Edge Functions and PostgreSQL RPCs. Direct client writes include own `cart_items`, permitted profile fields, and own `notifications.read_at` under RLS and grants. There is no custom long-running backend server. Migrations enable `pg_cron` and `pg_net`, but scheduled job handlers and schedules for fines, expiry, email and embeddings remain targets; the existing `send-reminders` function is invoked by an admin, not a cron job.
+
+**Reading the views:** The C4 diagrams show the intended product architecture, including explicitly marked PA5 targets; arrows to planned components are not evidence of current runtime integration. The implementation status below reflects the repository through migrations `0018`, not a claim about a particular deployed environment.
+
+The inline Mermaid diagrams and linked `.mmd` files are authoritative. Existing `.png` exports are historical and have not been regenerated for this reconciliation.
 
 The team owns the application code, database schema, Edge Functions, and policies, but does not operate the Supabase infrastructure. The platform is therefore modelled as an external dependency at C4 Level 1 (see §4), and its managed services are shown explicitly in the [Level 2](../container/Container.md) view. This style keeps the deployable simple for a five-person team while still providing transactional integrity, server-side authorization, and a single source of truth for data.
 
 ### 2.2 System capabilities
 
-The system provides the following capabilities in two modes over one shared backend. Together they cover all 32 active use cases and all 26 features in the vision catalogue.
+The intended system capabilities below cover the 32 active use cases and 26 features in the vision catalogue. They are product scope, not a claim that every capability is currently implemented; see §2.4.
 
 | Area | Capabilities |
 | :--- | :--- |
@@ -89,9 +93,9 @@ The system provides the following capabilities in two modes over one shared back
 
 | Principle | Meaning |
 | :--- | :--- |
-| **Server-authoritative writes** | Protected business tables have no client write policy. Loans, copies, payments, receipts, charges, memberships, and reservations are written only by Edge Functions. All transactional write RPCs are defined as `SECURITY DEFINER` with `EXECUTE` revoked from `PUBLIC`, `anon`, and `authenticated`, and granted exclusively to `service_role`. |
+| **Server-authoritative business writes** | Protected circulation and payment mutations use Edge Functions and RPCs restricted to `service_role`; permitted own-row cart/profile writes and notification read-state updates are separate RLS-controlled exceptions. |
 | **One command, one transaction** | Checkout, handover, return, payment, and renewal either commit completely or roll back completely. |
-| **Shared domain logic** | Entitlements, gating, fines, reservation promotion, and loss handling live in `src/shared` and are reused by functions, the browser, and tests. |
+| **Domain logic** | Current rules are principally enforced by SQL RPCs and function-specific validation. `src/shared` provides types, reason codes, auth and catalog helpers; comprehensive shared domain rules and parity tests are targets. |
 | **Defence in depth** | RLS filters rows, Edge Functions check role and account status, and database constraints and triggers enforce invariants. |
 
 ### 2.4 Delivery across PA1–PA4
@@ -102,7 +106,7 @@ The system provides the following capabilities in two modes over one shared back
 | **PA2** | Vision document, Spec Kit setup, requirement IDs | Feature catalogue, quality attributes, traceability |
 | **PA3** | 31 use cases, UI prototypes, first FR (authentication) | React auth screens, `register-student` function, `profiles`/`books`/`copies` schema, RLS, auth triggers |
 | **PA4** | Architecture baseline, circulation and reader loan/fine slice, `UC-02` and `UC-32` specifications | Implemented: `handover-items`, `return-loan`, `record-counter-payment`, `cancel-reservation`, `checkout-cart`, `complete-simulated-payment`, catalog/import/write-off/inventory handlers, circulation/queue tables and RPCs, reader loan/fine/reservation flows, and admin circulation/queues/ledger screens; `public.notifications` and `public.reservation_strike_events` are created in `0013`. Specified but **not yet implemented** (PA5): UC-02 lockout and UC-32 session endpoints |
-| **PA5** *(planned)* | Final release | Remaining catalog and acquisition workflows, receipts, analytics, reminders, assistant, UC-02 failed-sign-in lockout/persistent-session hardening, UC-32 active-session endpoints (`list-sessions`, `revoke-session`, `revoke-other-sessions`), and scheduled job functions; also reconciliation of several target tables (`memberships`, `email_outbox`, `suggestions`, `batches`, `chats`, `audit_logs`, `copy_events`, `job_runs`, and `settings`) |
+| **PA5** *(planned)* | Final release | Remaining catalog and acquisition workflows, receipt operations, analytics, automated reminders, assistant, UC-02 failed-sign-in lockout/persistent-session hardening, UC-32 active-session endpoints (`list-sessions`, `revoke-session`, `revoke-other-sessions`), and scheduled job functions; also reconciliation of several target tables (`memberships`, `email_outbox`, `suggestions`, `batches`, `chats`, `audit_logs`, `copy_events`, `job_runs`, and `settings`) |
 
 In the PA4 circulation test slice, loan requests and items for handover testing are provided via deterministic database seeds (`src/supabase/seed.sql`) and direct staff counter operations. The `checkout-cart` and `complete-simulated-payment` handlers are also implemented in the codebase, while broader PA5 workflows and scheduled jobs remain target scope.
 
@@ -121,7 +125,7 @@ In the PA4 circulation test slice, loan requests and items for handover testing 
 | **Database** | Supabase PostgreSQL | 15 (managed) | Primary store, constraints, triggers, RLS, search, scheduling |
 | **Authentication** | Supabase Auth | Managed service | Identity, verification, password reset, JWT with role claim |
 | **Cloud storage** | Supabase Storage | Managed service | Covers, avatars, evidence photos, CSV imports |
-| **Scheduling** | `pg_cron` + `pg_net` | Extensions | Nightly jobs, reminders, expiry, email outbox, embeddings |
+| **Scheduling** | `pg_cron` + `pg_net` | Extensions enabled; jobs planned | Nightly jobs, reminders, expiry, email outbox, embeddings |
 | **External APIs** | Email provider, payment simulator, embedding API, LLM API, Google Books, Open Library | See §3.7 | Email, payments, RAG, ISBN metadata |
 | **Hosting** | Static host + CDN (Vercel) | Deployment | Serves the SPA over HTTPS |
 | **CI/CD and testing** | GitHub Actions, Supabase CLI, Docker, Vitest, Playwright, pgTAP, MSW | Development | Build, migrations, quality gates |
@@ -135,19 +139,19 @@ Supabase is a single managed platform that provides the function runtime, Postgr
 The frontend is a responsive **React 19.3.1 + Vite 8.3.5** application. Reader Mode is mobile-first; Admin Mode is desktop-first. Reader and admin routes are structured as separate route trees so admin code is kept out of student navigation; route-level `React.lazy` / `Suspense` code-splitting is planned for PA5 so that admin bundles are never downloaded by students.
 
 - **Routing and access:** React Router is planned to add guarded role/account-status routes. Students opening `/admin/*` will receive a 403 page; staff will be redirected to `/admin`.
-- **Data and forms:** TanStack Query will be added for server state; forms currently use custom React controls and shared domain validation.
+- **Data and forms:** TanStack Query is planned; forms currently use React controls and handler-specific validation, with selected shared helpers.
 - **UI:** Hand-written CSS and native HTML controls are used; date and number formatting follows `Asia/Ho_Chi_Minh`. React Router and TanStack Query are planned additions.
 - **Later implementation:** Barcode lookup, barcode labels, CSV/Excel/PDF exports, and image cropping will use implementation-appropriate browser APIs or libraries selected when those features are built.
 - **Language note:** the UI is currently JavaScript/JSX; the shared domain and type contracts are strict TypeScript, following an incremental path toward an all-TypeScript frontend.
 
 ### 3.3 Backend
 
-The backend logic is a set of **stateless Supabase Edge Functions** written in TypeScript on Deno and deployed on the external Supabase platform. Each function validates the request, authenticates the caller, authorizes the action, runs the shared domain logic, and writes inside one PostgreSQL transaction.
+The backend logic is a set of **stateless Supabase Edge Functions** written in TypeScript on Deno. Business handlers validate and authorize requests and generally invoke a transactional PostgreSQL RPC; registration and ISBN lookup have different paths. Deployment status depends on the environment.
 
-- **Commands:** account, catalog, borrowing, money, circulation, write-off, acquisition, notifications, and assistant functions (for example `register-student`, `checkout-cart`, `handover-items`, `return-loan`, `purchase-membership`, `reverse-receipt`, `chat-send`).
-- **Reads:** simple reads use PostgREST under RLS. Complex reads use SQL RPCs such as `rpc_search_books` and `get_dashboard_kpis`.
-- **Concurrency and idempotency:** row-level locks in a fixed order; checkout uses `FOR UPDATE SKIP LOCKED`; checkout and payment mutations accept an idempotency key so retries do not duplicate effects.
-- **Adapters:** `EmailProvider`, `PaymentProvider`, `Embedder`, `LlmClient`, and `IsbnLookup` isolate third-party services from business rules.
+- **Commands:** implemented handlers include `register-student`, `checkout-cart`, `handover-items`, `return-loan`, `renew-loan`, `pay-reader-charges`, and `submit-book-review`; purchase membership, receipt reversal and `chat-send` remain targets.
+- **Reads:** simple reads use PostgREST under RLS; catalog search uses `rpc_search_books`. Dashboard KPI RPCs remain targets.
+- **Concurrency and idempotency:** checkout uses `FOR UPDATE SKIP LOCKED` and accepts an optional idempotency key; individual commands have their own semantics. There is no general retry/idempotency gateway.
+- **Integrations:** `lookup-isbn` calls Google Books and Open Library directly with fallback. Payment is simulated in the application/database; generic payment, email and AI adapters remain targets.
 
 ### 3.4 Database
 
@@ -155,19 +159,18 @@ The backend logic is a set of **stateless Supabase Edge Functions** written in T
 
 - **Schema as code:** migrations under `src/supabase/migrations/`, applied by CI and not manual dashboard edits.
 - **Integrity:** UUID keys, `timestamptz` in UTC, integer VND amounts, `CHECK` constraints for every status, and unique indexes preventing double holds, duplicate active loans, and repeated receipt reversals.
-- **Immutability:** `receipts`, `inventory_transactions`, `audit_logs`, `settings_history`, and `copy_events` reject updates and deletes.
-- **Search:** `unaccent`, `pg_trgm`, full-text `tsvector` columns, and a `pgvector` HNSW index support Vietnamese search and RAG retrieval.
+- **Immutability:** the implemented ledger and inventory rules are defined in migrations. `audit_logs`, `settings_history`, and `copy_events` are target tables, not evidence of implemented audit trails.
+- **Search:** `unaccent`, `pg_trgm`, and text search support catalog search. The vector extension and embedding column exist; an HNSW-backed assistant remains a target.
 - **Security:** RLS is enabled on every table; a table without a policy is unreadable. Students see their own rows; staff see what their screens need.
 
 ### 3.5 Authentication and authorization
 
-- **Supabase Auth**, a managed service of the Supabase platform, handles email verification, sign-in/out, password reset, and session records (`auth.sessions`). Student registration is validated by the `register-student` Edge Function, which creates Auth users through the Admin API; direct public sign-up is disabled. The browser uses PKCE and auto-refreshes the session. Verification, reset, and notification messages leave through the external email provider described in §3.7.
-- **Persistent sessions and credential handling (`UC-02`):** The application never stores the user's password in browser storage, cookies, state, or logs. Selecting *"Keep me signed in"* is intended to persist only the revocable Supabase refresh token in `localStorage` (`persistSession: true`, `autoRefreshToken: true`), keeping the access token in memory; leaving it unchecked stores the token in `sessionStorage` so it clears when the tab closes. This is PA5 scope. Sign-in uses standard `<form>` `autocomplete` attributes for browser password managers.
+- **Supabase Auth**, a managed service of the Supabase platform, handles email verification, sign-in/out, password reset, and session records (`auth.sessions`). Student registration is validated by the `register-student` Edge Function, which creates Auth users through the Admin API; direct public sign-up is disabled. The browser uses PKCE and auto-refreshes the session. Auth handles verification/reset email; application notification email is a target.
+- **Persistent sessions and credential handling (`UC-02`):** The current form temporarily holds the entered password in React state. The Supabase client uses its default persistent session storage with auto-refresh; it does not implement a "Keep me signed in" choice or refresh-token-only storage. The selectable persistence and credential-handling behaviour specified by UC-02 remains a PA5 target.
 - **PA5 target — server-enforced lockout and throttling (`UC-02`):** After five consecutive failed sign-in attempts for the same identifier (email or Student ID) within 15 minutes, the identifier will be locked server-side for 10 minutes (HTTP 429 with `Retry-After` and a generic message), paired with a per-IP/device rate limit. A successful sign-in or password reset clears the counter, and password recovery is never blocked. Today only client-side handling of a 429 response exists.
 - **PA5 target — active-session inventory and revocation (`UC-32`):** Because `auth.sessions` is not exposed through PostgREST, Edge Functions (`list-sessions`, `revoke-session`, `revoke-other-sessions`) will call the Auth Admin API with `service_role`. Callers are identified strictly from their verified JWT, no raw tokens are returned, revocation is idempotent and audit-logged, and the current session ends only through normal sign-out. None of these functions exist in `src/supabase/functions/` yet.
-- **Role:** `app_metadata.role` in the JWT is the source of truth (`student` or `admin`). `profiles.role` is a display copy. Both are written only by server code.
-- **Authorization:** RLS enforces row access; Edge Functions additionally check role, account status (`active`, `restricted`, `inactive`), debt hold, membership entitlement, and reservation ban.
-- **Revocation and bots:** every function reloads `profiles.status`, so a deactivated admin is refused even with an old token; Cloudflare Turnstile is planned to protect register, login, and reset.
+- **Role and authorization:** Protected handlers using `_shared/auth.ts` verify the user and require both `app_metadata.role` and `profiles.role` to match, then check profile status. Allowed statuses vary by action: for example, restricted readers can pay charges and submit reviews. RLS and individual RPCs enforce additional action-specific rules.
+- **Revocation and bots:** Protected handlers reload profile status; registration is a separate unauthenticated flow. Cloudflare Turnstile is planned.
 - **Secrets:** only the Supabase URL and anon key reach the browser. The service-role key and provider keys exist only in Edge Function secrets and CI.
 
 ### 3.6 Cloud file storage
@@ -179,11 +182,13 @@ The backend logic is a set of **stateless Supabase Edge Functions** written in T
 | `covers` | Public read | Staff | Anyone | 1 MB; JPEG/PNG/WebP |
 | `avatars` | Private | Owner (`{uid}/avatar.jpg`) | Owner and staff via signed URL | 300 KB; JPEG |
 | `evidence` | Private | Staff | Staff via signed URL | 10 MiB; JPEG/PNG/WebP |
-| `imports` | Private | Staff | Staff; deleted after 7 days | 2 MB; CSV |
+| `imports` | Private | Staff | Staff | 2 MB; CSV; seven-day cleanup is a target |
 
-Policies check the bucket, the caller's role, and avatar ownership. Bucket settings enforce size and MIME type.
+The local configuration defines these bucket settings; evidence and certain staff bucket policies are present in migrations. Avatar ownership policies and scheduled import cleanup require further implementation or environment verification.
 
 ### 3.7 External APIs and service integrations
+
+The table describes the intended integrations and failure behaviour. Currently ISBN lookup is implemented directly; payment is simulated locally, and application email outbox, AI and monitoring integrations remain targets.
 
 | Service | Purpose | Failure behaviour |
 | :--- | :--- | :--- |
@@ -213,22 +218,19 @@ The System Context view shows ShelfHelp as a single system, the people who use i
 
 ### 4.2 System Context diagram
 
-<details>
-<summary>Mermaid source</summary>
-
 ```mermaid
 %%{init: {"c4": {"c4ShapeMargin": 70, "diagramMarginX": 40, "diagramMarginY": 20}}}%%
 C4Context
-    title System Context diagram — ShelfHelp: Smart Library Management System
+    title Target System Context — ShelfHelp Smart Library Management System
     UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
 
     Person(student, "Student (Reader)", "Searches, borrows, reserves and pays for library material.")
     System(shelfhelp, "ShelfHelp", "Reader and admin web applications plus the library logic and configuration deployed on the Supabase platform.")
     Person(librarian, "Librarian (Admin)", "Runs catalog, circulation, money, acquisitions and reporting.")
 
-    System_Ext(supabase, "Supabase Platform", "Managed backend: Auth, PostgreSQL, Storage, Realtime, Edge Functions and scheduled jobs.")
-    System_Ext(payment, "Payment Provider (simulator)", "Online payment gateway behind the PaymentProvider adapter.")
-    System_Ext(ai, "AI Provider", "Embedding and LLM APIs for grounded research recommendations.")
+    System_Ext(supabase, "Supabase Platform", "Auth, PostgreSQL, Storage, Realtime and Edge Functions; scheduled jobs are planned.")
+    System_Ext(payment, "Payment Provider (PA5 target)", "Planned provider interface; current payments are simulated locally.")
+    System_Ext(ai, "AI Provider (PA5 target)", "Embedding and LLM APIs for grounded research recommendations.")
 
     System_Ext(email, "Email Delivery Provider", "SMTP relay or transactional email service for verification, reset and notification email.")
     System_Ext(isbn, "Bibliographic Metadata Services", "Google Books and Open Library ISBN metadata.")
@@ -236,10 +238,10 @@ C4Context
     Rel(student, shelfhelp, "Uses Reader Mode", "HTTPS")
     Rel(librarian, shelfhelp, "Uses Admin Mode", "HTTPS")
     Rel(shelfhelp, supabase, "Stores data, auth, functions", "HTTPS")
-    Rel(shelfhelp, email, "Notification email", "SMTP/HTTPS")
+    Rel(shelfhelp, email, "Target notification email", "SMTP/HTTPS")
     Rel(supabase, email, "Verification/Reset email", "SMTP")
-    Rel(shelfhelp, payment, "Payments, refunds", "HTTPS")
-    Rel(shelfhelp, ai, "Embeddings, grounded answers", "HTTPS")
+    Rel(shelfhelp, payment, "Target provider integration", "HTTPS")
+    Rel(shelfhelp, ai, "Target embeddings, answers", "HTTPS")
     Rel(shelfhelp, isbn, "ISBN metadata lookup", "HTTPS")
 
     UpdateRelStyle(student, shelfhelp, $offsetX="-50", $offsetY="-40")
@@ -251,16 +253,14 @@ C4Context
     UpdateRelStyle(shelfhelp, isbn, $offsetX="10", $offsetY="150")
 ```
 
-</details>
 
-![System context diagram: Student (Reader) and Librarian (Admin) are connected to ShelfHelp over HTTPS; ShelfHelp depends on the Supabase Platform, Email Delivery Provider, Payment Provider (simulator), AI Provider and Bibliographic Metadata Services, and Supabase sends its own verification and reset email](mermaid/system-context.png)
+The diagram above is the **target** context. Application notification email and AI are planned; the payment simulator is local rather than an external HTTPS provider in the current implementation.
 
 Both people reach ShelfHelp over HTTPS: the Student through Reader Mode, the Librarian through Admin
 Mode. ShelfHelp itself is a single system box, while everything it depends on sits outside the boundary —
-the Supabase Platform, which supplies all backend capability (database, Auth, Storage, Realtime, Edge
-Functions and scheduled jobs), and four providers reached through adapters in the API: email delivery,
-payment simulation, AI inference, and bibliographic metadata. One dependency bypasses the API: Supabase
-Auth sends its own verification and reset mail through the same email provider.
+the Supabase Platform, which supplies database, Auth, Storage, Realtime and Edge Functions. Scheduled
+jobs and application email, payment-provider and AI integrations are targets. ISBN lookup is implemented
+directly. Supabase Auth handles verification and reset mail through its configured email service.
 
 §4.3 describes the actors, §4.4 the external systems, and §4.5 explains each relationship in turn.
 
@@ -280,9 +280,9 @@ Staff accounts cannot borrow; a staff member who is also a student uses a separa
 | External system | What it provides | Interaction with ShelfHelp |
 | :--- | :--- | :--- |
 | **Supabase Platform** | Managed backend: PostgreSQL, Auth, Storage, Realtime, Edge Functions runtime, scheduled jobs | The team's schema, functions, and policies are deployed there. The browser reads via PostgREST under RLS and authenticates through Supabase Auth; business writes run in Edge Functions and commit in one PostgreSQL transaction. Privileged session queries against `auth.sessions` via the Auth Admin API are the PA5 target for `UC-32` |
-| **Email Delivery Provider** | Delivery of verification, reset, and notification email | Supabase Auth sends verification and reset mail through the configured SMTP relay; application notifications leave through the email outbox to the same provider |
-| **Payment Provider (simulator)** | Online payment and refunds | ShelfHelp sends purpose, amount, and reference, then records the settlement; the simulator implements the `PaymentProvider` interface |
-| **AI Provider** | Embeddings and grounded answer generation | ShelfHelp sends query text and book metadata only; retrieved book ids are validated server-side; no student identity or borrowing history is sent |
+| **Email Delivery Provider** | Delivery of verification, reset, and notification email | Supabase Auth handles verification/reset; application email outbox is a target. |
+| **Payment Provider (target)** | Proposed online payment and refunds | Current payments are simulated locally; a `PaymentProvider` interface is a target. |
+| **AI Provider (target)** | Embeddings and grounded answer generation | Planned data minimisation and server-side validation of retrieved book IDs; no assistant integration exists today. |
 | **Bibliographic Metadata Services** | ISBN metadata (title, authors, publisher, year, description) | Used only during cataloguing and import; failure falls back to manual entry |
 
 **Supporting services.** Static hosting, Cloudflare Turnstile, Sentry, and the CI toolchain are operational dependencies rather than business systems. They are described in §3.7 and §3.8 instead of being drawn as external system boxes.
@@ -293,7 +293,7 @@ Staff accounts cannot borrow; a staff member who is also a student uses a separa
 
 **The two actors.** The Student uses Reader Mode for personal goals: discovery, borrowing, payments, reservations, suggestions, notifications, and the assistant. The Librarian uses Admin Mode for operational goals: catalog accuracy, circulation, money, acquisitions, student management, and reporting. Both relationships represent browser traffic; the difference is the role and the authorized capabilities behind it.
 
-**External dependencies.** The platform and the four providers are described in §4.4. Each is outside ShelfHelp's ownership and is reached only through its published interface. The arrows show runtime use, not deployment steps.
+**External dependencies.** The platform and providers are described in §4.4. The diagram includes target relationships, so not every arrow represents current runtime use.
 
 ### 4.6 Scope boundaries and assumptions
 

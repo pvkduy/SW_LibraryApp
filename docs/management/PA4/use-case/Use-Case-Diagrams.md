@@ -8,6 +8,8 @@
 **Date:** 27/Nov/2026  
 **Performed by:** Lê Văn Vĩ | **Reviewed by:** Nguyễn Anh Khôi | **Edited by:** Nguyễn Anh Khôi
 
+> **Implementation status:** These diagrams describe product use-case scope, not delivery status. In particular UC-32 and UC-02's lockout and selectable persistence are PA5 targets; see [UC-02](UC02.md), [UC-32](UC32.md), and the [architecture status](../architecture/system-context/System-Context.md).
+
 ---
 
 ## Revision History
