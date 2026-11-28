@@ -27,6 +27,8 @@
 
 ## 1. Introduction
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Minh Thuận | **Edited by:** Nguyễn Anh Khôi
+
 ### 1.1 Purpose
 
 This document records the software architecture of ShelfHelp, the university library management system. It delivers the two PA4 requirements:
@@ -54,6 +56,8 @@ The view covers the two actors and five external dependencies that make up the S
 ---
 
 ## 2. Architecture overview
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Minh Thuận | **Edited by:** Nguyễn Anh Khôi
 
 ### 2.1 Architectural style
 
@@ -98,6 +102,8 @@ In the PA4 circulation test slice, loan requests and items for handover testing 
 ---
 
 ## 3. Technology stack
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Minh Thuận | **Edited by:** Nguyễn Anh Khôi
 
 ### 3.1 Stack at a glance
 
@@ -191,6 +197,8 @@ Policies check the bucket, the caller's role, and avatar ownership. Bucket setti
 ---
 
 ## 4. C4 Level 1 — System Context
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Minh Thuận | **Edited by:** Nguyễn Anh Khôi
 
 ### 4.1 Purpose of the view
 
