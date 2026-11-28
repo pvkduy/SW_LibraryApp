@@ -208,7 +208,7 @@ export function ImportTab({ onImported }) {
         </div>
         <div className="books-schema-hint">
           <span className="books-schema-label">Duplicate ISBN</span>
-          <span>Rows whose ISBN already exists in the catalog add copies to the existing title (UC-19 §2.2.2).</span>
+          <span>Rows whose ISBN already exists in the catalog add copies to the existing title.</span>
         </div>
 
         {feedback && (
