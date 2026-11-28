@@ -1,7 +1,7 @@
 # ShelfHelp: Smart Library Management System
 # PA4 Software Architecture — Technology Stack and System Context (C4 Level 1)
 
-**Version:** 2.1
+**Version:** 1.3
 
 ---
 
@@ -9,18 +9,10 @@
 
 | Date | Version | Description | Author |
 | :--- | :--- | :--- | :--- |
-| 23/Nov/2026 | 1.0 | Initial system context and technology stack | Nguyễn Anh Khôi |
-| 23/Nov/2026 | 1.1 | Modelled Supabase as an external platform dependency; separated the email provider | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.2 | Added cross-links to the Level 2 and Level 3 views; included Realtime in the platform description | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.3 | Aligned context relationships and trimmed duplicated traceability and external-system detail | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.4 | Clarified client direct write scope, documented RPC EXECUTE restrictions, and trimmed redundant technology stack detail | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.5 | Restated the frontend versions as the installed React 19.3.1 / Vite 8.3.5, aligning with the deployment view | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.6 | Applied the locked React 19.3.1 / Vite 8.3.5 notation consistently in §3.1 and §3.2 | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.7 | System Context diagram presented as a rendered image, matching the other C4 views | Nguyễn Anh Khôi |
-| 27/Nov/2026 | 1.8 | Aligned references, actor use-case coverage (UC-01–UC-32), and §3.5 authentication/session rules with PA4 UC-02 and UC-32 changes | Nguyễn Anh Khôi |
-| 28/Nov/2026 | 1.9 | Corrected `rpc_search_books` RPC name in §3.3, marked `public.notifications` as implemented in §2.4, and qualified idempotency scope to checkout/payment mutations | Nguyễn Anh Khôi |
-| 28/Nov/2026 | 2.0 | Clarified §3.2 — reader/admin code-splitting is a PA5 target; routes are currently separate trees but share one bundle | Nguyễn Anh Khôi |
-| 28/Nov/2026 | 2.1 | Removed inline implementation-status labels; the view presents the PA1–PA5 target architecture uniformly, with status consolidated in §1.2 and §5.1 | Nguyễn Anh Khôi |
+| 23/Nov/2026 | 1.0 | Initial draft: technology stack, System Context diagram, actors, external systems, and key principles | Nguyễn Anh Khôi |
+| 24/Nov/2026 | 1.1 | Completed architecture sections: Supabase modelled as external platform, RPC EXECUTE restrictions, React 19.3.1 / Vite 8.3.5 versions locked, diagrams as rendered images | Nguyễn Anh Khôi |
+| 27/Nov/2026 | 1.2 | PA4 alignment: UC-02 and UC-32 specifications integrated into §3.5 (sign-in lockout, persistent sessions, active-session revocation) and use-case traceability updated to UC-01–UC-32 | Nguyễn Anh Khôi |
+| 28/Nov/2026 | 1.3 | PA4 submission polish: implementation status (§5) promoted to top-level heading with PA5-planned items and `PA4/src/` scope notes; Related views (§6) added; formatting standardized across all C4 views | Nguyễn Anh Khôi |
 
 ---
 
@@ -30,8 +22,8 @@
 - [2. Architecture overview](#2-architecture-overview)
 - [3. Technology stack](#3-technology-stack)
 - [4. C4 Level 1 — System Context](#4-c4-level-1--system-context)
-- [5. Architecture beyond the C4 levels](#5-architecture-beyond-the-c4-levels)
-  - [5.1 Implementation status](#51-implementation-status)
+- [5. Implementation status](#5-implementation-status)
+- [6. Related views](#6-related-views)
 
 ---
 
@@ -50,18 +42,18 @@ The Level 2 and Level 3 views are in `Container.md` and `Component.md`; the depl
 
 ### 1.2 Scope
 
-The view documents the software architecture of the whole project, covering every feature from PA1 through PA4. It is a deliberately stable view: PA4 and PA5 capabilities use the same two actors and the same five external systems, so the context diagram does not change as the remaining features are built. The forward design for PA5 is included where it clarifies where the project is heading; §5.1 lists what is implemented today and what the final release still adds.
+The view documents the software architecture of the whole project, covering every feature from PA1 through PA4. It is a deliberately stable view: PA4 and PA5 capabilities use the same two actors and the same five external systems, so the context diagram does not change as the remaining features are built. The forward design for PA5 is included where it clarifies where the project is heading; §5 lists what is implemented today and what the final release still adds.
 
 ### 1.3 References
 
 | ID | Document | Use in this document |
 | :--- | :--- | :--- |
 | R1 | `SHELFHELP_FULLSPEC.md` | Authoritative requirements specification |
-| R2 | `docs/DECISIONS.md` | Recorded architectural decisions |
-| R3 | Vision Document | Stakeholders, quality targets, and feature catalogue (`FEAT-01`–`FEAT-26`, v2.1) |
-| R4 | Use-Case Diagrams | Actors and the 32 active use cases (`UC-01` to `UC-32`) |
-| R5 | PA4 Use-Case Specifications & PA3 Specs | Revised `UC-02` and new `UC-32` in PA4; unchanged `UC-01`, `UC-03`–`UC-31` in PA3 |
-| R6 | Project Plan | Phase plan and Build 2 scope |
+| R2 | `DECISIONS.md` | Recorded architectural decisions |
+| R3 | `Vision-Document.md` | Stakeholders, quality targets, and feature catalogue (`FEAT-01`–`FEAT-26`, v2.1) |
+| R4 | `Use-Case-Diagrams.md` | Actors and the 32 active use cases (`UC-01` to `UC-32`) |
+| R5 | `UC02.md`, `UC32.md` | Revised `UC-02` and new `UC-32` in PA4; unchanged `UC-01`, `UC-03`–`UC-31` in PA3 |
+| R6 | `project-plan` | Phase plan and Build 2 scope |
 
 ---
 
@@ -107,7 +99,7 @@ The system provides the following capabilities in two modes over one shared back
 | **PA4** | Architecture baseline, circulation and reader loan/fine slice, `UC-02` and `UC-32` specifications | `handover-items`, `return-loan`, `record-counter-payment`, `cancel-reservation`, `checkout-cart`, `complete-simulated-payment`, catalog/import/write-off/inventory handlers, circulation/queue tables and RPCs, reader loan/fine/reservation flows, and admin circulation/queues/ledger screens; `public.notifications` and `public.reservation_strike_events` are created in `0013`, together with the `UC-02` and `UC-32` specifications |
 | **PA5** | Final release | Remaining catalog and acquisition workflows, receipt operations, analytics, automated reminders, assistant, `UC-02` failed-sign-in lockout and persistent-session hardening, `UC-32` active-session endpoints (`list-sessions`, `revoke-session`, `revoke-other-sessions`), and scheduled job functions; also the remaining tables (`memberships`, `email_outbox`, `suggestions`, `batches`, `chats`, `audit_logs`, `copy_events`, `job_runs`, and `settings`) |
 
-In the PA4 circulation test slice, loan requests and items for handover testing are provided via deterministic database seeds (`src/supabase/seed.sql`) and direct staff counter operations. §5.1 records which elements of this view are implemented.
+In the PA4 circulation test slice, loan requests and items for handover testing are provided via deterministic database seeds (`src/supabase/seed.sql`) and direct staff counter operations. §5 records which elements of this view are implemented.
 
 ---
 
@@ -130,8 +122,6 @@ In the PA4 circulation test slice, loan requests and items for handover testing 
 | **CI/CD and testing** | GitHub Actions, Supabase CLI, Docker, Vitest, Playwright, pgTAP, MSW | Development | Build, migrations, quality gates |
 
 Supabase is a single managed platform that provides the function runtime, PostgreSQL, Auth, Storage, and scheduled jobs. The team owns the schema, functions, and policies deployed there; the infrastructure is operated by Supabase, which is why it appears as an external system in §4.2.
-
-
 
 ### 3.2 Frontend
 
@@ -262,7 +252,7 @@ Mode. ShelfHelp itself is a single system box, while everything it depends on si
 the Supabase Platform, which supplies database, Auth, Storage, Realtime and Edge Functions. Supabase Auth
 handles verification and reset mail through its configured email service; the application dispatches its
 own notification email, calls the payment provider on the server, and queries the AI provider for
-grounded answers. §5.1 records which of these integrations are implemented.
+grounded answers. §5 records which of these integrations are implemented.
 
 §4.3 describes the actors, §4.4 the external systems, and §4.5 explains each relationship in turn.
 
@@ -295,7 +285,7 @@ Staff accounts cannot borrow; a staff member who is also a student uses a separa
 
 **The two actors.** The Student uses Reader Mode for personal goals: discovery, borrowing, payments, reservations, suggestions, notifications, and the assistant. The Librarian uses Admin Mode for operational goals: catalog accuracy, circulation, money, acquisitions, student management, and reporting. Both relationships represent browser traffic; the difference is the role and the authorized capabilities behind it.
 
-**External dependencies.** The platform and providers are described in §4.4. The context diagram shows the end-state dependency set, which is stable across PA4 and PA5; §5.1 records which integrations are implemented.
+**External dependencies.** The platform and providers are described in §4.4. The context diagram shows the end-state dependency set, which is stable across PA4 and PA5; §5 records which integrations are implemented.
 
 ### 4.6 Scope boundaries and assumptions
 
@@ -307,21 +297,31 @@ Feature and use-case traceability is maintained in the Level 2 container view an
 
 ---
 
-## 5. Architecture beyond the C4 levels
+## 5. Implementation status
 
 **Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Minh Thuận | **Edited by:** Nguyễn Anh Khôi
 
-### 5.1 Implementation status
+This section is the single place where implementation status is recorded, so the views above can describe the target architecture without interruption. Status refers to repository code in `src/` (and `PA4/src/`) through migration `0018` at the time of writing; the code remains the authority. Tools, dependencies, and features listed under **Still to build (Planned for PA5)** are not yet included in `PA4/src/`.
 
-This section is the single place where implementation status is recorded, so the views above can describe the target architecture without interruption. Status refers to repository code through migration `0018` at the time of writing.
-
-| Element | Built | Still to build |
+| Element | Built (in `PA4/src/`) | Still to build (Planned for PA5) |
 | :--- | :--- | :--- |
-| **Web Application shell** | React 19.3.1 + Vite 8.3.5 SPA, role/status route guards, `supabase-js` data access | TanStack Query server-state layer, route-level code-splitting, React Router |
+| **Web Application shell** | React 19.3.1 + Vite 8.3.5 SPA, role/status route guards, `supabase-js` data access | TanStack Query (`@tanstack/react-query`) server-state layer, React Router, route-level `React.lazy` / `Suspense` code-splitting |
 | **Identity and sessions** | Registration and OTP verification, sign-in/out, password reset, JWT with `app_metadata.role`, session records | Server-enforced sign-in lockout, selectable session persistence, `list-sessions`/`revoke-session`/`revoke-other-sessions` |
-| **Catalog and circulation** | Books, copies, search, import, write-off, inventory history, handover, return, renewal, counter payment | Report exports and dashboard KPI cards |
+| **Catalog and circulation** | Books, copies, search, import, write-off, inventory history, handover, return, renewal, counter payment | Report exports (CSV/Excel/PDF) and dashboard KPI cards |
 | **Reservations and fines** | Reservation queues and cancellation, reader charges and payment, reviews | Automated strike expiry and reminder schedules |
-| **Acquisitions and assistant** | — | Suggestions, batches, shipment receipt, `chat-send` and HNSW retrieval |
+| **Acquisitions and assistant** | — | Suggestions, batches, shipment receipt, `chat-send` and HNSW vector retrieval |
 | **Scheduled work** | `pg_cron` and `pg_net` extensions enabled | Cron schedules and the `job-*` handlers for fines, expiry, reminders, email outbox and embeddings |
-| **External integrations** | ISBN lookup against Google Books and Open Library; local simulated payment | Notification email outbox, payment provider interface, AI provider integration |
-| **Audit and operations** | PostgreSQL logs, inventory history | `audit_logs`, `copy_events`, `job_runs`, Sentry, Turnstile |
+| **External integrations** | ISBN lookup against Google Books and Open Library; local simulated payment | Notification email outbox, `_shared/adapters/` (`EmailProvider`, `PaymentProvider`, `Embedder`, `LlmClient`, `IsbnLookup`), AI provider integration |
+| **Audit, testing, and operations** | PostgreSQL logs, inventory history, pgTAP (`src/supabase/tests/`), Playwright E2E (`src/e2e/`) | `audit_logs`, `copy_events`, `job_runs`, Vitest and MSW unit/integration tests, Sentry, Cloudflare Turnstile |
+
+---
+
+## 6. Related views
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Minh Thuận | **Edited by:** Nguyễn Anh Khôi
+
+- **Level 1 — System Context:** **This document** (`System-Context.md`)
+- **Level 2 — Container View:** `Container.md`
+- **Level 3 — Component View:** `Component.md`
+- **Level 4 — Deployment View:** `Deployment.md`
+- **Source diagrams:** `mermaid/system-context.mmd`

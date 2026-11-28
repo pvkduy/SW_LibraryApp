@@ -1,7 +1,7 @@
 # ShelfHelp: Smart Library Management System
 # PA4 Software Architecture — C4 Level 3 (Component Diagrams)
 
-**Version:** 1.8
+**Version:** 1.3
 
 ---
 
@@ -9,15 +9,10 @@
 
 | Date | Version | Description | Author |
 | :--- | :--- | :--- | :--- |
-| 24/Nov/2026 | 1.0 | Initial component views for the Web Application and ShelfHelp API | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.1 | Split reader components, merged transaction and persistence, aligned external containers | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.2 | Aligned container types, removed L3 Sentry, documented TypeScript/SQL rule parity and test strategy, and clarified atomic audit logging | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.3 | Component diagrams rendered as two panels each (Web Application by mode; ShelfHelp API by entry path) so the C4 layout stays readable | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.4 | Catalogues gained a Panel column so each component maps to its diagram panel | Nguyễn Anh Khôi |
-| 27/Nov/2026 | 1.5 | Aligned Web App and API components, command map (`list-sessions`, `revoke-session`, `revoke-other-sessions`), and traceability (UC-01–UC-32) with PA4 UC-02 and UC-32 | Nguyễn Anh Khôi |
-| 28/Nov/2026 | 1.6 | Updated Edge Function count to 24, corrected command names (`send-reminders`, `submit-book-review`, `inventory-history`), and aligned §7.1/§8 with `src/supabase/functions/` | Nguyễn Anh Khôi |
-| 28/Nov/2026 | 1.7 | Clarified §4.1 and §5 — reader/admin code-splitting is a PA5 target; routes are currently separate trees but share one bundle | Nguyễn Anh Khôi |
-| 28/Nov/2026 | 1.8 | Removed inline implementation-status labels from prose and diagrams; the docs now present the PA1–PA5 target architecture uniformly, with status consolidated in §1.2 and §12 | Nguyễn Anh Khôi |
+| 24/Nov/2026 | 1.0 | Initial draft: Web Application and ShelfHelp API component diagrams, catalogues, command map, and design notes | Nguyễn Anh Khôi |
+| 24/Nov/2026 | 1.1 | Completed component view: two-panel diagrams per container, Panel column in catalogues, TypeScript/SQL rule-parity documentation, atomic audit logging clarified | Nguyễn Anh Khôi |
+| 27/Nov/2026 | 1.2 | PA4 alignment: UC-02 and UC-32 integrated into Auth & Profile component and API command map (`list-sessions`, `revoke-session`, `revoke-other-sessions`); traceability updated to UC-01–UC-32 | Nguyễn Anh Khôi |
+| 28/Nov/2026 | 1.3 | PA4 submission polish: Edge Function count corrected to 24, command names aligned with `src/supabase/functions/`; implementation status (§12) updated with PA5-planned items and `PA4/src/` scope notes; Related views (§14) added | Nguyễn Anh Khôi |
 
 ---
 
@@ -40,6 +35,7 @@
 - [11. Traceability](#11-traceability)
 - [12. Implementation status](#12-implementation-status)
 - [13. Deliberate omissions](#13-deliberate-omissions)
+- [14. Related views](#14-related-views)
 
 ---
 
@@ -66,7 +62,7 @@ The inline Mermaid diagrams and linked `.mmd` files are authoritative.
 | R1 | `Container.md` | Container responsibilities and runtime flows |
 | R2 | `System-Context.md` | Actors, external systems, and platform description |
 | R3 | `SHELFHELP_FULLSPEC.md` | Screens, functions, RPCs, and data model |
-| R4 | Use-Case-Diagrams.md | UC-01 to UC-32 |
+| R4 | `Use-Case-Diagrams.md` | UC-01 to UC-32 |
 
 ---
 
@@ -601,18 +597,18 @@ Shared TypeScript modules carry the cross-cutting contracts used by both the bro
 
 **Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
 
-This section is the single place where implementation status is recorded, so the views above can describe the target architecture without interruption. Status refers to repository code through migration `0018` at the time of writing; the code remains the authority.
+This section is the single place where implementation status is recorded, so the views above can describe the target architecture without interruption. Status refers to repository code in `src/` (and `PA4/src/`) through migration `0018` at the time of writing; the code remains the authority. Tools, dependencies, and features listed under **Still to build (Planned for PA5)** are not yet included in `PA4/src/`.
 
-| Area | Built | Still to build |
+| Area | Built (in `PA4/src/`) | Still to build (Planned for PA5) |
 | :--- | :--- | :--- |
-| **Web Application features** | App Shell and guards, authentication, catalog and discovery, cart and checkout, loans, reservations, fines, admin circulation and queues, admin catalog and inventory, admin ledger | Suggestion and assistant screens, acquisition and student-account screens, dashboard KPI cards and report exports, route-level code-splitting |
-| **API components** | HTTP/CORS helpers, auth guard, request validation, business command handlers, direct RPC execution, `lookup-isbn` over direct HTTP | Command Execution & RPC Gateway as a separate retry/idempotency layer, Integration Adapters, Scheduled Job Handlers, Job Tracking & Error Logger |
+| **Web Application features** | App Shell and guards, authentication, catalog and discovery, cart and checkout, loans, reservations, fines, admin circulation and queues, admin catalog and inventory, admin ledger | Suggestion and assistant screens, acquisition and student-account screens, dashboard KPI cards and report exports, TanStack Query (`@tanstack/react-query`), React Router, route-level code-splitting |
+| **API components** | HTTP/CORS helpers, auth guard, request validation, business command handlers, direct RPC execution, `lookup-isbn` over direct HTTP | Command Execution & RPC Gateway as a separate retry/idempotency layer, `_shared/adapters/` Integration Adapters, Scheduled Job Handlers, Job Tracking & Error Logger |
 | **Commands** | The twenty-four function directories listed in §7.1 | Session management (`list-sessions`, `revoke-session`, `revoke-other-sessions`), receipt reversal and manual receipts, membership purchase, `chat-send`, acquisition commands, and the `job-*` families |
 | **Database** | Profiles, catalog, copies, loans, reservations, charges, payments, receipts, write-off slips, inventory history, `notifications`, `reservation_strike_events`; RLS, constraints, triggers, mutation RPCs restricted to `service_role`; text search via `unaccent`/`pg_trgm`/`tsvector` | `audit_logs`, `copy_events`, `memberships`, `email_outbox`, `suggestions`, `batches`, `chats`, `job_runs`, `settings`; HNSW-backed vector retrieval |
 | **Scheduled work** | `pg_cron` and `pg_net` extensions enabled; `send-reminders` invocable by an admin | Cron schedules and the `job-*` handlers for fines, expiry, reminders, email outbox and embeddings |
-| **Shared code** | Types, state enums, reason codes, selected helpers and presentation components | Complete entitlement, fine, promotion and loss rule set; universal shared validation schemas |
-| **UC-02 hardening** | Client-side handling of a 429 response | Server-enforced failed-sign-in lockout and throttling, selectable session persistence with refresh-token-only storage |
-| **UC-32 hardening** | — | Server-side active-session inventory and revocation against the Auth Admin API |
+| **Shared code & testing** | Types, state enums, reason codes, selected helpers and presentation components; pgTAP and Playwright E2E tests | Complete entitlement, fine, promotion and loss rule set; universal shared validation schemas; Vitest and MSW unit/integration tests |
+| **UC-02 hardening** | Client-side handling of a 429 response | Server-enforced failed-sign-in lockout and throttling, selectable session persistence with refresh-token-only storage, Cloudflare Turnstile |
+| **UC-32 & operations** | — | Server-side active-session inventory and revocation against the Auth Admin API; Sentry error monitoring |
 
 ---
 
@@ -628,7 +624,14 @@ This section is the single place where implementation status is recorded, so the
 - **Managed service internals.** Auth, Storage, and Realtime are black boxes by design.
 - **Shared UI and validation libraries.** Selected shared components and helpers are noted in §3 and §10.
 
-Source diagrams: `mermaid/component-webapp-reader.mmd`,
-`mermaid/component-webapp-admin.mmd`,
-`mermaid/component-api-request.mmd`,
-`mermaid/component-api-scheduled-job.mmd`.
+---
+
+## 14. Related views
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
+
+- **Level 1 — System Context:** `System-Context.md`
+- **Level 2 — Container View:** `Container.md`
+- **Level 3 — Component View:** **This document** (`Component.md`)
+- **Level 4 — Deployment View:** `Deployment.md`
+- **Source diagrams:** `mermaid/component-webapp-reader.mmd`, `mermaid/component-webapp-admin.mmd`, `mermaid/component-api-request.mmd`, `mermaid/component-api-scheduled-job.mmd`

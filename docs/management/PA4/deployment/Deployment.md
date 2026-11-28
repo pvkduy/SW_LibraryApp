@@ -1,7 +1,7 @@
 # ShelfHelp: Smart Library Management System
 # PA4 Software Architecture — Deployment View (C4 Deployment)
 
-**Version:** 1.8
+**Version:** 1.3
 
 ---
 
@@ -9,14 +9,10 @@
 
 | Date | Version | Description | Author |
 | :--- | :--- | :--- | :--- |
-| 24/Nov/2026 | 1.0 | Initial deployment architecture: container-to-infrastructure mapping, production C4 deployment diagram, node catalogue, and environment topologies | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.1 | Unified Vercel hosting, edge execution vs ap-northeast-2 database topology, HTTPS protocols, Node.js storage, and Supabase Pro backup SLA | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.2 | Edge Functions pinned to `ap-northeast-2`; platform services separated from team-owned containers; Dev/Staging environment added; supporting-service rows (Turnstile, Sentry); plan-assumption note; browser version floor removed | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.3 | §1.2 topology sentence rewritten; Turnstile removed from the diagram so supporting services are diagrammed consistently; rate-limit sentence removed from §6.2 | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.4 | Deployment diagram presented as a rendered image with the client-to-platform edges aggregated; node catalogue rounded out with the Edge Functions and managed-services rows | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.5 | Region corrected to AWS `ap-northeast-2` (Seoul) to match the provisioned Supabase project | Nguyễn Anh Khôi |
-| 27/Nov/2026 | 1.6 | Aligned Auth service and Edge Functions session-management descriptions with PA4 UC-02 and UC-32 | Nguyễn Anh Khôi |
-| 28/Nov/2026 | 1.8 | Stated PA1–PA4 as the required coverage with PA5 as forward design in §1.2; added §4.5 implementation status; removed inline PA5 markers and corrected RPC names in §4.3.2 | Nguyễn Anh Khôi |
+| 24/Nov/2026 | 1.0 | Initial draft: container-to-infrastructure mapping, production C4 deployment diagram, node catalogue, and environment topologies | Nguyễn Anh Khôi |
+| 24/Nov/2026 | 1.1 | Completed deployment view: Vercel/Supabase topology finalized, region pinned to AWS `ap-northeast-2`, platform services separated, supporting-service rows added | Nguyễn Anh Khôi |
+| 27/Nov/2026 | 1.2 | PA4 alignment: Auth service and Edge Functions session-management descriptions updated for UC-02 and UC-32 | Nguyễn Anh Khôi |
+| 28/Nov/2026 | 1.3 | PA4 submission polish: implementation status (§4.5) updated with PA5-planned items and `PA4/src/` scope notes; Related views (§7) standardized; non-submission reference removed | Nguyễn Anh Khôi |
 
 ---
 
@@ -64,8 +60,7 @@ The deployment architecture maps the containers of every feature from PA1 throug
 | R2 | `System-Context.md` | External systems and technological foundations (C4 Level 1) |
 | R3 | `Component.md` | Internal module decomposition of Web Application and API (C4 Level 3) |
 | R4 | `SHELFHELP_FULLSPEC.md` | System requirements, operational parameters, and deployment baseline |
-| R5 | `requirements.md` | Coursework deployment submission requirements |
-| R6 | `DECISIONS.md` | Recorded architectural decisions |
+| R5 | `DECISIONS.md` | Recorded architectural decisions |
 
 ---
 
@@ -293,18 +288,18 @@ These three services are managed platform services, not team-owned containers (`
 
 ### 4.5 Implementation status of the topology
 
-This table separates the nodes that are provisioned now from those the final PA5 release completes. Status refers to repository code through migration `0018` at the time of writing.
+This table separates the nodes that are provisioned now from those the final PA5 release completes. Status refers to repository code in `src/` (and `PA4/src/`) through migration `0018` at the time of writing. Tools, dependencies, and integrations listed under **Completed in the final release (Planned for PA5)** are not yet included in `PA4/src/`.
 
-| Node or integration | Provisioned now | Completed in the final release |
+| Node or integration | Built (in `PA4/src/`) | Still to build (Planned for PA5) |
 | :--- | :--- | :--- |
-| **Static Hosting & Edge CDN** | Vercel project serving the built SPA bundle | — |
-| **Edge Functions Runtime Node** | Command handlers for the implemented feature families, colocated with the database in `ap-northeast-2` | Scheduled `job-*` handlers, session-management functions, provider adapters |
-| **Managed Database Server Node** | Schema, RLS, triggers, transactional RPCs, text search, `pg_cron` and `pg_net` extensions | Audit and event tables, acquisitions and settings tables, HNSW vector indexes |
+| **Static Hosting & Edge CDN** | Vercel project serving the built SPA bundle | React Router, TanStack Query (`@tanstack/react-query`), route-level code-splitting |
+| **Edge Functions Runtime Node** | Command handlers for the implemented feature families, colocated with the database in `ap-northeast-2` | Scheduled `job-*` handlers, session-management functions, `_shared/adapters/` provider adapters |
+| **Managed Database Server Node** | Schema, RLS, triggers, transactional RPCs, text search, `pg_cron` and `pg_net` extensions | `audit_logs`, `copy_events`, acquisitions and settings tables, HNSW vector indexes |
 | **Auth Service Node** | Registration, OTP verification, sign-in/out, password reset, JWT issuance | Server-enforced sign-in lockout, selectable session persistence, session listing and revocation |
 | **Storage Service Node** | Buckets for covers, avatars, evidence and imports | Scheduled import cleanup, avatar ownership policies |
 | **Realtime Cluster Node** | Book-detail copy subscriptions | Notification and loan-item subscriptions |
-| **External services** | ISBN lookup against Google Books and Open Library; local payment simulation | Payment provider interface, AI provider integration, notification email outbox |
-| **Supporting services** | CI pipeline and static hosting | Cloudflare Turnstile and Sentry |
+| **External integrations** | ISBN lookup against Google Books and Open Library; local payment simulation | Email outbox dispatch, `PaymentProvider` interface, AI provider integration |
+| **Supporting services & testing** | CI pipeline (`.github/workflows/ci.yml`), static hosting, pgTAP, Playwright E2E (`src/e2e/`) | Cloudflare Turnstile, Sentry, Vitest, MSW |
 
 ---
 
@@ -357,5 +352,7 @@ ShelfHelp defines four formal deployment environments, matching `Container.md` �
 - **Level 1 — System Context:** `System-Context.md`
 - **Level 2 — Container View:** `Container.md`
 - **Level 3 — Component View:** `Component.md`
+- **Level 4 — Deployment View:** **This document** (`Deployment.md`)
+- **Source diagrams:** `mermaid/deployment.mmd`
 
 Environment definitions are summarised in `Container.md` §6; §5 above gives the environment-specific infrastructure detail.

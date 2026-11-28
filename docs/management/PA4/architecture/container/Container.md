@@ -1,7 +1,7 @@
 # ShelfHelp: Smart Library Management System
 # PA4 Software Architecture — C4 Level 2 (Container Diagram)
 
-**Version:** 1.8
+**Version:** 1.3
 
 ---
 
@@ -9,15 +9,10 @@
 
 | Date | Version | Description | Author |
 | :--- | :--- | :--- | :--- |
-| 24/Nov/2026 | 1.0 | Initial container view and written explanation | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.1 | Aligned the container boundary with team-owned business logic; trimmed duplicated detail | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.2 | Explicit container communication protocols, services provided, and component collaborations | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.3 | Aligned L2 container classification with L3, updated API-DB protocol to PostgREST HTTPS, and removed redundant technology relisting | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.4 | Stated the locked frontend versions (React 19.3.1, Vite 8.3.5) consistently with the Level 1 and deployment views | Nguyễn Anh Khôi |
-| 24/Nov/2026 | 1.5 | Container diagram rendered as two panels (core containers; API outbound integrations) so the C4 layout stays readable | Nguyễn Anh Khôi |
-| 27/Nov/2026 | 1.6 | Aligned Container view, API-to-Auth session relationship, authentication path, and traceability (UC-01–UC-32) with PA4 UC-02 and UC-32 | Nguyễn Anh Khôi |
-| 28/Nov/2026 | 1.7 | Corrected `rpc_search_books` RPC name in §5.1 | Nguyễn Anh Khôi |
-| 28/Nov/2026 | 1.8 | Removed inline implementation-status labels; the view now presents the PA1–PA5 target architecture uniformly, with status consolidated in §1.2 and §9 | Nguyễn Anh Khôi |
+| 24/Nov/2026 | 1.0 | Initial draft: container catalogue, communication protocols, runtime interactions, deployment environments, traceability, and quality characteristics | Nguyễn Anh Khôi |
+| 24/Nov/2026 | 1.1 | Completed container view: Supabase boundary clarified, two-panel diagram layout, API-DB protocol corrected to PostgREST HTTPS, React 19.3.1 / Vite 8.3.5 locked | Nguyễn Anh Khôi |
+| 27/Nov/2026 | 1.2 | PA4 alignment: UC-02 and UC-32 integrated into authentication path (§5.3) and API-to-Auth session relationship; traceability updated to UC-01–UC-32 | Nguyễn Anh Khôi |
+| 28/Nov/2026 | 1.3 | PA4 submission polish: implementation status (§9) updated with PA5-planned items and `PA4/src/` scope notes; Related views (§11) standardized across all C4 views | Nguyễn Anh Khôi |
 
 ---
 
@@ -65,7 +60,7 @@ The view documents the containers behind every feature from PA1 through PA4: ide
 | R1 | `System-Context.md` | Level 1 actors, external systems, and platform description |
 | R2 | `SHELFHELP_FULLSPEC.md` | Technology stack, data model, functions, and RPCs |
 | R3 | `DECISIONS.md` | Supabase and project-layout decisions |
-| R4 | Use-Case-Diagrams.md | Actors and UC-01 to UC-32 |
+| R4 | `Use-Case-Diagrams.md` | Actors and UC-01 to UC-32 |
 
 ---
 
@@ -429,18 +424,18 @@ If the Supabase project is unavailable, reads, writes, auth, and storage fail; t
 
 **Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Nguyễn Minh Phú | **Edited by:** Nguyễn Anh Khôi
 
-This section is the single place where implementation status is recorded, so the views above can describe the target architecture without interruption. Status refers to repository code through migration `0018` at the time of writing.
+This section is the single place where implementation status is recorded, so the views above can describe the target architecture without interruption. Status refers to repository code in `src/` (and `PA4/src/`) through migration `0018` at the time of writing; the code remains the authority. Tools, dependencies, and features listed under **Still to build (Planned for PA5)** are not yet included in `PA4/src/`.
 
-| Container or service | Built | Still to build |
+| Container or service | Built (in `PA4/src/`) | Still to build (Planned for PA5) |
 | :--- | :--- | :--- |
-| **Web Application** | Catalog, cart, checkout, loans, reservations, fines, admin circulation and queues, admin catalog and inventory, admin ledger | Assistant, suggestion and acquisition screens, student-account controls, dashboard KPIs and report exports, TanStack Query adoption, route-level code-splitting |
-| **ShelfHelp API** | Command handlers for the implemented families, auth guard, HTTP/CORS helpers, direct RPC execution, direct ISBN lookup | Cron job handlers, general integration adapters, job tracking, session-management commands, receipt reversal, membership purchase, `chat-send` |
+| **Web Application** | Catalog, cart, checkout, loans, reservations, fines, admin circulation and queues, admin catalog and inventory, admin ledger | Assistant, suggestion and acquisition screens, student-account controls, dashboard KPIs and report exports, TanStack Query (`@tanstack/react-query`) adoption, React Router, route-level code-splitting |
+| **ShelfHelp API** | Command handlers for the implemented families, auth guard, HTTP/CORS helpers, direct RPC execution, direct ISBN lookup | Cron job handlers, `_shared/adapters/` integration adapters, job tracking, session-management commands, receipt reversal, membership purchase, `chat-send` |
 | **PostgreSQL Database** | Profiles, catalog, copies, loans, reservations, charges, payments, receipts, write-off slips, inventory history; RLS, constraints, triggers, mutation RPCs restricted to `service_role`; text search | `audit_logs`, `copy_events`, `memberships`, `email_outbox`, `suggestions`, `batches`, `chats`, `job_runs`, `settings`; HNSW-backed vector retrieval |
 | **Supabase Auth** | Registration, OTP verification, sign-in/out, password reset, JWT with `app_metadata.role`, session records | Server-enforced sign-in lockout, selectable session persistence, session listing and revocation endpoints |
 | **Supabase Storage** | Bucket configuration for covers, avatars, evidence and imports; direct upload and download | Scheduled import cleanup; avatar ownership policies |
 | **Supabase Realtime** | Publication and subscription for book-detail `copies` changes | Notification and loan-item subscriptions |
 | **Scheduled work** | `pg_cron` and `pg_net` extensions enabled | Cron schedules and the `job-*` handlers |
-| **External integrations** | ISBN lookup against Google Books and Open Library; local simulated payment | Email outbox dispatch, payment provider interface, AI provider integration |
+| **External integrations & ops** | ISBN lookup against Google Books and Open Library; local simulated payment; pgTAP and Playwright E2E tests | Email outbox dispatch, `PaymentProvider` interface, AI provider integration, Vitest and MSW tests, Sentry, Cloudflare Turnstile |
 
 ---
 
@@ -459,7 +454,10 @@ This section is the single place where implementation status is recorded, so the
 
 **Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Nguyễn Minh Phú | **Edited by:** Nguyễn Anh Khôi
 
-- **Up:** System Context (C4 Level 1)
-- **Down:** Component Diagrams (C4 Level 3)
-- **Deployment:** Deployment View (C4 Level 4)
-- **Source:** `mermaid/container-part1.mmd`, `mermaid/container-part2.mmd`
+- **Level 1 — System Context:** `System-Context.md`
+- **Level 2 — Container View:** **This document** (`Container.md`)
+- **Level 3 — Component View:** `Component.md`
+- **Level 4 — Deployment View:** `Deployment.md`
+- **Source diagrams:** `mermaid/container-part1.mmd`, `mermaid/container-part2.mmd`
+
+
