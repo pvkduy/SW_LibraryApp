@@ -1,8 +1,8 @@
 # ShelfHelp: Smart Library Management System
-# Use-Case Specifications — Changes (PA4)
+# PA4 Changes
 
-**Version:** 1.0  
-**Date:** 27/Nov/2026  
+**Version:** 1.1
+**Date:** 28/Nov/2026
 **Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
 
 ---
@@ -12,10 +12,11 @@
 | Date | Version | Description | Author |
 | :--- | :--- | :--- | :--- |
 | 27/Nov/2026 | 1.0 | Initial change record for the PA4 use-case revision | Nguyễn Anh Khôi |
+| 28/Nov/2026 | 1.1 | Merged Vision Document changes section into this file (single Changes.md per PA submission) | Nguyễn Anh Khôi |
 
 ---
 
-## What changed
+## 1. Use-Case Specifications
 
 **UC-02 — Sign in and sign out.** Added Alternative Flow 2.2.3, *Temporary Lockout
 After Repeated Failures*: after five consecutive failed sign-in attempts for the same
@@ -46,5 +47,16 @@ and Authentication and email service actors; updated the actor table, the Diagra
 summary table, and the coverage table. Diagram 1 was regenerated from the Mermaid
 source. Diagrams 2–5 are unchanged and remain in
 `docs/management/PA3/use-case-diagrams/`.
+
+---
+
+## 2. Vision Document
+
+The PA3 Vision Document was updated to version 2.1:
+
+- FEAT-01 now covers failed-sign-in protection, persistent sessions, and active-session management.
+- Authentication/security requirements now specify server-side throttling, password-not-stored rules, revocable refresh tokens, and session-inventory privacy.
+- Performance requirements now include sign-in/sign-out and active-session inventory targets.
+- The change is traceable to UC-02 and UC-32 in the PA4 use-case package.
 
 ---

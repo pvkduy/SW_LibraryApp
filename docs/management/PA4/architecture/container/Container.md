@@ -1,8 +1,11 @@
 # ShelfHelp: Smart Library Management System
+# PA4 Software Architecture — C4 Level 2 (Container Diagram)
 
-## PA4 Software Architecture — C4 Level 2 (Container Diagram)
+**Version:** 1.7
 
-### Revision history
+---
+
+## Revision History
 
 | Date | Version | Description | Author |
 | :--- | :--- | :--- | :--- |
@@ -13,8 +16,11 @@
 | 24/Nov/2026 | 1.4 | Stated the locked frontend versions (React 19.3.1, Vite 8.3.5) consistently with the Level 1 and deployment views | Nguyễn Anh Khôi |
 | 24/Nov/2026 | 1.5 | Container diagram rendered as two panels (core containers; API outbound integrations) so the C4 layout stays readable | Nguyễn Anh Khôi |
 | 27/Nov/2026 | 1.6 | Aligned Container view, API-to-Auth session relationship, authentication path, and traceability (UC-01–UC-32) with PA4 UC-02 and UC-32 | Nguyễn Anh Khôi |
+| 28/Nov/2026 | 1.7 | Corrected `rpc_search_books` RPC name in §5.1 | Nguyễn Anh Khôi |
 
-### Table of contents
+---
+
+## Table of Contents
 
 - [1. Introduction](#1-introduction)
 - [2. Relationship to the Level 1 view](#2-relationship-to-the-level-1-view)
@@ -318,7 +324,7 @@ Static hosting, Cloudflare Turnstile, Sentry, and CI are supporting services rat
 1. The SPA obtains or refreshes a session through Supabase Auth.
 2. The SPA queries PostgREST with the user's JWT. PostgreSQL applies RLS: students see active books,
    public reviews, membership plans, and their own rows; staff see the rows their screens need.
-3. Complex catalog search runs through the `search_books` RPC.
+3. Complex catalog search runs through the `rpc_search_books` RPC.
 4. Realtime pushes availability counters, notifications, and the caller's own loan changes.
 
 ### 5.2 Command path

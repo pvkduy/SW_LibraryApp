@@ -1,108 +1,81 @@
 # ShelfHelp: Architecture vs. Implementation Reconciliation Report
 
-**Date:** 27/Nov/2026  
+**Date:** 28/Nov/2026  
 **Scope:** Reconciling the current codebase in `src/` against the PA4 architecture and deployment documentation:
 - [`docs/management/PA4/architecture/system-context/System-Context.md`](../management/PA4/architecture/system-context/System-Context.md)
 - [`docs/management/PA4/architecture/container/Container.md`](../management/PA4/architecture/container/Container.md)
 - [`docs/management/PA4/architecture/component/Component.md`](../management/PA4/architecture/component/Component.md)
 - [`docs/management/PA4/deployment/Deployment.md`](../management/PA4/deployment/Deployment.md)
+
 ---
 
 ## 1. Executive Summary & Prioritized Matrix
 
 | ID | Severity | Area | Summary of Discrepancy | Recommended Reconciliation |
 | :--- | :--- | :--- | :--- | :--- |
-| **REC-01** | **Critical** | DB & API Security | Mutation RPCs were callable by browser roles and privileged RPCs lacked caller checks. | **Resolved:** Added forward migration `0012_server_authoritative_writes.sql` to restrict mutation RPC execution to `service_role`; guarded reservation cancellation and counter settlement, and added admin-validated wrappers for circulation RPCs. |
-| **REC-02** | **Critical** | Write Path | Frontend components called mutation RPCs directly or used client-side fallbacks; checkout/payment Edge Functions invoked RPCs with the user JWT. | **Resolved:** Routed mutations through Edge Functions, removed direct RPC and signup fallbacks, and moved checkout/payment RPC calls to service-role wrappers that preserve the verified caller ID. |
-| **REC-03** | **High** | Auth Guard | Edge Functions did not reload `profiles.status`; frontend lacked inactive gating, restricted status banner, and `/admin/*` 403 handling. | **Resolved:** Shared Edge Function auth reloads role/status, user mutations enforce action-appropriate statuses, and the SPA gates inactive accounts, displays the restricted banner, and denies student access to `/admin/*`. |
-| **REC-04** | **High** | PA4 `UC-02` / `UC-32` | The lockout, persistent-session option, and active-session capabilities are specified and retained in the PA4 diagrams, but are not implemented in `src/`. | **Resolved as planned scope:** Keep UC-02/UC-32 in PA4 target architecture diagrams and specifications, explicitly label them as PA5 additions, and implement them later. |
-| **REC-05** | **High** | Tech Stack & Libraries | PA4 docs and specs claimed Tailwind/shadcn, Recharts, RHF/Zod, barcode/export/cropping libraries, i18n/date libraries, and testing packages that are not used. | **Resolved:** Removed unimportant or unused library choices. React Router, TanStack Query, Cloudflare Turnstile, Sentry, and Vitest remain explicitly planned additions. |
-| **REC-06** | **Medium** | Delivered Scope | Docs state 5 functions are implemented and `checkout-cart` is planned for PA5, whereas 21 business Edge Functions (including `checkout-cart` and inventory) are now implemented in `src/supabase/functions/`. | **Resolved:** Updated scope/status notes in `System-Context.md` and `Component.md`; the implemented directories are distinct from the larger target PA5 command map. |
-| **REC-07** | **Medium** | Schema & Jobs | Documented tables (`audit_logs`, `copy_events`, `job_runs`, `settings`, `memberships`, `notifications`, `email_outbox`, `suggestions`, `batches`, `chats`) and `pg_cron` jobs do not exist in migrations yet. | **Resolved:** Added implemented-versus-target status notes. Existing migrations and target PA5 schema/jobs are now explicitly distinguished. |
-| **REC-08** | **Low** | Config & Ports | Mismatches across `config.toml`, `.env.example`, `supabase.js`, `ci.yml`, and `Deployment.md` / `System-Context.md` (region comment, env var name, `evidence` bucket limit, local ports). | **Resolved:** Standardized local ports to `54321–54324`, publishable-key naming to `VITE_SUPABASE_PUBLISHABLE_KEY`, region to `ap-northeast-2`, and the `evidence` bucket to 10 MiB. |
+| **REC-01** | **High** | DB & RLS Write Boundary | Docs state direct client writes are limited to `cart_items` and `profiles` contact fields, and protected business tables have no client write policies; however, legacy admin/client write policies remained active in migrations. | **Resolved:** Added forward migration `0015_restrict_client_write_policies.sql` dropping client write policies on `loan_requests`, `loan_items`, `reservations`, `charges`, `receipts`, `books`, `copies`, `wishlists`, and `book_reviews` while preserving `SELECT` policies (and keeping `notifications_update_own_read` for `AdminLayout.jsx` mark-as-read). |
+| **REC-02** | **High** | Frontend Bundle Splitting | `System-Context.md` §3.2 and `Component.md` §4.1/§5 claim Reader and Admin routes are separate lazy-loaded bundles so admin code is never shipped to students, but `App.jsx` statically imports all Admin and Reader pages. | **Resolved (doc update):** `System-Context.md` v2.0 §3.2 and `Component.md` v1.7 §4.1/§5 updated to state that reader/admin routes are separate route trees today and that `React.lazy` / `Suspense` route-level code-splitting is a **PA5 target**. No source code change required. |
+| **REC-03** | **Medium** | Edge Function Count & Command Map | `Component.md` §7.1 and §8 report **21** business Edge Functions, whereas `src/supabase/functions/` now contains **24** (excluding `_shared` and `hello`), with naming/listing mismatches (`send-reminders` vs. `send-bulk-reminder`, `submit-book-review` vs. `submit-review`, missing `inventory-history`). | **Resolved:** Updated `Component.md` v1.6 — §7.1 count corrected to 24 with explicit function list; §8 intro updated; command table corrected (`send-bulk-reminder` → `send-reminders`; `submit-review` removed from Catalog; `inventory-history` added to Catalog row). |
+| **REC-04** | **Medium** | RPC Names, Schema Status & API Internals | Docs reference `search_books` instead of `rpc_search_books`; list `notifications` as an uncreated PA5 table despite `0013` creating `public.notifications`; and describe per-mutation idempotency keys, 3x deadlock retries, `_shared/adapters/`, and `job_runs`/`audit_logs`/`copy_events` that are not yet in `src/`. | **Resolved:** Updated `System-Context.md` v1.9 — `rpc_search_books` corrected in §3.3; `public.notifications` noted as implemented in §2.4 PA4 row; idempotency scope qualified to checkout/payment mutations in §3.3; `notifications` removed from PA5 target table list in §2.4. Updated `Container.md` v1.7 — `rpc_search_books` corrected in §5.1. |
+| **REC-05** | **Low** | Diagrammed Libraries & Planned Tooling | `Component.md` §3.1/§3.2 Mermaid diagrams label components with `React Router` and `TanStack Query` even though neither is in `src/frontend/package.json`; **Sentry**, **Cloudflare Turnstile**, **Vitest**, and **MSW** are also absent from `src/` and `package.json`. | Keep these explicitly marked as planned additions in both prose and diagram labels until installed/integrated. |
 
 ---
 
 ## 2. Detailed Findings
 
-### 2.1 Security & Server-Authoritative Write Resolutions (`REC-01`, `REC-02`, `REC-03`)
+### 2.1 Direct Client Write Policies vs. Server-Authoritative Claims (`REC-01`)
 
-1. **RPC privileges and authorization (`REC-01`)**
-   - Forward migration `src/supabase/migrations/0012_server_authoritative_writes.sql` revokes browser-role execution on mutation RPCs and grants them to `service_role`; the read-only `rpc_search_books` remains available to browser roles.
-   - User actions are executed through Edge Functions using service-role wrappers that set the verified caller identity for existing user-owned RPC logic. `rpc_cancel_reservation_staff` now checks ownership or an active admin, and counter settlement checks the active admin identity. Handover and return implementation RPCs are reachable only through wrappers that verify an active admin.
-   - Added pgTAP checks that authenticated users cannot directly execute reservation cancellation or counter settlement.
-
-2. **Server-authoritative write path (`REC-02`)**
-   - Reader mutations for renewals, reviews, fine payments, reservations, wishlists, and checkout now invoke Edge Functions. Client RPC and signup fallbacks were removed.
-   - `checkout-cart` and `complete-simulated-payment` authenticate the user JWT, reload current profile status, then invoke the transaction through `service_role` wrappers that preserve the verified user ID and SQL ownership checks.
-   - Supabase Auth public sign-up is disabled; the `register-student` Edge Function remains the validated student-registration path. Its profile write is an upsert to accommodate the Auth user trigger.
-
-3. **Current account status and route guards (`REC-03`)**
-   - Shared Edge Function authentication reloads the caller’s profile and verifies its current role and status. Admin commands require an active admin. Reader actions apply the relevant policy: borrowing/checkout requires `active`, while payment recovery, reservation cancellation, wishlist updates, and reviews allow `restricted` accounts where needed.
-   - `App.jsx` gates inactive profiles and renders a 403 response for students at `/admin/*`; `ReaderLayout.jsx` displays the restricted-account banner. The server checks remain authoritative if a client session is stale.
+- **Documented:** `System-Context.md` §2.1 & §2.3 and `Container.md` §4.1 state that direct client writes via PostgREST are restricted to personal `cart_items` (own rows) and `profiles` contact fields, and that *"Protected business tables have no client write policy. Loans, copies, payments, receipts, charges, memberships, and reservations are written only by Edge Functions."*
+- **Actual (`src/supabase/migrations/`):**
+  - `0003_circulation_loans_queues.sql` (lines 178–211) creates `loan_requests_admin_all`, `loan_items_admin_all`, `reservations_admin_all`, `charges_admin_all`, `receipts_admin_insert`, and `copies_admin_update`. None of these policies are dropped by `0012_server_authoritative_writes.sql`, `0013_admin_audit_fixes_and_uc_completion.sql`, or `0014_uc_alignment_fixes.sql`.
+  - `0006_catalog_wishlist_cart_checkout.sql` (lines 19, 25, 112) retains `books_admin_all`, `copies_admin_insert`, and `wishlists_own_all`.
+  - `0004_reader_loans_fines_reviews.sql` (lines 42, 47) retains student insert/update policies on `book_reviews`, and `0013_admin_audit_fixes_and_uc_completion.sql` (line 82) adds `notifications_update_own_read` on `public.notifications`.
+- **Verified consistent:** `0012_server_authoritative_writes.sql` (lines 208–232) and `0013`/`0014` do revoke `EXECUTE` on mutation `rpc_*` functions from `PUBLIC`, `anon`, and `authenticated`, granting execution exclusively to `service_role`.
 
 ---
 
-### 2.2 PA4 `UC-02` & `UC-32` Implementation Gaps (`REC-04`)
+### 2.2 Frontend Bundle Splitting & Diagrammed Libraries (`REC-02`, `REC-05`)
 
-The architecture docs retain PA4 `UC-02` (v1.1) and `UC-32` (v1.0) as target capabilities and explicitly mark their implementation as PA5:
-- **Persistent session toggle (`UC-02` §2.2.7, §3.4):** `src/frontend/src/lib/supabase.js` (lines 20–26) hardcodes `persistSession: true`, and `LoginPage.jsx` has no *"Keep me signed in"* checkbox switching storage between `localStorage` and `sessionStorage`.
-- **Server-enforced lockout (`UC-02` §2.2.3, §3.5):** No server-side 5-failure / 15-minute / 10-minute lockout endpoint or `Retry-After` countdown UI exists; `LoginPage.jsx` (lines 46–48) only shows a generic string if `err.status === 429`.
-- **Active-session management (`UC-32`):** `list-sessions`, `revoke-session`, and `revoke-other-sessions` do not exist in `src/supabase/functions/`, and neither `/profile/sessions` nor `/admin/profile/sessions` exists in `src/frontend/` (the Reader Profile view in `App.jsx` lines 135–187 is read-only with only navigation/sign-out buttons, and `AdminLayout.jsx` has no profile/sessions menu link).
+- **Static imports in `App.jsx` (`REC-02`):** `System-Context.md` §3.2 and `Component.md` §4.1 & §5 previously stated that Reader and Admin routes are separate lazy-loaded bundles so admin code is never shipped to students. In `src/frontend/src/app/App.jsx` (lines 11–25), `AdminLayout`, `CirculationPage`, `BooksPage`, `QueuesPage`, and `FinancialLedgerPage` are statically imported alongside reader pages with no `React.lazy` or dynamic `import()`. **Resolution:** docs updated to clarify that routes are separate route trees today and that `React.lazy` / `Suspense` route-level code-splitting is a **PA5 target**. No source code change.
+- **Routing & data-fetching libraries (`REC-05`):** `src/frontend/package.json` installs only `react` (`^19.2.8`, resolved `19.3.1`), `react-dom`, and `@supabase/supabase-js` (plus `vite` resolved `8.3.5`, `@vitejs/plugin-react`, `oxlint`, and React types). Neither `react-router` nor `@tanstack/react-query` is installed. While `System-Context.md` §3.2 and `Component.md` §5 note them as planned additions, `Component.md` §3.1/§3.2 Mermaid diagrams already label `App Shell & Access Guard` as `"React Router"` and feature/data components as `"React, TanStack Query"` / `"supabase-js, TanStack Query"`.
 
 ---
 
-### 2.3 Frontend Technology Stack, Libraries & Language Mismatches (`REC-05`)
+### 2.3 Edge Function Count & Command Map (`REC-03`)
 
-`src/frontend/package.json` installs only `react`, `react-dom`, and `@supabase/supabase-js` (plus `vite`, `@vitejs/plugin-react`, `oxlint`, and React type definitions). The following documented technologies are not present in `src/`:
-
-| Documented in `System-Context.md` / `Container.md` / `Component.md` | Actual State in `src/` |
-| :--- | :--- |
-| React Router | Planned later; current App uses state-based switching + `window.history.pushState`. |
-| TanStack Query | Planned later; current code uses manual `useState` / `useEffect` fetching. |
-| Tailwind/shadcn/Radix, Recharts | Removed: the implemented UI uses hand-written CSS and native controls. |
-| React Hook Form/Zod | Removed: registration and server-side validation use custom JS/TS helpers and shared domain checks. |
-| `@zxing/browser`, JsBarcode, PapaParse, ExcelJS, `pdfmake`, `react-easy-crop` | Removed: current features use native browser APIs or custom code. |
-| `react-i18next`, `date-fns` | Removed: current UI uses inline copy and implementation-native date formatting. |
-| Cloudflare Turnstile & Sentry | Planned later; not yet implemented. |
-| Vitest | Planned later; unit/parity test setup is not yet configured. |
+- **Documented:** `Component.md` §7.1 (line 488) and §8 (line 498) stated that **21** business Edge Function directories exist in `src/supabase/functions/` (excluding `_shared` and `hello`).
+- **Actual (`src/supabase/functions/`):** There are **24** business Edge Function directories (excluding `_shared` and `hello`):
+  `add-copies`, `cancel-reservation`, `cancel-writeoff-slip`, `change-copy-status`, `checkout-cart`, `complete-simulated-payment`, `complete-writeoff-slip`, `handover-items`, `import-books`, `inventory-history`, `lookup-isbn`, `mark-loan-lost`, `pay-reader-charges`, `record-counter-payment`, `register-student`, `renew-loan`, `reserve-book`, `return-loan`, `save-book`, `save-writeoff-slip`, `send-reminders`, `set-books-collection`, `submit-book-review`, `toggle-wishlist`.
+- **Command-map discrepancies in `Component.md` §8 (now fixed):**
+  - `send-bulk-reminder` → corrected to `send-reminders`.
+  - `submit-review` removed from **Catalog** row (nonexistent); `submit-book-review` retained under **Borrowing**.
+  - `inventory-history` added to the **Catalog** row.
+- **Resolution:** `Component.md` updated to v1.6 with count 24, explicit function list in §7.1, and corrected §8 command table.
 
 ---
 
-### 2.4 Documented Scope vs. Actual Migrations & Functions (`REC-06`, `REC-07`)
+### 2.4 RPC Names, Target Tables & API Internals (`REC-04`)
 
-1. **Implemented Edge Functions vs. `System-Context.md` §2.4 & `Component.md` §8 (`REC-06`):**
-   - The architecture documents now distinguish implemented functions from the PA5 target map.
-   - `src/supabase/functions/` currently contains **21 business function directories** (excluding `_shared` and `hello`) for registration/circulation/payment/catalog/write-off/inventory workflows; it is not limited to the former five-function PA4 slice.
-2. **Missing tables & scheduled jobs (`REC-07`) — resolved as a scope distinction:**
-   - `audit_logs`, `copy_events`, `job_runs`, `settings`, `memberships`, `notifications`, `email_outbox`, `suggestions`, `batches`, `chats`, and `chat_messages` remain PA5-target data stores; they are not claimed as present in migrations `0001`–`0010`.
-   - `pg_cron` and `pg_net` are enabled in `0001_init.sql`, but no `cron.schedule(...)` statements or `job-*` Edge Function handlers exist yet. These remain planned scheduled-work components.
-   - Existing migration data stores include `profiles`, `books`, `copies`, `loan_requests`, `loan_items`, `reservations`, `charges`, `receipts`, `payments`, `wishlists`, `cart_items`, `book_reviews`, `inventory_transactions`, and `writeoff_slips`.
+- **Search RPC name:** `System-Context.md` §3.3 and `Container.md` §5.1 referred to `search_books`; corrected to `rpc_search_books` (implemented as `public.rpc_search_books` in `0006_catalog_wishlist_cart_checkout.sql` line 189 and confirmed in `0012_server_authoritative_writes.sql` line 230).
+- **Implemented vs. target tables:** `System-Context.md` §2.4 listed `notifications` among PA5 target tables; removed — `public.notifications` (along with `public.reservation_strike_events`) is already created in `0013_admin_audit_fixes_and_uc_completion.sql` (lines 50, 91). Target tables `memberships`, `email_outbox`, `suggestions`, `batches`, `chats`, `audit_logs`, `copy_events`, `job_runs`, and `settings` remain absent from migrations and are still listed as PA5 targets.
+- **API internal components:** `System-Context.md` §3.3 idempotency claim qualified to checkout and payment mutations (not every mutation). The `_shared/adapters/`, 3x deadlock retries, and `job_runs`/`audit_logs`/`copy_events` remain PA5 targets as described in existing prose.
+- **Resolution:** `System-Context.md` updated to v1.9; `Container.md` updated to v1.7.
 
 ---
 
-### 2.5 Configuration, Environment & Deployment Discrepancies (`REC-08`)
+### 2.5 Supporting Services & Test Tooling (`REC-05`)
 
-| Setting | Architecture / Deployment Docs | Actual `src/` Files |
-| :--- | :--- | :--- |
-| **Supabase cloud region** | `ap-northeast-2` (Seoul) in `Deployment.md` §1.2, §2, §4.3 | Resolved: `src/supabase/config.toml` now documents `ap-northeast-2` |
-| **Browser public key env var** | `VITE_SUPABASE_PUBLISHABLE_KEY` in current code and environment template | Resolved: `Deployment.md` now uses the same publishable-key name |
-| **`evidence` bucket max size** | `10 MiB` in `System-Context.md` §3.6 | Resolved: architecture/specification documents now match the migration and config, which set `10485760` bytes / `10MiB` |
-| **Local Supabase ports** | Standard CLI ports `54321–54324` in environment, CI, and the deployment document | Resolved: `src/supabase/config.toml` now uses API `54321`, DB `54322`, Studio `54323`, and SMTP `54324` |
+- **Sentry & Cloudflare Turnstile:** Referenced in `System-Context.md` §3.7/§3.8 and `Deployment.md` §2/§4.4/§6.2, but neither package nor integration exists in `src/` or `package.json`.
+- **Vitest & MSW:** Listed in `System-Context.md` §3.1/§3.8 and `Deployment.md` §5 as part of the testing/CI stack (with Vitest noted as planned), and neither is present in `package.json` or `.github/workflows/ci.yml`.
+- **Verified CI:** `.github/workflows/ci.yml` runs `lint`, `typecheck`, `spec-matrix`, `pgTAP`, `Edge Function smoke` (`hello`), and `Playwright smoke`, matching the rest of `Deployment.md` §5.
 
 ---
 
-## 3. Pre-Submission Reconciliation Checklist
+## 3. Verified Consistent Baseline
 
-### A. Code & Migration Fixes (Required for Security & Architecture Fidelity)
-- [x] Revoke browser-role execution on mutation RPCs, grant service-role execution, and add authorization checks to sensitive RPC entry points.
-- [x] Remove direct client mutation RPC calls and client fallbacks; route reader mutations through Edge Functions.
-- [x] Switch checkout and simulated-payment RPC calls to service-role wrappers after verifying the caller JWT.
-- [x] Reload current profile role/status in Edge Functions and apply action-appropriate account-status rules.
-- [x] Add `/admin/*` 403 handling, inactive-account gating, and restricted status banner.
-- [x] Keep UC-02 lockout / *"Keep me signed in"* and UC-32 (`list-sessions`, `revoke-session`, `revoke-other-sessions`, `/profile/sessions`, `/admin/profile/sessions`) in PA4 diagrams/specifications and mark them as target PA5 implementation.
-
-### B. Documentation & Config Updates (Required if Libraries/Scope Remain As-Built for PA4)
-- [x] Reconcile `System-Context.md` §2.4 and `Component.md` §8 to reflect the **21** business Edge Functions now present in `src/supabase/functions/` (including `checkout-cart`, reader action handlers, and inventory) vs. what remains planned for PA5.
-- [x] Reconcile `System-Context.md` §3.2, `Container.md` §4.1, and `Component.md` §3–§5: removed unused UI/barcode/export/cropping/i18n/form libraries; kept React Router, TanStack Query, Turnstile, Sentry, and Vitest as planned additions.
-- [x] Align `evidence` bucket limit to 10 MiB, publishable-key naming to `VITE_SUPABASE_PUBLISHABLE_KEY`, `config.toml` region comment to `ap-northeast-2`, and local Supabase ports to `54321–54324`.
+The following documented architectural properties were verified directly in the current codebase:
+- **Runtime versions:** Installed `react` `19.3.1` and `vite` `8.3.5` match `System-Context.md` §3.1/§3.2 and `Container.md` §3.1/§4.1.
+- **Auth & profile checks:** `src/supabase/functions/_shared/auth.ts` verifies the JWT, checks `app_metadata.role`, and reloads `profiles.role` and `profiles.status` on every request; `src/frontend/src/lib/supabase.js` uses `flowType: 'pkce'`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_PUBLISHABLE_KEY`.
+- **Storage & local stack config:** `src/supabase/config.toml` matches PostgreSQL 15, disabled public signup (`enable_signup = false`), local ports `54321–54324`, and all four storage buckets (`covers`, `avatars`, `evidence`, `imports`).
+- **Realtime:** `src/frontend/src/features/reader/catalog/BookDetailPage.jsx` subscribes to live copy updates via `supabase.channel(...)`.
+- **PA5 auth scope markers:** Server-side `UC-02` lockout, the *"Keep me signed in"* storage toggle, and `UC-32` (`list-sessions`, `revoke-session`, `revoke-other-sessions`) are absent from `src/` and accurately marked as PA5 targets in the PA4 docs (`LoginPage.jsx` currently has `429` error handling and `autocomplete` attributes).

@@ -1,8 +1,11 @@
 # ShelfHelp: Smart Library Management System
+# PA4 Software Architecture — Deployment View (C4 Deployment)
 
-## PA4 Software Architecture — Deployment View (C4 Deployment)
+**Version:** 1.6
 
-### Revision history
+---
+
+## Revision History
 
 | Date | Version | Description | Author |
 | :--- | :--- | :--- | :--- |
@@ -14,7 +17,9 @@
 | 24/Nov/2026 | 1.5 | Region corrected to AWS `ap-northeast-2` (Seoul) to match the provisioned Supabase project | Nguyễn Anh Khôi |
 | 27/Nov/2026 | 1.6 | Aligned Auth service and Edge Functions session-management descriptions with PA4 UC-02 and UC-32 | Nguyễn Anh Khôi |
 
-### Table of contents
+---
+
+## Table of Contents
 
 - [1. Introduction](#1-introduction)
 - [2. Mapping containers and platform services to infrastructure nodes](#2-mapping-containers-and-platform-services-to-infrastructure-nodes)
