@@ -13,8 +13,6 @@
 
 > **PA4 note (v1.4).** The PA4 use-case revision is incorporated. **UC-02** adds a server-enforced failed-sign-in lockout (five failures per identifier within 15 minutes, 10-minute lockout, HTTP 429 with `Retry-After`) and the **"Keep me signed in"** persistent session that stores only the refresh token. **UC-32** adds **Manage active sessions**: a new reader/staff screen (R-23) that lists the caller's signed-in devices and revokes one or all other sessions. UC-32 reuses the retired use-case identifier; the former "Configure library policies" use case remains out of scope (§20.12). New requirement **FR-AUTH-11**; new test **TS-67**; new policy **POL-19**; new decisions **DEC-57** and **DEC-58**.
 
-> **Implementation status (28/Nov/2026).** This SRS specifies the intended product, not a guarantee that every requirement or architecture detail is implemented. UC-02's application-enforced lockout and selectable session persistence and all UC-32 session-management UI/endpoints remain PA5 targets. The current client enables Supabase's default persistent session and auto-refresh. Reader loan renewal, simulated fine payment and review submission, and admin handover/return are implemented through Edge Functions and transactional RPCs. The current reader payment choices are simulated `mobile_banking` and `card`; renewal is blocked when another reader is waiting. Scheduled jobs, the assistant and the planned adapter/gateway architecture are not implemented as described below. For the current implementation and remaining targets see the [PA4 architecture](../../../docs/management/PA4/architecture/system-context/System-Context.md).
-
 ---
 
 ## 0. How to use this document

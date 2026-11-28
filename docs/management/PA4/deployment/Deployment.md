@@ -1,7 +1,7 @@
 # ShelfHelp: Smart Library Management System
 # PA4 Software Architecture — Deployment View (C4 Deployment)
 
-**Version:** 1.6
+**Version:** 1.8
 
 ---
 
@@ -16,6 +16,7 @@
 | 24/Nov/2026 | 1.4 | Deployment diagram presented as a rendered image with the client-to-platform edges aggregated; node catalogue rounded out with the Edge Functions and managed-services rows | Nguyễn Anh Khôi |
 | 24/Nov/2026 | 1.5 | Region corrected to AWS `ap-northeast-2` (Seoul) to match the provisioned Supabase project | Nguyễn Anh Khôi |
 | 27/Nov/2026 | 1.6 | Aligned Auth service and Edge Functions session-management descriptions with PA4 UC-02 and UC-32 | Nguyễn Anh Khôi |
+| 28/Nov/2026 | 1.8 | Stated PA1–PA4 as the required coverage with PA5 as forward design in §1.2; added §4.5 implementation status; removed inline PA5 markers and corrected RPC names in §4.3.2 | Nguyễn Anh Khôi |
 
 ---
 
@@ -25,6 +26,14 @@
 - [2. Mapping containers and platform services to infrastructure nodes](#2-mapping-containers-and-platform-services-to-infrastructure-nodes)
 - [3. Deployment diagram](#3-deployment-diagram)
 - [4. Infrastructure node catalogue](#4-infrastructure-node-catalogue)
+  - [4.1 User Workstation / Mobile Device](#41-user-workstation--mobile-device)
+  - [4.2 Static Hosting & Global Edge CDN](#42-static-hosting--global-edge-cdn)
+  - [4.3 Supabase Managed Platform](#43-supabase-managed-platform)
+    - [4.3.1 Edge Functions Runtime Node](#431-edge-functions-runtime-node)
+    - [4.3.2 Managed Database Server Node](#432-managed-database-server-node)
+    - [4.3.3 Supabase Managed Platform Services](#433-supabase-managed-platform-services)
+  - [4.4 External Third-Party and Supporting Cloud Services](#44-external-third-party-and-supporting-cloud-services)
+  - [4.5 Implementation status of the topology](#45-implementation-status-of-the-topology)
 - [5. Deployment environments](#5-deployment-environments)
 - [6. Security, networking, and resilience](#6-security-networking-and-resilience)
 - [7. Related views](#7-related-views)
@@ -37,11 +46,11 @@
 
 ### 1.1 Purpose
 
-This document specifies the **Deployment Architecture** for ShelfHelp. It satisfies the PA4 course architecture submission requirements by mapping each software container defined in the [Container view](../architecture/container/Container.md) to the physical, virtualized, and managed cloud infrastructure nodes that execute it, specifying the hardware/cloud services used, running containers, and inter-node communication protocols.
+This document specifies the **Deployment Architecture** for ShelfHelp. It satisfies the PA4 course architecture submission requirements by mapping each software container defined in the Container view to the physical, virtualized, and managed cloud infrastructure nodes that execute it, specifying the hardware/cloud services used, running containers, and inter-node communication protocols.
 
 ### 1.2 Scope
 
-The deployment architecture covers the complete product lifecycle from PA1 through PA4 and planned PA5 features:
+The deployment architecture maps the containers of every feature from PA1 through PA4 onto the infrastructure that runs them, and covers the nodes, external integrations and operational services the final PA5 release adds. Every node, service and relationship is specified as designed, so the topology does not need to be redrawn as each remaining piece lands; §4.5 lists what is provisioned now and what the final release completes.
 
 1. **Production cloud topology:** Vercel serves the static SPA from its global CDN; Supabase Edge Functions, database, Auth, Storage and Realtime all run in AWS `ap-northeast-2` (Seoul).
 2. **Local development topology:** Containerized local development stack orchestrated via Docker Desktop and the Supabase CLI.
@@ -51,12 +60,12 @@ The deployment architecture covers the complete product lifecycle from PA1 throu
 
 | ID | Document | Use in this document |
 | :--- | :--- | :--- |
-| R1 | [`Container.md`](../architecture/container/Container.md) | Authoritative software container catalogue and protocols (C4 Level 2) |
-| R2 | [`System-Context.md`](../architecture/system-context/System-Context.md) | External systems and technological foundations (C4 Level 1) |
-| R3 | [`Component.md`](../architecture/component/Component.md) | Internal module decomposition of Web Application and API (C4 Level 3) |
-| R4 | [`SHELFHELP_FULLSPEC.md`](../../../../src/speckit/specs/SHELFHELP_FULLSPEC.md) | System requirements, operational parameters, and deployment baseline |
-| R5 | [`requirements.md`](requirements.md) | Coursework deployment submission requirements |
-| R6 | [`DECISIONS.md`](../../../DECISIONS.md) | Recorded architectural decisions |
+| R1 | `Container.md` | Authoritative software container catalogue and protocols (C4 Level 2) |
+| R2 | `System-Context.md` | External systems and technological foundations (C4 Level 1) |
+| R3 | `Component.md` | Internal module decomposition of Web Application and API (C4 Level 3) |
+| R4 | `SHELFHELP_FULLSPEC.md` | System requirements, operational parameters, and deployment baseline |
+| R5 | `requirements.md` | Coursework deployment submission requirements |
+| R6 | `DECISIONS.md` | Recorded architectural decisions |
 
 ---
 
@@ -64,7 +73,7 @@ The deployment architecture covers the complete product lifecycle from PA1 throu
 
 **Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Phạm Võ Khang Duy | **Edited by:** Nguyễn Anh Khôi
 
-The table below maps every runtime element of the production topology to the infrastructure node that executes it. The ownership boundary follows [Container.md §2](../architecture/container/Container.md#2-relationship-to-the-level-1-view) and §4: the Web Application, the ShelfHelp API, and the PostgreSQL database are team-owned containers; Supabase Auth, Storage, and Realtime are managed platform services the team configures but does not operate; the remaining rows are external third-party systems.
+The table below maps every runtime element of the production topology to the infrastructure node that executes it. The ownership boundary follows `Container.md` §2 and §4: the Web Application, the ShelfHelp API, and the PostgreSQL database are team-owned containers; Supabase Auth, Storage, and Realtime are managed platform services the team configures but does not operate; the remaining rows are external third-party systems.
 
 | Runtime element | Element type | Target infrastructure node | Cloud / Hardware platform |
 | :--- | :--- | :--- | :--- |
@@ -162,7 +171,9 @@ C4Deployment
 
 </details>
 
-![Deployment diagram: the Web Browser and the Vercel CDN, the Supabase Managed Platform in AWS ap-northeast-2 holding the PostgreSQL database, the Edge Functions runtime and the managed Auth, Storage and Realtime services, and the external Payment, AI, Bibliographic and Email providers](mermaid/deployment.png)
+![Diagram](mermaid/deployment.png)
+
+*Deployment diagram: the Web Browser and the Vercel CDN, the Supabase Managed Platform in AWS ap-northeast-2 holding the PostgreSQL database, the Edge Functions runtime and the managed Auth, Storage and Realtime services, and the external Payment, AI, Bibliographic and Email providers*
 
 One relationship is drawn as a single aggregated edge to a platform boundary: the Web Application's
 traffic to Supabase Auth, Storage and Realtime, labelled **PKCE (auth), signed URLs (files), WSS + RLS
@@ -171,7 +182,7 @@ Drawing the three client-to-service edges individually produces a dense crossing
 diagram unreadable at page width, so the aggregation is deliberate. The Web Application's edges to the
 database and to the ShelfHelp API remain separate arrows.
 
-Source: [`mermaid/deployment.mmd`](mermaid/deployment.mmd).
+Source: `mermaid/deployment.mmd`.
 
 ---
 
@@ -192,7 +203,7 @@ The client hardware executes the compiled single-page application in browser mem
 
 **Communication protocols:**
 - **Static Hosting & CDN (Vercel):** Inbound download of static HTML/JS/CSS assets via **HTTPS (port 443)**.
-- **PostgreSQL Database:** Catalog search and row reads, plus direct writes to personal `cart_items` and `profiles` contact fields via **PostgREST over HTTPS** under Row Level Security.
+- **PostgreSQL Database:** Catalog search and row reads, plus direct writes to personal `cart_items`, `notifications` (`read_at` on own rows), and `profiles` contact fields via **PostgREST over HTTPS** under Row Level Security.
 - **ShelfHelp API:** Invocation of business mutation commands over **HTTPS POST** with the caller's JWT bearer token.
 - **Supabase Auth, Storage and Realtime** (one aggregated edge in the diagram, see §3):
   - **Supabase Auth:** Registration, OTP verification, and JWT session refresh over **HTTPS / PKCE**.
@@ -236,7 +247,7 @@ Executes stateless TypeScript functions on Deno V8 isolates that run in the same
 **Communication protocols:**
 - **Web Application:** Receives command requests over **HTTPS POST** with JWT bearer authentication.
 - **PostgreSQL Database:** Invokes transactional stored procedures via **PostgREST HTTPS** using the internal `service_role` key, within the same region.
-- **Supabase Auth:** Invokes GoTrue administrative endpoints over **HTTPS** (`service_role`) to create and manage user records. Listing or revoking active sessions (`UC-32`) uses the same endpoints but is a **PA5 target**; those functions are not deployed yet.
+- **Supabase Auth:** Invokes GoTrue administrative endpoints over **HTTPS** (`service_role`) to create and manage user records. Listing or revoking active sessions (`UC-32`) uses the same endpoints.
 - **PostgreSQL Database (`pg_cron`):** Receives background job trigger requests over **HTTPS** initiated by `pg_net` bearing the `x-job-secret` header.
 - **External Providers:** Dispatches outbound HTTPS/SMTP calls to Email, Payment, AI, and Bibliographic APIs.
 
@@ -249,7 +260,7 @@ Executes stateless TypeScript functions on Deno V8 isolates that run in the same
 | **Containers running** | PostgreSQL Database (`public` schema, `auth` schema, `storage` schema, extensions: `pg_trgm`, `unaccent`, `pgvector`, `pg_cron`, `pg_net`) |
 
 **Description and responsibilities:**
-The primary system of record. Enforces data integrity through foreign keys, check constraints, immutable ledger triggers, and deny-by-default Row Level Security (RLS). Houses all core transactional business logic inside security definer RPCs (`rpc_confirm_handover`, `rpc_process_return`, etc.), where mutation RPC execution is restricted strictly to `service_role`. Manages full-text search indexes (`tsvector`), vector similarity search (`pgvector` HNSW indexes), and scheduled crons via `pg_cron`.
+The primary system of record. Enforces data integrity through foreign keys, check constraints, immutable ledger triggers, and deny-by-default Row Level Security (RLS). Houses all core transactional business logic inside security definer RPCs (`rpc_confirm_handover_for_admin`, `rpc_process_return_with_evidence_for_admin`, etc.), where mutation RPC execution is restricted strictly to `service_role`. Manages full-text search indexes (`tsvector`), vector similarity search (`pgvector` HNSW indexes), and scheduled crons via `pg_cron`.
 
 **Communication protocols:**
 - **Web Application:** Serves client reads and personal profile/cart writes over **PostgREST HTTPS** filtered by RLS.
@@ -259,11 +270,11 @@ The primary system of record. Enforces data integrity through foreign keys, chec
 
 #### 4.3.3 Supabase Managed Platform Services
 
-These three services are managed platform services, not team-owned containers ([Container.md §2](../architecture/container/Container.md#2-relationship-to-the-level-1-view)): the team configures them through platform settings and policies but does not operate their internals, so they are drawn as external containers on the Supabase node.
+These three services are managed platform services, not team-owned containers (`Container.md` §2): the team configures them through platform settings and policies but does not operate their internals, so they are drawn as external containers on the Supabase node.
 
 | Service node | Platform technology | Service running | Description & Protocols |
 | :--- | :--- | :--- | :--- |
-| **Auth Service Node** | GoTrue (Go microservice) | **Supabase Auth** (managed) | Manages OTP verification, sign-in, password hashing (bcrypt), sign-in throttling, session records (`auth.sessions`), refresh-token revocation, and JWT rotation with embedded `app_metadata.role`. Student registration is validated by `register-student` and created through the Admin API; direct public sign-up must be disabled in local config and managed Auth settings. Exposes HTTPS endpoints to Web App and API (never exposing `auth.sessions` via PostgREST); dispatches verification emails via external SMTP. Admin-side session revocation (`UC-32`) is a PA5 target. |
+| **Auth Service Node** | GoTrue (Go microservice) | **Supabase Auth** (managed) | Manages OTP verification, sign-in, password hashing (bcrypt), sign-in throttling, session records (`auth.sessions`), refresh-token revocation, and JWT rotation with embedded `app_metadata.role`. Student registration is validated by `register-student` and created through the Admin API; direct public sign-up must be disabled in local config and managed Auth settings. Exposes HTTPS endpoints to Web App and API (never exposing `auth.sessions` via PostgREST); dispatches verification emails via external SMTP. Admin-side session revocation (`UC-32`) uses the same admin endpoints. |
 | **Storage Service Node** | Supabase Storage (Node.js service) | **Supabase Storage** (managed) | Multi-tenant object storage managing dedicated buckets (`covers`, `avatars`, `evidence`, `imports`); enforces bucket access policies (evidence photos are limited to 10 MiB) and serves private files via time-limited signed URLs over HTTPS. |
 | **Realtime Cluster Node** | Phoenix Channels (Elixir / BEAM) | **Supabase Realtime** (managed) | Ingests table mutations from PostgreSQL via **logical replication** and broadcasts filtered updates (book availability counters, notifications, loan changes) to active clients over **WebSocket (WSS)** under RLS. |
 
@@ -277,8 +288,23 @@ These three services are managed platform services, not team-owned containers ([
 | **Payment Provider (simulator)** | Cloud Web Service | **HTTPS REST API** | Simulates online student payments for membership purchases, fees, and fine settlements behind the `PaymentProvider` adapter interface. |
 | **AI Provider** | Cloud AI Infrastructure (Claude / OpenAI / Voyage) | **HTTPS REST API** | Generates semantic vector embeddings for book descriptions and powers grounded conversational recommendations with citations for the research assistant. |
 | **Bibliographic Metadata Services** | Public Web APIs (Google Books, Open Library) | **HTTPS REST API** | Public bibliographic endpoints queried by the cataloguing module during staff ISBN barcode lookup and batch import. |
-| **Cloudflare Turnstile** *(supporting service)* | Cloudflare edge, configured as the Supabase Auth CAPTCHA | **HTTPS** | Presents the CAPTCHA challenge on register, login, and password reset; Supabase Auth verifies the returned token server-side. Operational dependency rather than a business system ([System-Context §4.4](../architecture/system-context/System-Context.md#44-external-systems)). Not drawn in the deployment diagram. On failure the form shows a retry. |
+| **Cloudflare Turnstile** *(supporting service)* | Cloudflare edge, configured as the Supabase Auth CAPTCHA | **HTTPS** | Presents the CAPTCHA challenge on register, login, and password reset; Supabase Auth verifies the returned token server-side. Operational dependency rather than a business system (System-Context §4.4). Not drawn in the deployment diagram. On failure the form shows a retry. |
 | **Sentry** *(supporting service)* | Sentry cloud (SaaS) | **HTTPS** | Receives error and performance events from the browser bundle and from Edge Functions. Captures silently and never blocks a user workflow. Operational dependency rather than a business system; not drawn in the deployment diagram, in line with the Level 1 and Level 3 views. |
+
+### 4.5 Implementation status of the topology
+
+This table separates the nodes that are provisioned now from those the final PA5 release completes. Status refers to repository code through migration `0018` at the time of writing.
+
+| Node or integration | Provisioned now | Completed in the final release |
+| :--- | :--- | :--- |
+| **Static Hosting & Edge CDN** | Vercel project serving the built SPA bundle | — |
+| **Edge Functions Runtime Node** | Command handlers for the implemented feature families, colocated with the database in `ap-northeast-2` | Scheduled `job-*` handlers, session-management functions, provider adapters |
+| **Managed Database Server Node** | Schema, RLS, triggers, transactional RPCs, text search, `pg_cron` and `pg_net` extensions | Audit and event tables, acquisitions and settings tables, HNSW vector indexes |
+| **Auth Service Node** | Registration, OTP verification, sign-in/out, password reset, JWT issuance | Server-enforced sign-in lockout, selectable session persistence, session listing and revocation |
+| **Storage Service Node** | Buckets for covers, avatars, evidence and imports | Scheduled import cleanup, avatar ownership policies |
+| **Realtime Cluster Node** | Book-detail copy subscriptions | Notification and loan-item subscriptions |
+| **External services** | ISBN lookup against Google Books and Open Library; local payment simulation | Payment provider interface, AI provider integration, notification email outbox |
+| **Supporting services** | CI pipeline and static hosting | Cloudflare Turnstile and Sentry |
 
 ---
 
@@ -286,7 +312,7 @@ These three services are managed platform services, not team-owned containers ([
 
 **Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Phạm Võ Khang Duy | **Edited by:** Nguyễn Anh Khôi
 
-ShelfHelp defines four formal deployment environments, matching [Container.md §6](../architecture/container/Container.md#6-deployment-and-environments) and the three hosted Supabase projects (`dev`, `staging`, `prod`):
+ShelfHelp defines four formal deployment environments, matching `Container.md` §6 and the three hosted Supabase projects (`dev`, `staging`, `prod`):
 
 | Aspect | Local Development | Continuous Integration (CI) | Dev / Staging | Production |
 | :--- | :--- | :--- | :--- | :--- |
@@ -296,7 +322,7 @@ ShelfHelp defines four formal deployment environments, matching [Container.md §
 | **Database** | Docker container (`supabase/postgres:15`) on port 54322 | Ephemeral Docker container initialized via Supabase CLI | Separate Supabase project; migrations applied by CI | Managed PostgreSQL 15 on a paid plan for automated daily backups and PITR; schema reproducible from migrations |
 | **Auth & Storage** | Local GoTrue and Storage containers with in-memory mailer | Local Docker stack with test seed data | Staging Supabase project services | Supabase Auth and S3-compatible cloud storage |
 | **Mail Handling** | Inbucket local webmail catcher (`localhost:54324`) | Null / mock mail transporter | Staging SMTP credentials, test recipients only | Production SMTP relay (Resend / Brevo) |
-| **Testing Executed** | Vitest unit tests, manual exploratory testing | `npm run verify` (typecheck, spec-matrix), pgTAP database tests (`supabase test db`), Playwright E2E | Playwright against the preview deployment; migration dry run | Playwright smoke tests, production health checks |
+| **Testing Executed** | Manual exploratory testing (Vitest unit tests planned) | `npm run verify` (typecheck, spec-matrix), `npm run lint`, pgTAP database tests (`supabase test db`), Edge Function smoke test, Playwright E2E | Playwright against the preview deployment; migration dry run | Playwright smoke tests, production health checks |
 
 ---
 
@@ -313,7 +339,7 @@ ShelfHelp defines four formal deployment environments, matching [Container.md §
 
 - **Client exposure:** The frontend bundle receives only public parameters: the Supabase project URL (`VITE_SUPABASE_URL`) and the publishable/anonymous public key (`VITE_SUPABASE_PUBLISHABLE_KEY`).
 - **Secret confinement:** The database `service_role` key, external email SMTP credentials, and AI provider API keys exist exclusively within Supabase Edge Function environment secrets and GitHub Actions CI secrets. They are never transmitted to client browsers.
-- **Bootstrapping protection:** The browser obtains a Cloudflare Turnstile token for register, login, and password reset, and Supabase Auth verifies it server-side before creating a session ([System-Context §3.5](../architecture/system-context/System-Context.md#35-authentication-and-authorization)).
+- **Bootstrapping protection:** The browser obtains a Cloudflare Turnstile token for register, login, and password reset, and Supabase Auth verifies it server-side before creating a session (System-Context §3.5).
 - **Observability:** Runtime errors and performance events go to Sentry from both the browser and the Edge Functions, alongside Supabase platform logs and the append-only `audit_logs` and `job_runs` tables owned by the database and API containers.
 
 ### 6.3 Backup, recovery, and reliability
@@ -328,8 +354,8 @@ ShelfHelp defines four formal deployment environments, matching [Container.md §
 
 **Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Phạm Võ Khang Duy | **Edited by:** Nguyễn Anh Khôi
 
-- **Level 1 — System Context:** [System-Context.md](../architecture/system-context/System-Context.md)
-- **Level 2 — Container View:** [Container.md](../architecture/container/Container.md)
-- **Level 3 — Component View:** [Component.md](../architecture/component/Component.md)
+- **Level 1 — System Context:** `System-Context.md`
+- **Level 2 — Container View:** `Container.md`
+- **Level 3 — Component View:** `Component.md`
 
-Environment definitions are summarised in [Container.md §6](../architecture/container/Container.md#6-deployment-and-environments); §5 above gives the environment-specific infrastructure detail.
+Environment definitions are summarised in `Container.md` §6; §5 above gives the environment-specific infrastructure detail.

@@ -3,8 +3,6 @@
 
 **Version:** 2.1
 
-> **Implementation status:** This vision describes the intended product, not only delivered features. UC-02 application-enforced lockout and selectable persistence and UC-32 session management are PA5 targets; see [UC-02](UC02.md), [UC-32](UC32.md), and the [architecture status](../architecture/system-context/System-Context.md).
-
 ---
 
 ## Revision History

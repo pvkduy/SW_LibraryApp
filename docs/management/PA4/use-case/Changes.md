@@ -5,8 +5,6 @@
 **Date:** 28/Nov/2026
 **Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
 
-> **Implementation status:** This change record describes requirements, not completed implementation. UC-02 application-enforced lockout and selectable persistence and UC-32 session management remain PA5 targets; see [UC-02](UC02.md) and [UC-32](UC32.md).
-
 ---
 
 ## Revision History

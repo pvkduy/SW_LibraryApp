@@ -10,13 +10,13 @@ C4Container
     System_Boundary(shelfhelp, "ShelfHelp") {
         Container(webapp, "ShelfHelp Web Application", "React 19.3.1, Vite 8.3.5", "Reader Mode and Admin Mode single-page application. Renders catalog, cart, checkout, loans, circulation, money and reporting screens; guards routes by session, role and account status.")
         Container(api, "ShelfHelp API", "Supabase Edge Functions, Deno, TypeScript", "One stateless function per business command. Validates input, authenticates and authorizes the caller, runs shared domain rules and commits the command in one PostgreSQL transaction.")
-        ContainerDb(db, "PostgreSQL Database", "Supabase Postgres, team-owned schema, RLS and RPCs", "Stores application data. Vector search, audit tables and scheduled jobs are PA5 targets.")
+        ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15, managed; team-owned schema, RLS and RPCs", "System of record for accounts, catalog, loans, reservations, charges, receipts, audit and settings. Hosts full-text and vector search, and pg_cron schedules that call job functions.")
     }
 
     System_Boundary(supabase, "Supabase Platform (managed services)") {
         Container_Ext(storage, "Supabase Storage", "Managed object storage with bucket policies", "Covers, avatars, write-off evidence and CSV imports; access controlled by storage policies and signed URLs.")
         Container_Ext(auth, "Supabase Auth", "Managed identity service, JWT, PKCE", "Registration, email verification, sign-in/out, active sessions, password reset and JWT issuance with app_metadata.role.")
-        Container_Ext(realtime, "Supabase Realtime", "Managed change-data service", "Current: book-detail copies subscription. Notification and loan subscriptions are targets.")
+        Container_Ext(realtime, "Supabase Realtime", "Managed change-data service", "Pushes live availability counters, notifications and own loan-item changes to subscribed browsers under RLS.")
     }
 
     Rel(student, webapp, "Uses Reader Mode", "HTTPS")
@@ -25,12 +25,12 @@ C4Container
     Rel(webapp, api, "Invokes commands", "HTTPS, JWT")
     Rel(webapp, db, "Reads/writes own data", "PostgREST, RLS")
     Rel(api, db, "(API → db) Calls RPCs", "PostgREST, service role")
-    Rel(db, api, "(PA5 target) Cron job triggers", "pg_net")
+    Rel(db, api, "(db → API) Runs cron jobs", "pg_net")
 
     Rel(webapp, storage, "Uploads/downloads files", "HTTPS, signed URLs")
-    Rel(webapp, auth, "Signs in, verifies, resets password", "HTTPS, PKCE")
-    Rel(webapp, realtime, "Subscribes to copy changes", "WebSocket, RLS")
-    Rel(api, auth, "Verifies JWT; creates users", "HTTPS")
+    Rel(webapp, auth, "Signs up/in, resets password", "HTTPS, PKCE")
+    Rel(webapp, realtime, "Subscribes to changes", "WebSocket, RLS")
+    Rel(api, auth, "Verifies JWT, manages users & sessions", "HTTPS")
     Rel(realtime, db, "Reads change stream", "logical replication")
 
     UpdateRelStyle(student, webapp, $offsetX="10", $offsetY="-60")

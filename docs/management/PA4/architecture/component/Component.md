@@ -1,7 +1,7 @@
 # ShelfHelp: Smart Library Management System
 # PA4 Software Architecture — C4 Level 3 (Component Diagrams)
 
-**Version:** 1.7
+**Version:** 1.8
 
 ---
 
@@ -17,6 +17,7 @@
 | 27/Nov/2026 | 1.5 | Aligned Web App and API components, command map (`list-sessions`, `revoke-session`, `revoke-other-sessions`), and traceability (UC-01–UC-32) with PA4 UC-02 and UC-32 | Nguyễn Anh Khôi |
 | 28/Nov/2026 | 1.6 | Updated Edge Function count to 24, corrected command names (`send-reminders`, `submit-book-review`, `inventory-history`), and aligned §7.1/§8 with `src/supabase/functions/` | Nguyễn Anh Khôi |
 | 28/Nov/2026 | 1.7 | Clarified §4.1 and §5 — reader/admin code-splitting is a PA5 target; routes are currently separate trees but share one bundle | Nguyễn Anh Khôi |
+| 28/Nov/2026 | 1.8 | Removed inline implementation-status labels from prose and diagrams; the docs now present the PA1–PA5 target architecture uniformly, with status consolidated in §1.2 and §12 | Nguyễn Anh Khôi |
 
 ---
 
@@ -31,13 +32,14 @@
 - [5. Web Application — design notes](#5-web-application--design-notes)
 - [6. ShelfHelp API — component diagram](#6-shelfhelp-api--component-diagram)
   - [6.1 Request path (business commands)](#61-request-path-business-commands)
-  - [6.2 Scheduled-job path (pg_cron) — PA5 target](#62-scheduled-job-path-pg_cron--pa5-target)
+  - [6.2 Scheduled-job path (pg_cron)](#62-scheduled-job-path-pg_cron)
 - [7. ShelfHelp API — component catalogue](#7-shelfhelp-api--component-catalogue)
 - [8. ShelfHelp API — business command map](#8-shelfhelp-api--business-command-map)
 - [9. ShelfHelp API — interactions and design notes](#9-shelfhelp-api--interactions-and-design-notes)
 - [10. Shared code and cross-cutting concerns](#10-shared-code-and-cross-cutting-concerns)
 - [11. Traceability](#11-traceability)
-- [12. Deliberate omissions](#12-deliberate-omissions)
+- [12. Implementation status](#12-implementation-status)
+- [13. Deliberate omissions](#13-deliberate-omissions)
 
 ---
 
@@ -47,24 +49,24 @@
 
 ### 1.1 Purpose
 
-This document is the **C4 Level 3 (Component) view** of ShelfHelp. It opens the two core application containers from the [Container view](../container/Container.md) and shows the modules inside them, their responsibilities, and their collaborations.
+This document is the **C4 Level 3 (Component) view** of ShelfHelp. It opens the two core application containers from the Container view and shows the modules inside them, their responsibilities, and their collaborations.
 
 A *component* is a group of related code with a clear responsibility inside its container. Components are not separately deployed: they are compiled into the React bundle or the Edge Function bundle.
 
 ### 1.2 Scope
 
-The view covers the two core application containers and includes the planned PA5 architecture. The diagrams are target views: components and relationships labelled **PA5 target** are not implemented. Some diagram elements group related functions conceptually rather than corresponding to a single module. Current status below refers to repository code through migration `0018`, not a verified deployment.
+The view documents the components inside the two core application containers for the features from PA1 through PA4, and carries the forward design for PA5 alongside them. It shows the structure the system is designed to have at the end of PA5, so an element may appear here before the code that implements it exists. §12 lists what is implemented today and what the final release still adds, and the current code remains the authority on what runs. Some diagram elements group related functions conceptually rather than corresponding to a single module.
 
-The inline Mermaid diagrams and linked `.mmd` files are authoritative. Existing `.png` exports are historical and have not been regenerated for this reconciliation.
+The inline Mermaid diagrams and linked `.mmd` files are authoritative.
 
 ### 1.3 References
 
 | ID | Document | Use in this document |
 | :--- | :--- | :--- |
-| R1 | [`Container.md`](../container/Container.md) | Container responsibilities and runtime flows |
-| R2 | [`System-Context.md`](../system-context/System-Context.md) | Actors, external systems, and platform description |
-| R3 | [`SHELFHELP_FULLSPEC.md`](../../../../../src/speckit/specs/SHELFHELP_FULLSPEC.md) | Screens, functions, RPCs, and data model |
-| R4 | [`Use-Case-Diagrams.md`](../../use-case/Use-Case-Diagrams.md) | UC-01 to UC-32 |
+| R1 | `Container.md` | Container responsibilities and runtime flows |
+| R2 | `System-Context.md` | Actors, external systems, and platform description |
+| R3 | `SHELFHELP_FULLSPEC.md` | Screens, functions, RPCs, and data model |
+| R4 | Use-Case-Diagrams.md | UC-01 to UC-32 |
 
 ---
 
@@ -72,7 +74,7 @@ The inline Mermaid diagrams and linked `.mmd` files are authoritative. Existing 
 
 **Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
 
-The Web Application and the ShelfHelp API carry most implemented product behaviour. The Web Application separates Reader and Admin experiences; the API contains business handlers. Scheduled jobs and a generic provider adapter layer are planned.
+The Web Application and the ShelfHelp API carry almost all product behaviour. The Web Application is where Reader and Admin experiences differ; the API is where every command, job, and provider adapter runs.
 
 PostgreSQL is not decomposed here because its components are tables, constraints, indexes, policies, triggers, and RPCs, which are documented in the specification and migrations. Auth, Storage, and
 Realtime are managed services with no team-owned internal modules.
@@ -85,9 +87,13 @@ Realtime are managed services with no team-owned internal modules.
 
 The view is drawn as two panels, one per operating mode. Reader Mode and Admin Mode share the same
 App Shell, the same Data Access & Realtime Client, and the same backend services, so each panel shows
-the implemented feature groups alongside explicitly marked targets. The data-access box groups direct `supabase-js` calls and the API helper conceptually; it is not a single gateway used by every feature.
+only the feature components that mode actually mounts. Read together, the two panels cover every
+component and relationship of the container. The data-access box groups direct `supabase-js` calls and the API helper conceptually; it is not a single gateway used by every feature.
 
 ### 3.1 Reader Mode
+
+<details>
+<summary>Mermaid source — Reader Mode</summary>
 
 ```mermaid
 C4Component
@@ -96,23 +102,23 @@ C4Component
     Person(student, "Student (Reader)", "Uses Reader Mode on a phone or laptop.")
 
     Container_Boundary(spa, "ShelfHelp Web Application") {
-        Component(authProfile, "Authentication & Profile", "React", "Registration, verification, login/logout and reset. Active sessions are a PA5 target.")
-        Component(appShell, "App Shell & Access Guard", "React state, browser history", "Selects Reader or Admin shell and checks session, role and account status.")
-        Component(catalogDiscovery, "Catalog & Discovery", "React", "Catalog, book detail, barcode scan, reviews and wishlist.")
+        Component(authProfile, "Authentication & Profile", "React", "Registration, OTP verification, login/logout, active sessions, password reset, profile editing and avatar cropping.")
+        Component(appShell, "App Shell & Access Guard", "React state, browser history", "Bootstraps the application, selects the Reader or Admin shell and enforces session, role and account-status guards.")
+        Component(catalogDiscovery, "Catalog & Discovery", "React", "Home, search with filters and sorting, book detail, barcode scan, reviews and wishlist.")
 
         Component(cartCheckout, "Cart & Checkout", "React", "Borrowing cart, checkout, pickup window and simulated payment.")
-        Component(dataAccess, "Data Access & Realtime Client", "supabase-js", "Direct PostgREST reads, copies subscription, Storage and Edge Function calls.")
-        Component(myLibrary, "My Library", "React", "Loans, renewals, reservations and charges. Membership upgrade is a PA5 target.")
+        Component(dataAccess, "Data Access & Realtime Client", "supabase-js", "PostgREST reads, Realtime subscriptions, Storage uploads and Edge Function invocation with the JWT and standard error envelope.")
+        Component(myLibrary, "My Library", "React", "Loans, renewals, reservations, charges and membership.")
 
-        Component(notificationsAssistant, "Notifications & Assistant", "React", "Reservations; notifications, suggestions and assistant are target capabilities.")
+        Component(notificationsAssistant, "Notifications & Assistant", "React, Realtime", "Notifications, suggestions and the grounded AI assistant.")
     }
 
     Boundary(backend, "Backend services", "SUPABASE") {
-        Container(api, "ShelfHelp API", "Supabase Edge Functions", "Business commands; scheduled jobs are planned.")
+        Container(api, "ShelfHelp API", "Supabase Edge Functions", "Business commands and scheduled jobs.")
         ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "Catalog and own-row data exposed through PostgREST under RLS.")
         Container_Ext(auth, "Supabase Auth", "Managed identity service", "Sessions, JWT and credential recovery.")
         Container_Ext(storage, "Supabase Storage", "Managed object storage", "Covers, avatars, evidence and imports.")
-        Container_Ext(realtime, "Supabase Realtime", "Managed change-data service", "Book-detail copies subscription.")
+        Container_Ext(realtime, "Supabase Realtime", "Managed change-data service", "Live counters, notifications and own loan changes.")
     }
 
     Rel(student, appShell, "Uses Reader Mode", "HTTPS")
@@ -131,7 +137,7 @@ C4Component
     Rel(authProfile, dataAccess, "Authenticates")
 
     Rel(dataAccess, auth, "Signs in/verifies OTP", "HTTPS, PKCE")
-    Rel(dataAccess, db, "Reads; permitted own-row writes", "PostgREST, RLS")
+    Rel(dataAccess, db, "Reads; writes own profile/cart", "PostgREST, RLS")
     Rel(dataAccess, api, "Invokes commands", "HTTPS, JWT")
     Rel(dataAccess, storage, "(Data → Supabase Storage) <br/>Files", "HTTPS, signed URLs")
     Rel(dataAccess, realtime, "Subscribes", "WebSocket, RLS")
@@ -159,11 +165,17 @@ C4Component
 
     UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
 ```
+</details>
+
+![Diagram](mermaid/component-webapp-reader.png)
 
 
 The data-access box is a conceptual grouping, not a mandatory central gateway.
 
 ### 3.2 Admin Mode
+
+<details>
+<summary>Mermaid source — Admin Mode</summary>
 
 ```mermaid
 C4Component
@@ -173,21 +185,22 @@ C4Component
 
     Container_Boundary(spa, "ShelfHelp Web Application") {
         Component(adminCirculation, "Admin Circulation & Queues", "React", "Desk handover, returns, due/overdue groups, reservation queues and reminders.")
-        Component(appShell, "App Shell & Access Guard", "React state, browser history", "Selects Reader or Admin shell and checks session, role and account status.")
+        Component(appShell, "App Shell & Access Guard", "React state, browser history", "Bootstraps the application, selects the Reader or Admin shell and enforces session, role and account-status guards.")
         Component(adminCatalog, "Admin Catalog & Inventory", "React", "Books, copies, ISBN lookup, bulk import, inventory history and write-off slips.")
 
-        Component(adminMoney, "Admin Money & Reporting", "React", "Financial ledger and counter payments; reporting and reversals are targets.")
-        Component(dataAccess, "Data Access & Realtime Client", "supabase-js", "Direct PostgREST reads, Storage and Edge Function calls.")
-        Component(adminAcquisitions, "Admin Acquisitions & Students (PA5 target)", "React", "Suggestion review, acquisition batches, shipment receipt and student accounts.")
+        Component(adminMoney, "Admin Money & Reporting", "React", "Receipts and reversals, dashboard KPIs and report exports.")
+        Component(dataAccess, "Data Access & Realtime Client", "supabase-js", "PostgREST reads, Realtime subscriptions, Storage uploads and Edge Function invocation with the JWT and standard error envelope.")
+        Component(adminAcquisitions, "Admin Acquisitions & Students", "React", "Suggestion review, acquisition batches, shipment receipt and student accounts.")
 
-        Component(authProfile, "Authentication & Profile", "React", "Sign-in/out and password reset; active sessions are a PA5 target.")
+        Component(authProfile, "Authentication & Profile", "React", "Sign-in/out, password reset, personal profile and own active sessions (/admin/profile/sessions).")
     }
 
     Boundary(backend, "Backend services", "SUPABASE") {
-        Container(api, "ShelfHelp API", "Supabase Edge Functions", "Business commands; scheduled jobs are planned.")
+        Container(api, "ShelfHelp API", "Supabase Edge Functions", "Business commands and scheduled jobs.")
         ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "Catalog and own-row data exposed through PostgREST under RLS.")
         Container_Ext(auth, "Supabase Auth", "Managed identity service", "Sessions, JWT and credential recovery.")
         Container_Ext(storage, "Supabase Storage", "Managed object storage", "Covers, avatars, evidence and imports.")
+        Container_Ext(realtime, "Supabase Realtime", "Managed change-data service", "Live counters, notifications and own loan changes.")
     }
 
     Rel(librarian, appShell, "Uses Admin Mode", "HTTPS")
@@ -196,7 +209,7 @@ C4Component
     Rel(appShell, adminCirculation, "Renders")
     Rel(appShell, adminCatalog, "Renders")
     Rel(appShell, adminMoney, "Renders")
-    Rel(appShell, adminAcquisitions, "Target")
+    Rel(appShell, adminAcquisitions, "Renders")
     Rel(appShell, authProfile, "Routes auth/session flows")
 
     Rel(adminCirculation, dataAccess, "Queries/commands")
@@ -206,9 +219,10 @@ C4Component
     Rel(authProfile, dataAccess, "Auth & sessions")
 
     Rel(dataAccess, auth, "Verifies session", "HTTPS, PKCE")
-    Rel(dataAccess, db, "Reads; updates own notification state", "PostgREST, RLS")
+    Rel(dataAccess, db, "Reads; writes own profile", "PostgREST, RLS")
     Rel(dataAccess, api, "Invokes commands", "HTTPS, JWT")
     Rel(dataAccess, storage, "(Data → Storage) <br/>Files", "HTTPS, signed URLs")
+    Rel(dataAccess, realtime, "Subscribes", "WebSocket, RLS")
 
     UpdateRelStyle(librarian, appShell, $offsetX="-20", $offsetY="-50")
 
@@ -229,17 +243,18 @@ C4Component
     UpdateRelStyle(dataAccess, db, $offsetX="20", $offsetY="-30")
     UpdateRelStyle(dataAccess, api, $offsetX="-200", $offsetY="160")
     UpdateRelStyle(dataAccess, storage, $offsetX="20", $offsetY="300")
+    UpdateRelStyle(dataAccess, realtime, $offsetX="60", $offsetY="150")
 
     UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
 ```
+</details>
 
+![Diagram](mermaid/component-webapp-admin.png)
 
-Acquisitions and student-management screens remain targets or placeholders.
+All feature components use the shared presentation kit and the shared validation contracts. These are cross-cutting libraries rather than collaborating components, so they are omitted from the diagram.
 
-Some features reuse presentation components and shared helpers; a universal shared presentation kit and validation contract are not implemented.
-
-Source: [`mermaid/component-webapp-reader.mmd`](mermaid/component-webapp-reader.mmd) and
-[`mermaid/component-webapp-admin.mmd`](mermaid/component-webapp-admin.mmd).
+Source: `mermaid/component-webapp-reader.mmd` and
+`mermaid/component-webapp-admin.mmd`.
 
 ---
 
@@ -253,20 +268,20 @@ The **Panel** column names the diagram panel in which each component appears: *R
 | Component | Panel | Responsibilities & services | Relationships & collaborations | Key source | Main use cases |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **App Shell & Access Guard** | Both | Bootstraps the application; inspects authenticated user session and role (`student` vs `admin`) to render Reader Mode or Admin Mode; enforces status checks (`pending_verification`, `restricted`, `inactive`). | Mounts and conditionally routes to **Authentication & Profile** and feature sub-shells (**Catalog & Discovery**, **Cart & Checkout**, **My Library**, **Admin Circulation**, etc.); subscribes to auth state from **Data Access Client**. | `src/frontend/src/app/`, feature layouts | All |
-| **Authentication & Profile** | Both | Registration, verification, login/logout and password reset. **PA5 target:** server lockout, selectable session persistence and active-session inventory and revocation. | Uses Supabase Auth and the implemented `register-student` Edge Function; session-management endpoints are targets. | `src/frontend/src/features/auth/` | UC-01–UC-04, UC-32 |
+| **Authentication & Profile** | Both | Self-registration and email OTP verification (students), password login/logout, password reset, personal profile and avatar cropping. UC-02 server lockout/countdown and optional *"Keep me signed in"* refresh-token persistence (never storing passwords), plus UC-32 own active-session inventory and remote revocation (`/profile/sessions`, `/admin/profile/sessions`). | Rendered by **App Shell** in both modes; invokes auth and avatar actions via **Data Access Client** to **Supabase Auth** and **Storage**. For session management it calls **ShelfHelp API** for `list-sessions`, `revoke-session`, and `revoke-other-sessions`. | `src/frontend/src/features/auth/` | UC-01–UC-04, UC-32 |
 | **Catalog & Discovery** | Reader | Catalog browsing, diacritic-insensitive search, genre/department filtering, book detail view, ISBN camera barcode scanning, reading wishlist, and community review display. | Rendered by **App Shell**; queries catalog and book reviews via **Data Access Client** (PostgREST); issues wishlist mutations via API (`toggle-wishlist`). | `src/frontend/src/features/reader/` | UC-06–UC-08, UC-15 |
-| **Cart & Checkout** | Reader | Cart persistence, checkout, pickup and simulated payment. | Uses `checkout-cart` and `complete-simulated-payment`. | `src/frontend/src/features/reader/catalog/` | UC-09, UC-10 |
-| **My Library** | Reader | Loans, renewals, reservations, reviews and fines. Membership upgrade is a target. | Uses `renew-loan`, `cancel-reservation`, `pay-reader-charges`, and `submit-book-review`. | `src/frontend/src/features/reader/` | UC-05, UC-11–UC-15, UC-18 |
-| **Notifications & Assistant** | Reader | Reservation screen exists; suggestion submission and AI assistant are targets. | No current reader notification Realtime subscription or `chat-send` handler. | `src/frontend/src/features/reader/reservations/` | UC-16, UC-17, UC-28 |
+| **Cart & Checkout** | Reader | Borrowing cart persistence in `cart_items` table (own rows under RLS), copy availability check, checkout review, pickup window confirmation (48 hours), and simulated payment for fees. | Rendered by **App Shell**; sends checkout and payment commands through **Data Access Client** to ShelfHelp API functions (`checkout-cart`, `complete-simulated-payment`, and `create-payment` as planned). | `src/frontend/src/features/reader/` | UC-09, UC-10 |
+| **My Library** | Reader | Active loans display, self-service loan renewal, reservation queue tracking/cancellation, outstanding fines/charges ledger, and membership tier upgrade. | Rendered by **App Shell**; queries own rows and invokes loan renewal, reservation cancellation, and fee payment via **Data Access Client** to API (`cancel-reservation`, `renew-loan`). | `src/frontend/src/features/reader/` | UC-05, UC-11–UC-14, UC-18 |
+| **Notifications & Assistant** | Reader | In-app notification centre, book acquisition suggestions submission, and grounded conversational AI assistant with citation links. | Rendered by **App Shell**; listens to real-time notification events and sends suggestion/assistant requests via **Data Access Client** to API (`chat-send`, `submit-suggestion`). | `src/frontend/src/features/reader/` | UC-16, UC-17, UC-28 |
 | **Admin Circulation & Queues** | Admin | Circulation desk pickup handover, book returns with condition grading and damage tier fee assessment, due/overdue loans monitoring, and reservation queue management. | Rendered by **App Shell**; sends physical circulation commands via **Data Access Client** to ShelfHelp API (`handover-items`, `return-loan`, `record-counter-payment`). | `src/frontend/src/features/admin/circulation/`, `queues/` | UC-20, UC-21, UC-29, UC-30 |
 | **Admin Catalog & Inventory** | Admin | Book cataloguing, physical copy barcode generation and tracking, bulk CSV import, inventory condition history, and write-off slip creation with photo evidence. | Rendered by **App Shell**; uploads evidence to Storage and issues catalog management commands via **Data Access Client** to API and PostgREST. | `src/frontend/src/features/admin/` | UC-07, UC-19, UC-22, UC-26 |
-| **Admin Money & Reporting** | Admin | Financial ledger and counter payments exist; reversals and analytics/reporting are targets. | Uses direct queries and `record-counter-payment`. | `src/frontend/src/features/admin/ledger/`, `circulation/` | UC-13, UC-23, UC-27 |
-| **Admin Acquisitions & Students** | Admin | Planned; corresponding Admin sections are placeholders. | Future API integration. | `src/frontend/src/app/App.jsx` | UC-24, UC-25, UC-31 |
-| **Data Access & Realtime Client** | Both | Conceptual grouping of `supabase-js`, direct queries and the API helper; book detail subscribes to copy changes. TanStack Query is planned. | Features use these facilities directly; there is no universal central gateway. | `src/frontend/src/lib/` | All |
+| **Admin Money & Reporting** | Admin | Financial ledger inspection, receipt generation, counter payments recording, payment reversals, KPI summary cards, and Excel/CSV report exports. | Rendered by **App Shell**; invokes counter payment and reversal commands, and fetches aggregate statistics via **Data Access Client** (`get_dashboard_kpis`). | `src/frontend/src/features/admin/ledger/` | UC-13, UC-23, UC-27 |
+| **Admin Acquisitions & Students** | Admin | Student suggestion triage, batch purchasing order management, shipment check-in, student account status controls, and debt hold management. | Rendered by **App Shell**; invokes batch lifecycle and student account modification commands via **Data Access Client** to ShelfHelp API. | `src/frontend/src/features/admin/` | UC-24, UC-25, UC-31 |
+| **Data Access & Realtime Client** | Both | Gateway wrapping `supabase-js`; handles session-aware PostgREST reads, Realtime change subscriptions, Storage file transfers, and HTTPS Edge Function command invocations with standard error envelopes. | Collaborates with all feature components as their interface to external containers: **PostgreSQL Database** (PostgREST under RLS), **ShelfHelp API** (commands), **Supabase Auth**, **Supabase Storage**, and **Supabase Realtime**. | `src/frontend/src/lib/` | All |
 
 ### 4.1 Reader and Admin Mode in one container
 
-Reader and Admin Mode share the App Shell, the Data Access client, and the shared contracts. Their routes are structured as separate route trees, with route-level `React.lazy` / `Suspense` code-splitting planned for PA5 so that admin code is never downloaded by students. The App Shell chooses the mode from the authenticated profile:
+Reader and Admin Mode share the App Shell, the Data Access client, and the shared contracts. Their routes are structured as separate route trees, with route-level `React.lazy` / `Suspense` code-splitting so that admin code is never downloaded by students. The App Shell chooses the mode from the authenticated profile:
 
 - `role = student` → Reader shell and reader routes;
 - `role = admin` → Admin shell and admin routes;
@@ -281,12 +296,14 @@ Route guards improve the experience; RLS and Edge Functions enforce the actual r
 
 **Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
 
-- **Feature isolation.** Features are grouped by domain, but some import other feature components or icons directly.
-- **Server state.** TanStack Query is planned to own server state; until it is added, component state
-  and direct Supabase queries own transient and server data. This change should avoid stale loan or
-  availability data after implementation.
-- **Validation.** Client validation supports usability; server handlers and SQL validate independently. A universal shared schema is a target.
-- **Bundles.** Route-level `React.lazy` / `Suspense` splitting is planned for PA5; until then, reader and admin routes are separate route trees but ship in the same bundle.
+- **Feature isolation.** Features do not import each other's internals. Shared behaviour moves to
+  `@shelfhelp/shared` or a shared presentation component.
+- **Server state.** Server state is owned by the data-access layer so that loan and availability data
+  do not go stale between screens.
+- **Validation.** Client validation is a usability feature; the same schema and domain rules run on the
+  server.
+- **Bundles.** Route-level `React.lazy` / `Suspense` splits reader and admin code, so each mode ships
+  only the routes it mounts.
 - **Failure.** The API client preserves `reason`, `message`, and `details`, so screens can show a
   specific recovery action.
 
@@ -296,28 +313,34 @@ Route guards improve the experience; RLS and Edge Functions enforce the actual r
 
 **Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
 
-The view is drawn as two panels. The request panel combines current handlers and conceptual or planned components; the scheduled-job panel is entirely a PA5 target. There is currently no central RPC gateway, general adapter layer, job tracker, or scheduled job handler.
+The view is drawn as two panels, one per entry path. Business commands arrive from the Web Application
+over HTTPS; scheduled jobs arrive from `pg_cron` inside PostgreSQL through `pg_net`. Both paths enter
+the same handlers and commit through the same RPC gateway, so the two panels share the rule engine, the
+gateway, and the job tracker.
 
 ### 6.1 Request path (business commands)
+
+<details>
+<summary>Mermaid source — Request path</summary>
 
 ```mermaid
 C4Component
     title Component diagram — ShelfHelp API: request path (business commands)
     Container_Ext(auth, "Supabase Auth", "Managed identity service", "JWT verification, user identity and session management.")
     Container(webapp, "ShelfHelp Web Application", "React SPA", "Calls business commands.")
-    ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "System of record, RLS, triggers and atomic RPC transactions; general audit logging is planned.")
+    ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "System of record, RLS, triggers, atomic RPC transactions and audit logging.")
 
     Container_Boundary(api, "ShelfHelp API") {
-        Component(authGuard, "Auth & Access Guard", "_shared/auth.ts", "Verifies the caller and checks role and profile status for protected handlers.")
-        Component(commandGateway, "RPC invocation", "PostgREST, SQL RPCs", "Handlers call transactional RPCs directly; a general retry gateway is a target.")
-        Component(jobLogger, "Job Tracking & Error Logger (PA5 target)", "job_runs, logger", "Planned operational monitoring.")
+        Component(authGuard, "Auth & Access Guard", "_shared/auth.ts", "Verifies the JWT, reads app_metadata.role and reloads profile status; enforces role, account status, debt hold, membership and reservation ban.")
+        Component(commandGateway, "Command Execution & RPC Gateway", "SQL RPCs, idempotency keys", "Executes each command as one PostgreSQL RPC/transaction (writing state changes and audit_logs atomically), retries deadlocks, and returns cached idempotency responses.")
+        Component(jobLogger, "Job Tracking & Error Logger", "job_runs, logger", "Captures unhandled exceptions for operational monitoring.")
 
-        Component(validation, "Request Validation", "Handler-specific validation", "Handlers parse and validate requests; some shared helpers exist.")
-        Component(commandHandlers, "Business Command Handlers", "One function folder per command", "Implemented account, catalog, inventory, borrowing, money, circulation, write-off and reminder handlers.")
+        Component(validation, "Request Validation", "Shared validation", "Parses and validates every request body before any database work begins.")
+        Component(commandHandlers, "Business Command Handlers", "One function folder per command", "Account, catalog, inventory, borrowing, money, circulation, write-off, acquisition, notification and assistant commands; thin orchestration only.")
         Component(httpHelpers, "HTTP & CORS Helpers", "_shared/http.ts", "Accept POST requests, handle CORS and OPTIONS, and map results to JSON or the standard error envelope.")
 
-        Component(domainRules, "Shared Helpers", "@shelfhelp/shared", "Types, reason codes, auth and catalog helpers; business rules also live in SQL.")
-        Component(adapters, "Integration Adapters (PA5 target)", "Provider interfaces", "Planned adapters; current ISBN lookup calls providers directly.")
+        Component(domainRules, "Shared Domain Rules", "@shelfhelp/shared", "Pure entitlements, gating, fines, reservation promotion, lost-book and charge rules.")
+        Component(adapters, "Integration Adapters", "Email, payment, embedding, LLM and ISBN adapters", "Isolates third-party protocols and applies fallbacks such as manual ISBN entry and keyword assistant results.")
     }
 
     Boundary(providers, "Third-party providers", "EXTERNAL") {
@@ -334,19 +357,19 @@ C4Component
     Rel(commandHandlers, httpHelpers, "Uses")
     Rel(commandHandlers, domainRules, "Business rules")
     Rel(commandHandlers, commandGateway, "One RPC transaction")
-    Rel(commandHandlers, adapters, "Target provider adapters")
-    Rel(commandHandlers, jobLogger, "Target")
+    Rel(commandHandlers, adapters, "Provider calls")
+    Rel(commandHandlers, jobLogger, "Logs unhandled errors")
 
     Rel(authGuard, auth, "Verifies JWT", "HTTPS")
-    Rel(commandHandlers, auth, "Registers users", "HTTPS, service role")
+    Rel(commandHandlers, auth, "Manages users & sessions", "HTTPS, service role")
     Rel(authGuard, db, "Reloads profiles.status", "PostgREST HTTPS, service role")
-    Rel(commandGateway, db, "Executes RPC", "PostgREST HTTPS, service role")
-    Rel(jobLogger, db, "Target error records", "PostgREST HTTPS, service role")
+    Rel(commandGateway, db, "Executes RPC (commits state & audit)", "PostgREST HTTPS, service role")
+    Rel(jobLogger, db, "Writes error records", "PostgREST HTTPS, service role")
 
-    Rel(adapters, email, "Target email", "HTTPS/SMTP")
-    Rel(adapters, payment, "Target payment provider", "HTTPS")
-    Rel(adapters, ai, "Target AI", "HTTPS")
-    Rel(commandHandlers, isbn, "Direct ISBN lookup", "HTTPS")
+    Rel(adapters, email, "Email", "HTTPS/SMTP")
+    Rel(adapters, payment, "Payments", "HTTPS")
+    Rel(adapters, ai, "AI", "HTTPS")
+    Rel(adapters, isbn, "ISBN", "HTTPS")
 
     UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
     UpdateRelStyle(commandHandlers, authGuard, $offsetX="0", $offsetY="-30")
@@ -367,17 +390,22 @@ C4Component
     UpdateRelStyle(adapters, email, $offsetX="-140", $offsetY="50")
     UpdateRelStyle(adapters, payment, $offsetX="40", $offsetY="0")
     UpdateRelStyle(adapters, ai, $offsetX="10", $offsetY="0")
-    UpdateRelStyle(commandHandlers, isbn, $offsetX="0", $offsetY="0")
+    UpdateRelStyle(adapters, isbn, $offsetX="0", $offsetY="0")
 ```
+</details>
 
+![Diagram](mermaid/component-api-request.png)
 
-The RPC box represents direct handler calls, not a separately implemented gateway.
+The RPC box represents the handler's own call to a transactional stored procedure.
 
-### 6.2 Scheduled-job path (pg_cron) — PA5 target
+### 6.2 Scheduled-job path (pg_cron)
+
+<details>
+<summary>Mermaid source — Scheduled-job path</summary>
 
 ```mermaid
 C4Component
-    title PA5 target — ShelfHelp API scheduled-job path (pg_cron)
+    title Component diagram — ShelfHelp API: scheduled-job path (pg_cron)
     ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "System of record, RLS, triggers, atomic RPC transactions and audit logging.")
 
     Container_Boundary(api, "ShelfHelp API") {
@@ -422,12 +450,15 @@ C4Component
 
     UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
 ```
+</details>
+
+![Diagram](mermaid/component-api-scheduled-job.png)
 
 
-This entire scheduled-job diagram is a target; extensions exist, but no corresponding schedules or `job-*` handlers are implemented. The current `_shared/` directory contains auth, HTTP and inventory RPC helpers.
+This panel shows the scheduled-job entry path. `pg_cron` inside PostgreSQL calls the job handlers through `pg_net` with a secret header.
 
-Source: [`mermaid/component-api-request.mmd`](mermaid/component-api-request.mmd) and
-[`mermaid/component-api-scheduled-job.mmd`](mermaid/component-api-scheduled-job.mmd).
+Source: `mermaid/component-api-request.mmd` and
+`mermaid/component-api-scheduled-job.mmd`.
 
 ---
 
@@ -440,31 +471,29 @@ The **Panel** column names the diagram panel in which each component appears: *R
 
 | Component | Panel | Responsibilities & services | Relationships & collaborations | Key source |
 | :--- | :--- | :--- | :--- | :--- |
-| **HTTP & CORS Helpers** | Request | Handle CORS and format JSON/error responses. | Used by business handlers. | `src/supabase/functions/_shared/http.ts` |
-| **Auth & Access Guard** | Request | Verify caller, compare both role values, and reload profile status; allowed statuses depend on the handler. Additional business gates are enforced elsewhere. | Used by protected handlers; registration is a separate flow. | `src/supabase/functions/_shared/auth.ts` |
-| **Request Validation** | Request | Payload validation is performed by individual handlers, with some shared helpers. | Not a universal shared schema or a guarantee of validation before every database read. | `src/supabase/functions/<command>/index.ts` |
-| **Business Command Handlers** | Request | Implement account registration, catalog, circulation, reader mutations, inventory and reminders. | Protected handlers call RPCs directly; `register-student` calls Auth Admin API and `lookup-isbn` calls metadata providers directly. | `src/supabase/functions/<command>/index.ts` |
-| **Scheduled Job Handlers** | Scheduled job | **PA5 target:** cron-invoked batch handlers and job tracking. | No `job-*` functions or schedules are currently implemented. | Planned |
-| **Shared Helpers** | Request | Types, reason codes, auth and catalog helpers; transactional business rules are also in SQL. | No complete shared fines/entitlements engine or demonstrated shared-vector parity suite. | `src/shared/src/` |
-| **RPC invocation** | Request | Handlers invoke transactional RPCs directly with `service_role`; checkout has an optional idempotency key. | General automatic deadlock retry and exactly-once gateway are targets. | `src/supabase/functions/`, `src/supabase/migrations/` |
-| **Integration Adapters** | Both | **PA5 target:** common provider interfaces. | Current ISBN lookup uses direct HTTP and payment is simulated locally. | `src/supabase/functions/lookup-isbn/` |
-| **Job Tracking & Error Logger** | Both | **PA5 target:** `job_runs` and Sentry integration. | Not implemented as the component shown. | Planned |
+| **HTTP & CORS Helpers** | Both | Accept incoming HTTP POST requests, handle preflight OPTIONS, inject standard CORS headers, format success JSON responses, and serialize standard error envelopes (`{ error: { reason, message, details } }`). | Invoked by **Business Command Handlers** and **Scheduled Job Handlers** at the start and completion of every function execution. | `src/supabase/functions/_shared/http.ts` |
+| **Auth & Access Guard** | Request | Extract and verify JWT bearer tokens; look up caller role in `app_metadata.role`; query and reload current `profiles.status`; enforce status gates (`active`, `restricted`, `inactive`), debt holds, active membership requirements, and reservation suspension bans. | Used by **Business Command Handlers**; communicates with **Supabase Auth** for token verification and queries **PostgreSQL Database** for real-time profile status. | `src/supabase/functions/_shared/auth.ts` |
+| **Request Validation** | Request | Parse and strictly validate incoming request payloads with shared domain validation and type guards before any database connection or domain rule execution occurs. | Used by **Business Command Handlers**; shares validation contracts with the Web Application from `@shelfhelp/shared`. | `src/shared/src/` schemas |
+| **Business Command Handlers** | Request | Serverless function endpoints for user actions. Thin orchestration: invokes HTTP/Auth/Validation helpers, applies shared domain calculations, calls **Supabase Auth** Admin API (`service_role`) for user commands (`register-student`, `set-account-inactive`, `list-sessions`, `revoke-session`, `revoke-other-sessions`), triggers third-party adapters when required, and executes business mutations via the RPC gateway. | Invoked by **ShelfHelp Web Application** via HTTPS; collaborates with **HTTP Helpers**, **Auth Guard**, **Validation**, **Shared Domain Rules**, **Supabase Auth**, **Integration Adapters**, **Command Execution & RPC Gateway**, and **Job Tracking & Error Logger**. | `src/supabase/functions/<command>/index.ts` |
+| **Scheduled Job Handlers** | Scheduled job | Serverless endpoints invoked by scheduled background crons (`pg_cron`) for batch tasks: overdue loan fines assessment, hold reservation expiry, unpaid checkout cleanup, membership renewal notices, and email outbox dispatch. | Invoked by **PostgreSQL Database** (`pg_net` with `x-job-secret` header, bypassing user JWT Auth Guard); collaborates with **HTTP Helpers**, **Shared Domain Rules**, **Command Gateway**, **Adapters**, and **Job Tracking & Error Logger**. | `src/supabase/functions/job-*/index.ts` |
+| **Shared Domain Rules** | Both | Pure business logic calculations: borrowing entitlements, gating policies, fine rules, and damage tiers. Reused across frontend preview, Edge Function validation, and mirrored in transactional SQL RPCs validated by parity tests. | Called by **Business Command Handlers** and **Scheduled Job Handlers**; shared between browser and Edge Functions. | `src/shared/src/domain/` |
+| **Command Execution & RPC Gateway** | Both | Manages invocation of PostgreSQL transactional stored procedures (RPCs); checks and enforces idempotency keys; retries serialization failures and deadlocks up to three times; ensures all state changes, `copy_events`, and `audit_logs` commit atomically within one database transaction. | Invoked by **Command Handlers** and **Job Handlers**; communicates with **PostgreSQL Database** via PostgREST HTTPS using `service_role` credentials. | `src/supabase/migrations/` RPCs |
+| **Integration Adapters** | Both | Encapsulates third-party external integrations behind stable, testable interfaces: `EmailProvider` (SMTP/Resend), `PaymentProvider` (simulated gateway), `Embedder` and `LlmClient` (AI Provider), and `IsbnLookup` (Google Books / Open Library); provides fallback mechanisms such as keyword search when the AI path fails. | Called by **Command Handlers** and **Job Handlers**; communicates over HTTPS / SMTP with **Email Provider**, **Payment Provider**, **AI Provider**, and **Bibliographic Services**. | `_shared/adapters/` |
+| **Job Tracking & Error Logger** | Both | Persists background job execution status, elapsed runtimes, and failure diagnostics into `job_runs`; captures unexpected runtime exceptions across commands and jobs for operational monitoring (Sentry). | Invoked by **Job Handlers** and **Command Handlers**; writes job history to **PostgreSQL Database** via PostgREST HTTPS; forwards unhandled runtime errors to Sentry. | `job_runs`, logger |
 
 ### 7.1 Existing transactional procedures
 
 | RPC | Purpose |
 | :--- | :--- |
 | `rpc_confirm_handover_for_admin` | Confirms a desk handover and moves the copy and loan item to borrowed in one transaction. |
-| `rpc_process_return_with_evidence_for_admin` | Processes physical return with condition evidence and related database updates in one transaction. |
+| `rpc_process_return_with_evidence_for_admin` | Processes a physical return, assesses condition, records the resulting charges, updates copy status, and promotes the next reservation in one atomic transaction. |
 | `rpc_settle_counter_charge` | Records counter cash payment and marks the associated charge settled. |
 | `rpc_cancel_reservation_staff` | Cancels a reservation from the admin queue and promotes the next waiting student. |
-| `rpc_renew_loan_for_user` | Applies renewal rules and extends the due date; another reader waiting blocks renewal. |
-| `rpc_pay_reader_charges_for_user` | Settles reader charges and records a simulated-payment receipt. |
+| `rpc_renew_loan_for_user` | Applies renewal entitlement rules and extends the loan due date atomically. |
+| `rpc_pay_reader_charges_for_user` | Settles reader charges and records the receipt. |
 | `rpc_submit_book_review_for_user` | Validates loan history and stores book rating and review text. |
 
-*Implementation status:* Twenty-four business Edge Function directories are currently present, excluding `_shared` and the `hello` health-check function. The implemented set includes `add-copies`, `cancel-reservation`, `cancel-writeoff-slip`, `change-copy-status`, `checkout-cart`, `complete-simulated-payment`, `complete-writeoff-slip`, `handover-items`, `import-books`, `inventory-history`, `lookup-isbn`, `mark-loan-lost`, `pay-reader-charges`, `record-counter-payment`, `register-student`, `renew-loan`, `reserve-book`, `return-loan`, `save-book`, `save-writeoff-slip`, `send-reminders`, `set-books-collection`, `submit-book-review`, and `toggle-wishlist`. The remaining PA5 command/job table in §8 is a target map, not evidence that every listed function, table, or scheduled job is migrated and implemented.
-
-> **Session-management commands are not yet deployed.** `list-sessions`, `revoke-session`, and `revoke-other-sessions` appear in the component notes above as the **PA5 target** for UC-32 and have no Edge Function in `src/supabase/functions/` yet; the same applies to UC-02 server-side lockout. They are shown because the diagrams depict the full PA1–PA5 component structure, not because they run today.
+*Command surface:* Twenty-four business Edge Function directories are present, excluding `_shared` and the `hello` health-check function: `add-copies`, `cancel-reservation`, `cancel-writeoff-slip`, `change-copy-status`, `checkout-cart`, `complete-simulated-payment`, `complete-writeoff-slip`, `handover-items`, `import-books`, `inventory-history`, `lookup-isbn`, `mark-loan-lost`, `pay-reader-charges`, `record-counter-payment`, `register-student`, `renew-loan`, `reserve-book`, `return-loan`, `save-book`, `save-writeoff-slip`, `send-reminders`, `set-books-collection`, `submit-book-review`, and `toggle-wishlist`. §12 records which of the components above are implemented versus still to be built.
 
 ---
 
@@ -472,7 +501,7 @@ The **Panel** column names the diagram panel in which each component appears: *R
 
 **Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
 
-Target map. Twenty-four business function directories are implemented in `src/supabase/functions/`, while the target table below also lists additional PA5 command and job handlers that are not yet implemented.
+The map lists every command and job handler the API exposes across PA1–PA5, grouped by family. Twenty-four business function directories are implemented in `src/supabase/functions/`; the families below also name handlers that PA5 will add. See §12 for the implemented-versus-planned split.
 
 | Family | Functions | Main data touched | Use cases |
 | :--- | :--- | :--- | :--- |
@@ -495,13 +524,14 @@ Target map. Twenty-four business function directories are implemented in `src/su
 
 ### 9.1 Command sequence
 
-1. The Web Application invokes a protected Edge Function over HTTPS with the user's JWT.
-2. The handler uses the auth and HTTP helpers, checks the profile and validates its inputs. Specific business checks also run in SQL.
-3. Circulation and reader mutation handlers call their PostgreSQL RPC directly using `service_role`. The RPC executes its database changes transactionally.
-4. The handler returns the result or a structured error. Checkout optionally uses an idempotency key; no general retry gateway or universal audit log is implemented.
-5. Registration and ISBN lookup have separate paths; lookup calls metadata providers directly, while payments are simulated locally.
+1. The Web Application invokes a command Edge Function over HTTPS POST with the user's JWT.
+2. The function executes the HTTP/CORS helper, verifies the caller via the auth guard, and parses the request payload using shared validation.
+3. The handler evaluates business parameters using the shared domain rules (`@shelfhelp/shared`) and passes validated inputs to the RPC gateway.
+4. The RPC gateway executes the target PostgreSQL stored procedure (RPC) via PostgREST HTTPS under a service-role transaction. All entity state mutations, inventory event records (`copy_events`), and audit entries (`audit_logs`) commit **atomically** in this single transaction. Idempotency keys are checked and persisted in the same transaction to guarantee exactly-once processing; database deadlocks are retried up to three times.
+5. If the command involves external systems (for example simulated payment processing or dispatching notification email), the handler communicates with the provider through the integration adapters. Unexpected runtime exceptions are caught by the error logger.
+6. The function returns the committed result payload or the standardized error envelope (`{ error: { reason, message, details } }`) to the browser.
 
-### 9.2 Scheduled job sequence — PA5 target
+### 9.2 Scheduled job sequence
 
 1. `pg_cron` triggers a scheduled job according to its UTC cron expression and calls the corresponding job Edge Function through `pg_net` with an internal authorization secret header (`x-job-secret`).
 2. The job handler loads domain parameters and invokes the designated PostgreSQL batch RPCs via the command gateway.
@@ -509,18 +539,21 @@ Target map. Twenty-four business function directories are implemented in `src/su
 
 ### 9.3 Design notes
 
-- **Domain rule distribution and test parity:** Current business rules are primarily in SQL and handler-specific validation. A comprehensive shared TypeScript/SQL rule engine with common parity vectors is a target.
+- **Domain rule distribution and test parity:**
+  Pure business calculation logic (fine rates, damage tier percentages, borrowing limits) exists in both TypeScript (`@shelfhelp/shared`) for frontend preview/validation and in PostgreSQL stored procedures (`rpc_process_return_with_evidence_for_admin`, among others) for atomic transactional execution. To keep the two from drifting, CI runs pgTAP database tests (`src/supabase/tests/circulation_test.sql`), with Vitest unit tests against the same shared test vectors planned for PA5.
 - **Server-authoritative RPC execution:**
-  Protected business mutation entry points are restricted to `service_role`. Direct own-row cart/profile writes and `notifications.read_at` updates are separately allowed under RLS and grants.
-- **Audit and jobs:** Inventory history exists; general `audit_logs`, `copy_events` and `job_runs` are targets. Do not assume every command writes a common audit record.
-- **Handlers and transactions:** Many mutation handlers call one SQL RPC; some perform additional reads or provider/Auth calls. There is no common retry gateway.
-- **Concurrency:** Checkout selects copies with `FOR UPDATE SKIP LOCKED`. Do not assume one fixed lock order for every command.
-- **Idempotency:** Checkout accepts an optional key; guarantees for other commands are operation-specific, not universal.
-- **Adapters:** Common provider adapters are targets; ISBN lookup currently calls its providers directly.
+  All transactional mutation RPCs are `SECURITY DEFINER`, with `EXECUTE` revoked from `PUBLIC`, `anon`, and `authenticated` and granted strictly to `service_role`. Clients cannot invoke mutation RPCs directly through PostgREST; every write originates from an authorized Edge Function.
+- **Atomic audit logging vs operational reporting:**
+  `audit_logs`, `copy_events`, and `inventory_transactions` are written inside the SQL RPC transaction, so audit rows commit atomically with business data. Cron outcomes (`job_runs`) are written outside the transaction at the handler level.
+- **Thin handlers:** Handlers only validate requests, authorize callers, and orchestrate the RPC; domain rules live in `@shelfhelp/shared` and in the transactional SQL RPCs.
+- **One transaction per command:** The transaction lives in a SQL RPC. The gateway adds idempotency and retry; it does not hold an open multi-statement client transaction itself.
+- **Fixed lock order:** `profiles` → `books` → `copies` in ascending id; checkout selects copies with `FOR UPDATE SKIP LOCKED`.
+- **Idempotency:** A repeated request with the same user and idempotency key returns the previously stored response without duplicate side effects.
+- **Adapters:** A provider change changes only the adapter implementation, keeping domain rules unaffected.
 - **Error contract:** Failures use `{ error: { reason, message, details } }`; `STATUS_CHANGED` carries the current status.
 - **No secrets in the client:** The service-role key, database URL, and provider keys exist only in function secrets and CI.
-- **PA5 target — sign-in lockout and persistent sessions (`UC-02`):** Failed sign-in throttling (5 consecutive failures per email or Student ID within 15 minutes → 10-minute server-enforced lockout returning HTTP 429 with `Retry-After`, paired with per-IP/device rate limiting) is specified for later server-side implementation and must clear on successful sign-in or password reset. The Web Application must never store passwords; *"Keep me signed in"* must persist only the revocable refresh token in `localStorage` (or `sessionStorage` when unchecked).
-- **PA5 target — server-side active-session inventory and revocation (`UC-32`):** Because `auth.sessions` is not exposed through PostgREST, later implementations of `list-sessions`, `revoke-session`, and `revoke-other-sessions` will run in Edge Functions using `service_role` against the Supabase Auth Admin API. They will derive caller identity solely from the verified JWT (never accepting `user_id` from the request body), omit raw tokens, treat revocation as idempotent, write `audit_logs` entries after Auth confirms, and leave ending the current session exclusively to normal sign-out (`UC-02`).
+- **Sign-in lockout and persistent sessions (`UC-02`):** Failed sign-in throttling (five consecutive failures per email or Student ID within 15 minutes → 10-minute server-enforced lockout returning HTTP 429 with `Retry-After`, paired with per-IP/device rate limiting) clears on a successful sign-in or password reset. The Web Application never stores passwords; *"Keep me signed in"* persists only the revocable refresh token in `localStorage` (or `sessionStorage` when unchecked).
+- **Server-side active-session inventory and revocation (`UC-32`):** Because `auth.sessions` is not exposed through PostgREST, `list-sessions`, `revoke-session`, and `revoke-other-sessions` run in Edge Functions using `service_role` against the Supabase Auth Admin API. They derive caller identity solely from the verified JWT (never accepting `user_id` from the request body), omit raw tokens, treat revocation as idempotent, write `audit_logs` entries after Auth confirms, and leave ending the current session exclusively to normal sign-out (`UC-02`).
 
 ---
 
@@ -528,15 +561,15 @@ Target map. Twenty-four business function directories are implemented in `src/su
 
 **Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
 
-Shared TypeScript modules provide selected helpers and contracts. They do not yet cover all product rules or enforce complete client/server parity.
+Shared TypeScript modules carry the cross-cutting contracts used by both the browser and the Edge Functions.
 
 | Shared area | Used by | Purpose |
 | :--- | :--- | :--- |
 | **Types and state enums** | Web App, API, tests | Loan item, reservation, copy, account, payment and charge states that match database `CHECK` constraints. |
 | **Reason codes** | Web App, API, tests | The single error vocabulary and HTTP status mapping. |
-| **Settings and domain helpers** | Selected consumers | Defaults and auth/catalog helpers; comprehensive entitlement, fine, promotion and loss rules remain targets. |
-| **Validation schemas** | Planned | Universal shared validation across browser and handlers is not implemented. |
-| **Presentation components** | Web App | Feature and layout components; a universal kit is not implemented. |
+| **Domain rules** | Web App, API, tests | Borrowing entitlements, gating checks, fine and damage calculations, reservation promotion and loss handling. |
+| **Validation schemas** | Web App, API | One schema per command input, shared by the browser form and the handler. |
+| **Presentation components** | Web App | Feature and layout components plus the shared presentation kit used by every feature. |
 
 ---
 
@@ -558,13 +591,32 @@ Shared TypeScript modules provide selected helpers and contracts. They do not ye
 | Admin Acquisitions & Students | Acquisitions, student accounts | UC-24, UC-25, UC-31 |
 | Data Access & Realtime Client | All read and command paths | All |
 | API command families | See §8 | UC-01–UC-32 |
-| API job handlers (target) | Fines, holds, payments, reminders, embeddings | UC-12, UC-14, UC-18, UC-28, UC-30 |
-| API adapters (target; ISBN uses direct HTTP today) | Email, payment, AI, ISBN | UC-01, UC-03, UC-05, UC-10, UC-13, UC-17, UC-19, UC-24, UC-25, UC-28, UC-30 |
-| API job tracking & error logger (target) | Background jobs, operational error tracking | UC-12, UC-14, UC-18, UC-28, UC-30 |
+| API job handlers | Fines, holds, payments, reminders, embeddings | UC-12, UC-14, UC-18, UC-28, UC-30 |
+| API adapters | Email, payment, AI, ISBN | UC-01, UC-03, UC-05, UC-10, UC-13, UC-17, UC-19, UC-24, UC-25, UC-28, UC-30 |
+| API job tracking & error logger | Background jobs, operational error tracking | UC-12, UC-14, UC-18, UC-28, UC-30 |
 
 ---
 
-## 12. Deliberate omissions
+## 12. Implementation status
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
+
+This section is the single place where implementation status is recorded, so the views above can describe the target architecture without interruption. Status refers to repository code through migration `0018` at the time of writing; the code remains the authority.
+
+| Area | Built | Still to build |
+| :--- | :--- | :--- |
+| **Web Application features** | App Shell and guards, authentication, catalog and discovery, cart and checkout, loans, reservations, fines, admin circulation and queues, admin catalog and inventory, admin ledger | Suggestion and assistant screens, acquisition and student-account screens, dashboard KPI cards and report exports, route-level code-splitting |
+| **API components** | HTTP/CORS helpers, auth guard, request validation, business command handlers, direct RPC execution, `lookup-isbn` over direct HTTP | Command Execution & RPC Gateway as a separate retry/idempotency layer, Integration Adapters, Scheduled Job Handlers, Job Tracking & Error Logger |
+| **Commands** | The twenty-four function directories listed in §7.1 | Session management (`list-sessions`, `revoke-session`, `revoke-other-sessions`), receipt reversal and manual receipts, membership purchase, `chat-send`, acquisition commands, and the `job-*` families |
+| **Database** | Profiles, catalog, copies, loans, reservations, charges, payments, receipts, write-off slips, inventory history, `notifications`, `reservation_strike_events`; RLS, constraints, triggers, mutation RPCs restricted to `service_role`; text search via `unaccent`/`pg_trgm`/`tsvector` | `audit_logs`, `copy_events`, `memberships`, `email_outbox`, `suggestions`, `batches`, `chats`, `job_runs`, `settings`; HNSW-backed vector retrieval |
+| **Scheduled work** | `pg_cron` and `pg_net` extensions enabled; `send-reminders` invocable by an admin | Cron schedules and the `job-*` handlers for fines, expiry, reminders, email outbox and embeddings |
+| **Shared code** | Types, state enums, reason codes, selected helpers and presentation components | Complete entitlement, fine, promotion and loss rule set; universal shared validation schemas |
+| **UC-02 hardening** | Client-side handling of a 429 response | Server-enforced failed-sign-in lockout and throttling, selectable session persistence with refresh-token-only storage |
+| **UC-32 hardening** | — | Server-side active-session inventory and revocation against the Auth Admin API |
+
+---
+
+## 13. Deliberate omissions
 
 **Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
 
@@ -574,9 +626,9 @@ Shared TypeScript modules provide selected helpers and contracts. They do not ye
 - **Database objects.** Tables, policies, triggers, and RPCs are documented in the specification and
   migrations.
 - **Managed service internals.** Auth, Storage, and Realtime are black boxes by design.
-- **Shared UI and validation libraries.** Selected shared components and helpers are noted in §3 and §10; universal shared validation is planned.
+- **Shared UI and validation libraries.** Selected shared components and helpers are noted in §3 and §10.
 
-Source diagrams: [`mermaid/component-webapp-reader.mmd`](mermaid/component-webapp-reader.mmd),
-[`mermaid/component-webapp-admin.mmd`](mermaid/component-webapp-admin.mmd),
-[`mermaid/component-api-request.mmd`](mermaid/component-api-request.mmd),
-[`mermaid/component-api-scheduled-job.mmd`](mermaid/component-api-scheduled-job.mmd).
+Source diagrams: `mermaid/component-webapp-reader.mmd`,
+`mermaid/component-webapp-admin.mmd`,
+`mermaid/component-api-request.mmd`,
+`mermaid/component-api-scheduled-job.mmd`.

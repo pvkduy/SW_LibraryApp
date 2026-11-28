@@ -5,21 +5,22 @@ C4Component
 
     Container_Boundary(spa, "ShelfHelp Web Application") {
         Component(adminCirculation, "Admin Circulation & Queues", "React", "Desk handover, returns, due/overdue groups, reservation queues and reminders.")
-        Component(appShell, "App Shell & Access Guard", "React state, browser history", "Selects Reader or Admin shell and checks session, role and account status.")
+        Component(appShell, "App Shell & Access Guard", "React state, browser history", "Bootstraps the application, selects the Reader or Admin shell and enforces session, role and account-status guards.")
         Component(adminCatalog, "Admin Catalog & Inventory", "React", "Books, copies, ISBN lookup, bulk import, inventory history and write-off slips.")
 
-        Component(adminMoney, "Admin Money & Reporting", "React", "Financial ledger and counter payments; reporting and reversals are targets.")
-        Component(dataAccess, "Data Access & Realtime Client", "supabase-js", "Direct PostgREST reads, Storage and Edge Function calls.")
-        Component(adminAcquisitions, "Admin Acquisitions & Students (PA5 target)", "React", "Suggestion review, acquisition batches, shipment receipt and student accounts.")
+        Component(adminMoney, "Admin Money & Reporting", "React", "Receipts and reversals, dashboard KPIs and report exports.")
+        Component(dataAccess, "Data Access & Realtime Client", "supabase-js", "PostgREST reads, Realtime subscriptions, Storage uploads and Edge Function invocation with the JWT and standard error envelope.")
+        Component(adminAcquisitions, "Admin Acquisitions & Students", "React", "Suggestion review, acquisition batches, shipment receipt and student accounts.")
 
-        Component(authProfile, "Authentication & Profile", "React", "Sign-in/out and password reset; active sessions are a PA5 target.")
+        Component(authProfile, "Authentication & Profile", "React", "Sign-in/out, password reset, personal profile and own active sessions (/admin/profile/sessions).")
     }
 
     Boundary(backend, "Backend services", "SUPABASE") {
-        Container(api, "ShelfHelp API", "Supabase Edge Functions", "Business commands; scheduled jobs are planned.")
+        Container(api, "ShelfHelp API", "Supabase Edge Functions", "Business commands and scheduled jobs.")
         ContainerDb(db, "PostgreSQL Database", "Supabase Postgres 15", "Catalog and own-row data exposed through PostgREST under RLS.")
         Container_Ext(auth, "Supabase Auth", "Managed identity service", "Sessions, JWT and credential recovery.")
         Container_Ext(storage, "Supabase Storage", "Managed object storage", "Covers, avatars, evidence and imports.")
+        Container_Ext(realtime, "Supabase Realtime", "Managed change-data service", "Live counters, notifications and own loan changes.")
     }
 
     Rel(librarian, appShell, "Uses Admin Mode", "HTTPS")
@@ -28,7 +29,7 @@ C4Component
     Rel(appShell, adminCirculation, "Renders")
     Rel(appShell, adminCatalog, "Renders")
     Rel(appShell, adminMoney, "Renders")
-    Rel(appShell, adminAcquisitions, "Target")
+    Rel(appShell, adminAcquisitions, "Renders")
     Rel(appShell, authProfile, "Routes auth/session flows")
 
     Rel(adminCirculation, dataAccess, "Queries/commands")
@@ -38,9 +39,10 @@ C4Component
     Rel(authProfile, dataAccess, "Auth & sessions")
 
     Rel(dataAccess, auth, "Verifies session", "HTTPS, PKCE")
-    Rel(dataAccess, db, "Reads; updates own notification state", "PostgREST, RLS")
+    Rel(dataAccess, db, "Reads; writes own profile", "PostgREST, RLS")
     Rel(dataAccess, api, "Invokes commands", "HTTPS, JWT")
     Rel(dataAccess, storage, "(Data → Storage) <br/>Files", "HTTPS, signed URLs")
+    Rel(dataAccess, realtime, "Subscribes", "WebSocket, RLS")
 
     UpdateRelStyle(librarian, appShell, $offsetX="-20", $offsetY="-50")
 
@@ -61,5 +63,6 @@ C4Component
     UpdateRelStyle(dataAccess, db, $offsetX="20", $offsetY="-30")
     UpdateRelStyle(dataAccess, api, $offsetX="-200", $offsetY="160")
     UpdateRelStyle(dataAccess, storage, $offsetX="20", $offsetY="300")
+    UpdateRelStyle(dataAccess, realtime, $offsetX="60", $offsetY="150")
 
     UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
