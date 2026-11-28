@@ -17,11 +17,15 @@ Deno.serve(async (req: Request) => {
   if (!Array.isArray(body.charge_ids) || body.charge_ids.length === 0) {
     return fail('VALIDATION_FAILED', 'Select at least one charge')
   }
+  const method = body.method ?? 'mobile_banking'
+  if (!['mobile_banking', 'card'].includes(method)) {
+    return fail('VALIDATION_FAILED', 'Unsupported payment method')
+  }
 
   const { data, error } = await auth.supabaseAdmin.rpc('rpc_pay_reader_charges_for_user', {
     p_user_id: auth.user.id,
     p_charge_ids: body.charge_ids,
-    p_method: body.method || 'online',
+    p_method: method,
   })
   if (error) return fail('INTERNAL', error.message)
   if (!data?.success) {

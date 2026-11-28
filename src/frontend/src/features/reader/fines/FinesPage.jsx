@@ -33,6 +33,7 @@ function receiptMethod(method) {
     card: 'Card',
     transfer: 'Bank transfer',
     counter: 'At the circulation desk',
+    mobile_banking: 'Mobile banking',
     online: 'Online payment',
     ewallet: 'E-wallet',
   }

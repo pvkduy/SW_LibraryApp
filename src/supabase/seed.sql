@@ -219,6 +219,7 @@ values (
   'Khoa Học Máy Tính', 15000, 1, now(), now()
 )
 on conflict (id) do update set
+  status = excluded.status,
   debt_outstanding = excluded.debt_outstanding,
   active_items = excluded.active_items;
 
@@ -248,7 +249,7 @@ select
   'cart',
   'ready_for_pickup',
   14,
-  now() + interval '24 hours',
+  '2026-12-03 23:59:59+07'::timestamptz,
   now(), now()
 from public.books b
 join public.copies c on c.book_id = b.id and c.barcode = '9780132350884-01'
@@ -256,7 +257,7 @@ where b.isbn13 = '9780132350884'
 on conflict (id) do nothing;
 
 update public.copies
-set status = 'held', held_for_type = 'loan_item', held_until = now() + interval '24 hours'
+set status = 'held', held_for_type = 'loan_item', held_until = '2026-12-03 23:59:59+07'::timestamptz
 where barcode = '9780132350884-01';
 
 -- Item 2: Borrowed (Hóa học đại cương - on loan)

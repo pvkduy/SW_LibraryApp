@@ -15,7 +15,14 @@
 begin;
 create extension if not exists pgtap;
 
-select plan(13);
+select plan(14);
+
+select has_function(
+  'public',
+  'rpc_process_return_with_evidence_for_admin',
+  array['uuid', 'text', 'text', 'integer', 'boolean', 'integer', 'text', 'text[]', 'text', 'integer', 'boolean'],
+  'admin return RPC should expose the current evidence and copy-status parameters'
+);
 
 -- 1. Test Handover confirmation
 select lives_ok(

@@ -10,7 +10,7 @@ function chargeTitle(charge) {
 }
 
 export function FineCheckoutModal({ charges, onClose, onSuccess }) {
-  const [method, setMethod] = useState('online')
+  const [method, setMethod] = useState('mobile_banking')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
@@ -79,21 +79,21 @@ export function FineCheckoutModal({ charges, onClose, onSuccess }) {
               <input
                 type="radio"
                 name="payMethod"
-                value="online"
-                checked={method === 'online'}
-                onChange={() => setMethod('online')}
+                value="mobile_banking"
+                checked={method === 'mobile_banking'}
+                onChange={() => setMethod('mobile_banking')}
               />
-              Student payment gateway / ATM card (simulated)
+              Mobile Banking (simulated)
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', cursor: 'pointer' }}>
               <input
                 type="radio"
                 name="payMethod"
-                value="ewallet"
-                checked={method === 'ewallet'}
-                onChange={() => setMethod('ewallet')}
+                value="card"
+                checked={method === 'card'}
+                onChange={() => setMethod('card')}
               />
-              E-wallet (simulated)
+              Credit / Debit Card (simulated)
             </label>
           </div>
         </div>

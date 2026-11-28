@@ -134,6 +134,9 @@ export function LoginPage({ onNavigate }) {
             🎓 Student: <button type="button" className="auth-link" style={{ fontSize: '11.5px', textDecoration: 'underline' }} onClick={() => fillDemoAccount('student@shelfhelp.edu.vn', 'Password123!')}>student@shelfhelp.edu.vn</button> (or Student ID <code>24125000</code>)
           </div>
           <div>
+            🎓 Minh: <button type="button" className="auth-link" style={{ fontSize: '11.5px', textDecoration: 'underline' }} onClick={() => fillDemoAccount('minh.nguyen@shelfhelp.edu.vn', 'Password123!')}>minh.nguyen@shelfhelp.edu.vn</button> (or Student ID <code>24125088</code>)
+          </div>
+          <div>
             👔 Librarian: <button type="button" className="auth-link" style={{ fontSize: '11.5px', textDecoration: 'underline' }} onClick={() => fillDemoAccount('admin@shelfhelp.edu.vn', 'Password123!')}>admin@shelfhelp.edu.vn</button>
           </div>
           <div style={{ fontSize: '11px', color: '#8c827a', marginTop: '2px' }}>
