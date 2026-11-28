@@ -1,0 +1,18 @@
+{
+  "name": "@shelfhelp/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pure, environment-agnostic business rules and constants (SRS §11: must run unchanged on Deno, Node, and the browser)",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

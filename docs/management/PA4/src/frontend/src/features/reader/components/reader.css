@@ -1,0 +1,1209 @@
+.reader-layout {
+  min-height: 100vh;
+  background-color: #faf8f5;
+  color: #241e19;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.reader-header {
+  background-color: #ffffff;
+  border-bottom: 1px solid #ede6db;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.reader-header-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.reader-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.reader-brand-logo {
+  width: 32px;
+  height: 32px;
+  background: #6e472a;
+  color: #ffffff;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.reader-brand-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #241e19;
+  margin: 0;
+}
+
+.reader-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reader-nav-item {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6e665e;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reader-nav-item:hover {
+  background-color: #f4eee6;
+  color: #241e19;
+}
+
+.reader-nav-item.active {
+  background-color: #f0e6d8;
+  color: #6e472a;
+  font-weight: 600;
+}
+
+.reader-nav-badge {
+  background-color: #b3261e;
+  color: white;
+  border-radius: 10px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.reader-user-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.reader-user-badge {
+  font-size: 13px;
+  font-weight: 500;
+  color: #52473f;
+}
+
+.reader-body {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 24px 20px;
+}
+
+/* Debt Banner */
+.debt-hold-banner {
+  background-color: #fff4e5;
+  border: 1px solid #ffd8a8;
+  color: #b75500;
+  padding: 12px 18px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.debt-hold-banner strong {
+  color: #8f4000;
+}
+
+.debt-hold-btn {
+  background-color: #b75500;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Cards & tables */
+.reader-card {
+  background-color: #ffffff;
+  border: 1px solid #ede6db;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.reader-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #241e19;
+  margin: 0 0 14px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.reader-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid #ede6db;
+  margin-bottom: 20px;
+}
+
+.reader-tab-btn {
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #6e665e;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.reader-tab-btn.active {
+  color: #6e472a;
+  border-bottom: 2px solid #6e472a;
+}
+
+/* Loan item card */
+.loan-item-card {
+  border: 1px solid #ede6db;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff;
+  transition: box-shadow 0.15s ease;
+}
+
+.loan-item-card:hover {
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
+.loan-item-info h4 {
+  margin: 0 0 6px 0;
+  font-size: 15px;
+  color: #241e19;
+}
+
+.loan-item-sub {
+  font-size: 13px;
+  color: #6e665e;
+  display: flex;
+  gap: 14px;
+}
+
+.badge-status {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-borrowed {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.badge-overdue {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.badge-returned {
+  background: #f5f5f5;
+  color: #616161;
+}
+
+.badge-pending {
+  background: #fff8e1;
+  color: #f57f17;
+}
+
+/* Star rating */
+.star-rating {
+  display: flex;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.star {
+  font-size: 24px;
+  color: #d1c7bd;
+  transition: color 0.1s;
+}
+
+.star.active {
+  color: #f59e0b;
+}
+
+/* Modal styling */
+.reader-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 26, 23, 0.45);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.reader-modal-content {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 24px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}
+
+/* My Loans and its review flow */
+.my-loans-container {
+  max-width: 760px;
+  padding-top: 16px;
+}
+
+.my-loans-page {
+  color: #241e19;
+}
+
+.my-loans-message {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.my-loans-message.success {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.my-loans-message.error {
+  background: #ffebee;
+  color: #b3261e;
+}
+
+.my-loans-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 16px;
+  background: #f0e9df;
+  border-radius: 10px;
+}
+
+.my-loans-tabs button {
+  min-height: 38px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #6e665e;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.my-loans-tabs button.active {
+  background: #fff;
+  color: #6e472a;
+  box-shadow: 0 1px 3px rgba(36, 30, 25, .1);
+}
+
+.my-loans-tabs button span {
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 3px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 99px;
+  background: #ede6db;
+  font-size: 11px;
+}
+
+.my-loans-quota {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  column-gap: 10px;
+  align-items: center;
+  padding: 14px;
+  margin-bottom: 12px;
+  border: 1px solid #ede6db;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.my-loans-quota-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 9px;
+  background: #f5efe6;
+  color: #6e472a;
+  font-size: 20px;
+}
+
+.my-loans-quota-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.my-loans-quota-copy span {
+  color: #6e665e;
+  font-size: 11px;
+}
+
+.my-loans-quota-copy strong {
+  font-size: 13px;
+}
+
+.my-loans-quota-copy small {
+  color: #8c827a;
+  font-size: 10px;
+}
+
+.my-loans-quota-meter {
+  grid-column: 2;
+  height: 5px;
+  margin-top: 7px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #ede6db;
+}
+
+.my-loans-quota-meter span,
+.my-loan-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #6e472a;
+  transition: width .2s ease;
+}
+
+.my-loans-due-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 12px;
+  margin-bottom: 12px;
+  border: 1px solid #f3d9ae;
+  border-radius: 9px;
+  background: #fff8e9;
+  color: #8d5b16;
+}
+
+.my-loans-due-alert > span {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  place-items: center;
+  border-radius: 50%;
+  background: #f3d9ae;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.my-loans-due-alert div {
+  display: grid;
+  gap: 2px;
+}
+
+.my-loans-due-alert strong {
+  font-size: 12px;
+}
+
+.my-loans-due-alert small {
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.my-loans-list {
+  display: grid;
+  gap: 11px;
+}
+
+.my-loan-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #ede6db;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.my-loan-cover {
+  display: grid;
+  width: 70px;
+  height: 96px;
+  flex: 0 0 70px;
+  overflow: hidden;
+  place-items: center;
+  border-radius: 6px;
+  background: #e9e2d7;
+  color: #6e472a;
+  font-family: Georgia, serif;
+  font-size: 30px;
+}
+
+.my-loan-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.my-loan-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.my-loan-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.my-loan-heading h2 {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.35;
+  color: #241e19;
+}
+
+.my-loan-heading p {
+  margin: 3px 0 0;
+  color: #6e665e;
+  font-size: 11px;
+}
+
+.my-loan-status {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border-radius: 99px;
+  font-size: 9px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.my-loan-status.borrowed {
+  background: #e6f4ea;
+  color: #2e6930;
+}
+
+.my-loan-status.pending {
+  background: #fff3da;
+  color: #8d5b16;
+}
+
+.my-loan-status.overdue {
+  background: #fce8e6;
+  color: #b3261e;
+}
+
+.my-loan-status.returned {
+  background: #f0eee9;
+  color: #6e665e;
+}
+
+.my-loan-due-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  color: #6e665e;
+  font-size: 10px;
+}
+
+.my-loan-due-row strong {
+  margin-left: 3px;
+  color: #241e19;
+  font-size: 10px;
+}
+
+.my-loan-due-row .urgent {
+  color: #b3261e;
+  font-weight: 700;
+}
+
+.my-loan-progress {
+  height: 4px;
+  margin-top: 7px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #ede6db;
+}
+
+.my-loan-card.overdue .my-loan-progress span {
+  background: #c5221f;
+}
+
+.my-loan-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  color: #6e665e;
+  font-size: 10px;
+}
+
+.my-loan-card-footer button,
+.my-loans-fines-pay {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid #6e472a;
+  border-radius: 6px;
+  background: #6e472a;
+  color: #fff;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.my-loan-card-footer button:disabled,
+.my-loans-fines-pay:disabled {
+  border-color: #d7d0c7;
+  background: #d7d0c7;
+  color: #746d65;
+  cursor: not-allowed;
+}
+
+.my-loan-review-submitted {
+  color: #2e6930;
+  font-weight: 700;
+}
+
+.my-loan-review-prompt {
+  font-size: 10px;
+}
+
+.my-loans-empty {
+  padding: 28px 14px;
+  border: 1px dashed #dcd3c6;
+  border-radius: 10px;
+  color: #6e665e;
+  text-align: center;
+  font-size: 13px;
+}
+
+.my-loans-pending {
+  padding: 14px;
+  margin-top: 12px;
+  border: 1px solid #ede6db;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.my-loans-pending h2 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.my-loans-pending > p {
+  margin: 4px 0 10px;
+  color: #6e665e;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.my-loans-pending-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid #f0eae1;
+}
+
+.my-loans-pending-item > div:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.my-loans-pending-item strong {
+  overflow: hidden;
+  color: #241e19;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-loans-pending-item > div:first-child span {
+  overflow: hidden;
+  color: #8c827a;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-loans-pending-status {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 3px;
+  color: #8d5b16;
+  font-size: 9px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.my-loans-pending-status small {
+  color: #8c827a;
+  font-size: 9px;
+  font-weight: 400;
+}
+
+.my-loans-page .reader-tabs {
+  align-items: center;
+  gap: 4px;
+  margin: 12px 0;
+  overflow-x: auto;
+}
+
+.my-loans-page .reader-tab-btn {
+  padding: 9px 10px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.my-loans-page .reader-card {
+  padding: 12px;
+}
+
+.my-loans-fines-pay {
+  flex: 0 0 auto;
+  margin-left: auto;
+  border: none;
+}
+
+.review-page {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 0 0 20px;
+}
+
+.review-back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0 14px;
+  border: 0;
+  background: transparent;
+  color: #6e472a;
+  font: inherit;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.review-back-button span {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.review-form-card,
+.review-recorded {
+  padding: 20px;
+  border: 1px solid #ede6db;
+  border-radius: 13px;
+  background: #fff;
+}
+
+.review-eyebrow {
+  margin: 0 0 6px;
+  color: #8d775f;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+}
+
+.review-form-card h1,
+.review-recorded h1 {
+  margin: 0;
+  color: #241e19;
+  font-family: Georgia, serif;
+  font-size: 25px;
+}
+
+.review-book-title {
+  margin: 5px 0 20px;
+  color: #6e665e;
+  font-size: 13px;
+}
+
+.review-rating-field {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  padding: 0 0 18px;
+  margin: 0 0 16px;
+  border: 0;
+  border-bottom: 1px solid #ede6db;
+}
+
+.review-rating-field legend {
+  width: 100%;
+  margin-bottom: 10px;
+  color: #241e19;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.review-rating-buttons {
+  display: flex;
+  gap: 7px;
+}
+
+.review-rating-buttons button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #d8cfc4;
+  font-size: 31px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.review-rating-buttons button.selected {
+  color: #d9822b;
+}
+
+.review-rating-label {
+  color: #8c827a;
+  font-size: 11px;
+}
+
+.review-field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.review-field > span {
+  color: #241e19;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.review-field input,
+.review-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid #dcd3c6;
+  border-radius: 8px;
+  padding: 10px 11px;
+  background: #fff;
+  color: #241e19;
+  font: inherit;
+  font-size: 12px;
+}
+
+.review-field textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.review-field small {
+  color: #8c827a;
+  font-size: 10px;
+  text-align: right;
+}
+
+.review-error {
+  margin-bottom: 12px;
+  padding: 9px;
+  border-radius: 7px;
+  background: #ffebee;
+  color: #b3261e;
+  font-size: 12px;
+}
+
+.review-primary-button {
+  width: 100%;
+  min-height: 42px;
+  border: 0;
+  border-radius: 8px;
+  background: #6e472a;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.review-primary-button:disabled {
+  background: #d7d0c7;
+  cursor: not-allowed;
+}
+
+.review-recorded {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+
+.review-recorded-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 14px;
+  place-items: center;
+  border-radius: 50%;
+  background: #e6f4ea;
+  color: #2e6930;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.review-recorded > p:not(.review-eyebrow) {
+  margin: 8px 0 16px;
+  color: #6e665e;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.review-recorded-card {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px;
+  margin-bottom: 16px;
+  border-radius: 9px;
+  background: #faf8f5;
+}
+
+.review-stars {
+  color: #d9822b;
+  letter-spacing: 2px;
+}
+
+.review-recorded-card strong {
+  font-size: 13px;
+}
+
+.review-recorded-card p {
+  margin: 0;
+  color: #6e665e;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.review-recorded-card small {
+  color: #8c827a;
+  font-size: 10px;
+}
+
+@media (max-width: 520px) {
+  .my-loans-container {
+    padding: 12px 12px 100px;
+  }
+
+  .my-loan-card {
+    gap: 9px;
+    padding: 9px;
+  }
+
+  .my-loan-cover {
+    width: 58px;
+    height: 82px;
+    flex-basis: 58px;
+  }
+
+  .my-loan-heading h2 {
+    font-size: 12px;
+  }
+
+  .my-loan-due-row {
+    font-size: 9px;
+  }
+
+  .my-loan-card-footer {
+    font-size: 9px;
+  }
+
+  .my-loan-card-footer button {
+    min-height: 28px;
+    padding: 0 8px;
+    font-size: 9px;
+  }
+
+  .review-form-card,
+  .review-recorded {
+    padding: 16px;
+  }
+}
+
+/* Payment history and inline receipt details */
+.receipt-inline-view {
+  display: grid;
+  justify-items: start;
+  gap: 0;
+  padding-top: 10px;
+}
+
+.receipt-return-button {
+  min-height: 31px;
+  padding: 0 11px;
+  border: 1px solid #d8c8b7;
+  border-radius: 7px;
+  margin-bottom: 8px;
+  background: #fff;
+  color: #6e472a;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.receipt-history-list {
+  display: grid;
+  gap: 13px;
+  width: min(100%, 560px);
+  box-sizing: border-box;
+  padding: 0 0 20px;
+  margin: 0 auto;
+}
+
+.receipt-history-card {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  min-height: 73px;
+  padding: 14px 13px 12px;
+  border: 1px solid #ebe3d7;
+  border-radius: 12px;
+  background: #f8f5f0;
+  box-shadow: 0 2px 5px rgba(54, 39, 23, .05);
+  color: #332a22;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.receipt-history-card:hover {
+  border-color: #c9b59d;
+  background: #f5efe6;
+}
+
+.receipt-history-card > strong {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.receipt-history-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #71685f;
+  font-size: 11px;
+}
+
+.receipt-number-badge {
+  max-width: 54%;
+  overflow: hidden;
+  padding: 3px 7px;
+  border: 1px solid #ebe3d7;
+  border-radius: 5px;
+  background: #fffdfa;
+  color: #71685f;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.receipt-history-empty {
+  margin: 0;
+  padding: 28px 14px;
+  color: #71685f;
+  font-size: 13px;
+  text-align: center;
+}
+
+.receipt-details {
+  display: flex;
+  width: min(100%, 430px);
+  box-sizing: border-box;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 auto;
+  padding: 12px 0 18px;
+  text-align: center;
+}
+
+.receipt-eyebrow {
+  margin: 0 0 10px;
+  color: #8a8177;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 1px;
+}
+
+.receipt-complete-icon {
+  display: grid;
+  width: 82px;
+  height: 82px;
+  margin-bottom: 16px;
+  place-items: center;
+  border-radius: 50%;
+  background: #edf7ee;
+}
+
+.receipt-complete-icon span {
+  display: grid;
+  width: 53px;
+  height: 53px;
+  place-items: center;
+  border: 9px solid #c7e9ce;
+  border-radius: 50%;
+  background: #42674e;
+  color: #fff;
+  font-size: 23px;
+  font-weight: 700;
+}
+
+.receipt-details > h2 {
+  margin: 0 0 5px;
+  color: #302d2a;
+  font-size: 20px;
+  font-weight: 750;
+}
+
+.receipt-complete-copy {
+  max-width: 330px;
+  margin: 0 0 14px;
+  color: #817970;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.receipt-qr-wrap {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  margin: 0 0 14px;
+  color: #6e472a;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .5px;
+}
+
+.receipt-qr-wrap svg {
+  display: block;
+  width: 142px;
+  height: 142px;
+  padding: 4px;
+  background: #fff;
+}
+
+.receipt-detail-card {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 15px 11px;
+  border: 1px solid #ebe3d7;
+  border-radius: 11px;
+  background: #f8f5f0;
+  box-shadow: 0 2px 7px rgba(54, 39, 23, .06);
+  text-align: left;
+}
+
+.receipt-detail-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 7px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid #e8dfd3;
+  color: #39332e;
+  font-size: 13px;
+}
+
+.receipt-detail-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 10px;
+}
+
+.receipt-detail-row span {
+  flex: 0 0 auto;
+  color: #8a8177;
+}
+
+.receipt-detail-row strong {
+  color: #39332e;
+  font-size: 10px;
+  font-weight: 650;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.receipt-print-button {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 16px;
+  padding: 10px;
+  border: 0;
+  border-radius: 9px;
+  background: #7a4d2d;
+  box-shadow: 0 2px 5px rgba(36, 30, 25, .17);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+@media (min-width: 600px) {
+  .receipt-details {
+    padding-bottom: 20px;
+  }
+}
+
+@media print {
+  .receipt-return-button,
+  .receipt-print-button {
+    display: none !important;
+  }
+
+  .receipt-details {
+    padding: 0;
+  }
+}
