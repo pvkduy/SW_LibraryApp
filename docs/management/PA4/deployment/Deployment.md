@@ -28,6 +28,8 @@
 
 ## 1. Introduction
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Phạm Võ Khang Duy | **Edited by:** Nguyễn Anh Khôi
+
 ### 1.1 Purpose
 
 This document specifies the **Deployment Architecture** for ShelfHelp. It satisfies the PA4 course architecture submission requirements by mapping each software container defined in the [Container view](../architecture/container/Container.md) to the physical, virtualized, and managed cloud infrastructure nodes that execute it, specifying the hardware/cloud services used, running containers, and inter-node communication protocols.
@@ -55,6 +57,8 @@ The deployment architecture covers the complete product lifecycle from PA1 throu
 
 ## 2. Mapping containers and platform services to infrastructure nodes
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Phạm Võ Khang Duy | **Edited by:** Nguyễn Anh Khôi
+
 The table below maps every runtime element of the production topology to the infrastructure node that executes it. The ownership boundary follows [Container.md §2](../architecture/container/Container.md#2-relationship-to-the-level-1-view) and §4: the Web Application, the ShelfHelp API, and the PostgreSQL database are team-owned containers; Supabase Auth, Storage, and Realtime are managed platform services the team configures but does not operate; the remaining rows are external third-party systems.
 
 | Runtime element | Element type | Target infrastructure node | Cloud / Hardware platform |
@@ -75,6 +79,8 @@ The table below maps every runtime element of the production topology to the inf
 ---
 
 ## 3. Deployment diagram
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Phạm Võ Khang Duy | **Edited by:** Nguyễn Anh Khôi
 
 <details>
 <summary>Mermaid source</summary>
@@ -165,6 +171,8 @@ Source: [`mermaid/deployment.mmd`](mermaid/deployment.mmd).
 ---
 
 ## 4. Infrastructure node catalogue
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Phạm Võ Khang Duy | **Edited by:** Nguyễn Anh Khôi
 
 ### 4.1 User Workstation / Mobile Device
 
@@ -271,6 +279,8 @@ These three services are managed platform services, not team-owned containers ([
 
 ## 5. Deployment environments
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Phạm Võ Khang Duy | **Edited by:** Nguyễn Anh Khôi
+
 ShelfHelp defines four formal deployment environments, matching [Container.md §6](../architecture/container/Container.md#6-deployment-and-environments) and the three hosted Supabase projects (`dev`, `staging`, `prod`):
 
 | Aspect | Local Development | Continuous Integration (CI) | Dev / Staging | Production |
@@ -286,6 +296,8 @@ ShelfHelp defines four formal deployment environments, matching [Container.md §
 ---
 
 ## 6. Security, networking, and resilience
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Phạm Võ Khang Duy | **Edited by:** Nguyễn Anh Khôi
 
 ### 6.1 Network encryption and boundaries
 
@@ -308,6 +320,8 @@ ShelfHelp defines four formal deployment environments, matching [Container.md §
 ---
 
 ## 7. Related views
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Phạm Võ Khang Duy | **Edited by:** Nguyễn Anh Khôi
 
 - **Level 1 — System Context:** [System-Context.md](../architecture/system-context/System-Context.md)
 - **Level 2 — Container View:** [Container.md](../architecture/container/Container.md)

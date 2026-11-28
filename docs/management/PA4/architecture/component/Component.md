@@ -36,6 +36,8 @@
 
 ## 1. Introduction
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
+
 ### 1.1 Purpose
 
 This document is the **C4 Level 3 (Component) view** of ShelfHelp. It opens the two core application containers from the [Container view](../container/Container.md) and shows the modules inside them, their responsibilities, and their collaborations.
@@ -59,6 +61,8 @@ The view covers the two core application containers across the whole product sco
 
 ## 2. Why these two containers
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
+
 The Web Application and the ShelfHelp API carry almost all product behaviour. The Web Application is where Reader and Admin experiences differ; the API is where every command, job, and provider adapter runs.
 
 PostgreSQL is not decomposed here because its components are tables, constraints, indexes, policies, triggers, and RPCs, which are documented in the specification and migrations. Auth, Storage, and
@@ -67,6 +71,8 @@ Realtime are managed services with no team-owned internal modules.
 ---
 
 ## 3. Web Application — component diagram
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
 
 The view is drawn as two panels, one per operating mode. Reader Mode and Admin Mode share the same
 App Shell, the same Data Access & Realtime Client, and the same backend services, so each panel shows
@@ -242,6 +248,8 @@ Source: [`mermaid/component-webapp-reader.mmd`](mermaid/component-webapp-reader.
 
 ## 4. Web Application — component catalogue
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
+
 The **Panel** column names the diagram panel in which each component appears: *Reader* (§3.1), *Admin*
 (§3.2), or *Both* for the App Shell, Authentication & Profile, the Data Access & Realtime Client, and the shared backend.
 
@@ -274,6 +282,8 @@ Route guards improve the experience; RLS and Edge Functions enforce the actual r
 
 ## 5. Web Application — design notes
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
+
 - **Feature isolation.** Features do not import each other's internals. Shared behaviour moves to
   `@shelfhelp/shared` or a shared presentation component.
 - **Server state.** TanStack Query is planned to own server state; until it is added, component state
@@ -288,6 +298,8 @@ Route guards improve the experience; RLS and Edge Functions enforce the actual r
 ---
 
 ## 6. ShelfHelp API — component diagram
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
 
 The view is drawn as two panels, one per entry path. Business commands arrive from the Web Application
 over HTTPS; scheduled jobs arrive from `pg_cron` inside PostgreSQL through `pg_net`. Both paths enter
@@ -439,6 +451,8 @@ Source: [`mermaid/component-api-request.mmd`](mermaid/component-api-request.mmd)
 
 ## 7. ShelfHelp API — component catalogue
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
+
 The **Panel** column names the diagram panel in which each component appears: *Request* (§6.1),
 *Scheduled job* (§6.2), or *Both* for the shared rule engine, RPC gateway, adapters, and job tracker.
 
@@ -474,6 +488,8 @@ The **Panel** column names the diagram panel in which each component appears: *R
 
 ## 8. ShelfHelp API — business command map
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
+
 Target map. Twenty-one business function directories are implemented in `src/supabase/functions/`, while the target table below also lists additional PA5 command and job handlers that are not yet implemented.
 
 | Family | Functions | Main data touched | Use cases |
@@ -492,6 +508,8 @@ Target map. Twenty-one business function directories are implemented in `src/sup
 ---
 
 ## 9. ShelfHelp API — interactions and design notes
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
 
 ### 9.1 Command sequence
 
@@ -530,6 +548,8 @@ Target map. Twenty-one business function directories are implemented in `src/sup
 
 ## 10. Shared code and cross-cutting concerns
 
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
+
 `@shelfhelp/shared` is compiled into both containers and is the main defence against drift.
 
 | Shared area | Used by | Purpose |
@@ -543,6 +563,8 @@ Target map. Twenty-one business function directories are implemented in `src/sup
 ---
 
 ## 11. Traceability
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
 
 | View element | Feature groups | Use cases |
 | :--- | :--- | :--- |
@@ -565,6 +587,8 @@ Target map. Twenty-one business function directories are implemented in `src/sup
 ---
 
 ## 12. Deliberate omissions
+
+**Performed by:** Nguyễn Anh Khôi | **Reviewed by:** Lê Văn Vĩ | **Edited by:** Nguyễn Anh Khôi
 
 - **Individual pages and dialogs.** Each feature component contains several routes and modals.
 - **Individual function folders.** The API diagram groups functions into command and job families; §8
